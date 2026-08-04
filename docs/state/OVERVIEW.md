@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: bootstrap (pre-slice 0001)
+Last updated: slice 0001
 
 ## Direction
 
@@ -23,35 +23,37 @@ Last updated: bootstrap (pre-slice 0001)
 
 ## Capabilities
 
-<!-- nothing shipped yet -->
-
-- *(none — implementation has not started)*
+- Create an empty group on device, mint a per-device access token, persist locally, sync group entity to Postgres — [slice 0001](slices/0001-walking-skeleton.md)
+- Open a group hub showing id, name, version, and sync status; bump name via merge + wake + fetch — [slice 0001](slices/0001-walking-skeleton.md)
+- Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 
 ## Stack
 
-- Client — Expo React Native + Expo Router — mobile-first; web secondary
-- UI state — Legend State (`useValue`, per-group observable) — UI source of truth
-- Local durability — `expo-sqlite` via Legend `observablePersistSqlite` — write-through persist
-- Secrets — `expo-secure-store` — per-group access tokens + device_user_id
-- Server DB — Supabase Postgres — versioned merge entities
-- Server API — Supabase Edge Functions — sole entry point (merge / fetch / join / rt-jwt)
-- Wake channel — Supabase Realtime private channel — signal only, no ledger payloads
-- Hosting — remote project `splitnext-v3` — D-001
+- Client — Expo RN 57 + Expo Router — mobile-first; web secondary (SQLite web alpha)
+- UI state — Legend State v3 (`useValue`, per-group observable) — UI source of truth
+- Local durability — `expo-sqlite` kv-store via `observablePersistSqlite` + `configureObservableSync` — write-through persist
+- Secrets — `expo-secure-store` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary)
+- Server DB — Supabase Postgres — `groups`, `access_tokens`; deny-all RLS
+- Server API — Edge Functions `create-group`, `merge`, `fetch-entity`, `rt-jwt` — capability hash-check then service role
+- Wake channel — Realtime broadcast on `group:{id}`; payload is tip only; `rt-jwt` gates subscribe (anon_channel fallback — D-006)
+- Hosting — remote `splitnext-v3` — D-001
 
 ## Data model
 
-<!-- empty until slice 0001 -->
+**Group** — `id`, `version`, `updated_at`, `deleted_at`, `name`, `currency_label`, `is_closed`. Client UUID v4; merge when `incoming.version > stored.version`.
 
-*(no entities in code yet)*
+**Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
+
+**Outbound queue** (client) — per-group array of `{ entity_type, id, version, payload }` on the Legend store; flushed to `merge`. Only `groups` today; no auto-flush on reconnect yet.
 
 ## Routes / surfaces
 
 | Route | What it does | Shipped in |
 | --- | --- | --- |
-| — | — | — |
+| `/` | Lobby: create group, list local group ids | slice 0001 |
+| `/group/[id]` | Hub: sync proof, bump name | slice 0001 |
 
 ## Seams
 
-<!-- agreed at first slice -->
-
-*(none yet)*
+- `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest; symmetric client/server version rule
+- Edge Functions behind `src/api/edge.ts` — HTTP capability boundary (manual / phone demo)

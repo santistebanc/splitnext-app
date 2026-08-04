@@ -1,0 +1,15 @@
+# Minimal remote-linked config. Functions use verify_jwt=false (capability tokens).
+
+project_id = "ycpkguwfxlhpovnsuujr"
+
+[functions.create-group]
+verify_jwt = false
+
+[functions.merge]
+verify_jwt = false
+
+[functions.fetch-entity]
+verify_jwt = false
+
+[functions.rt-jwt]
+verify_jwt = false

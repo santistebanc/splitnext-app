@@ -1,0 +1,118 @@
+import { env } from '@/src/config/env';
+import type { GroupEntity } from '@/src/types/group';
+
+type Json = Record<string, unknown>;
+
+async function callFunction<T>(
+  name: string,
+  body: Json,
+  options?: { accessToken?: string; deviceUserId?: string },
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    apikey: env.supabaseAnonKey,
+    Authorization: `Bearer ${options?.accessToken ?? env.supabaseAnonKey}`,
+  };
+  if (options?.deviceUserId) {
+    headers['x-device-user-id'] = options.deviceUserId;
+  }
+
+  const url = `${env.supabaseUrl}/functions/v1/${name}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  const text = await res.text();
+  let data: (T & { error?: string; detail?: string }) | null = null;
+  try {
+    data = text ? (JSON.parse(text) as T & { error?: string; detail?: string }) : null;
+  } catch {
+    throw new Error(
+      `edge_${name}_non_json status=${res.status} body=${text.slice(0, 120)}`,
+    );
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error ?? `edge_${name}_failed_${res.status}`);
+  }
+  if (!data) {
+    throw new Error(`edge_${name}_empty`);
+  }
+  return data;
+}
+
+export async function createGroupRemote(input: {
+  group_id: string;
+  device_user_id: string;
+  name: string;
+  currency_label: string;
+  updated_at: string;
+}): Promise<{ access_token: string; group: GroupEntity }> {
+  return callFunction('create-group', input);
+}
+
+export async function mergeEntities(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+  items: Array<{
+    entity_type: string;
+    id: string;
+    version: number;
+    payload: GroupEntity;
+  }>;
+}): Promise<{
+  results: Array<{ id: string; status: string; reason?: string }>;
+}> {
+  return callFunction(
+    'merge',
+    { group_id: input.group_id, items: input.items },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}
+
+export async function fetchEntity(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+  entity_type: string;
+  id: string;
+}): Promise<{ entity: GroupEntity }> {
+  return callFunction(
+    'fetch-entity',
+    {
+      group_id: input.group_id,
+      entity_type: input.entity_type,
+      id: input.id,
+    },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}
+
+export async function mintRealtimeAuth(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+}): Promise<{
+  jwt: string | null;
+  channel: string;
+  auth_mode: string;
+  expires_in: number;
+}> {
+  return callFunction(
+    'rt-jwt',
+    { group_id: input.group_id },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}

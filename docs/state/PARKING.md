@@ -3,14 +3,17 @@
 ## Foundation-risk
 
 - **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap
+- **Outbound queue auto-flush** — flush persisted queue on app open / reconnect so offline bumps upload without another tap — area: sync — raised: slice 0001
+- **Realtime JWT signing secret** — leave `anon_channel` fallback; mint short-lived JWT for private channel auth (D-006) — area: sync — raised: slice 0001
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
 
 ## Core value
 
+- **Assumed member / bind** — mutations require assumed member; unbound = read-only browse — area: membership — raised: bootstrap
+- **Members as merge entities** — add/rename/soft-delete members; schema + merge path — area: membership — raised: bootstrap
 - **Expense editor + invariants** — contributions/allocations, Hamilton rounding, defaults (payer = assumed member, equal shares) — area: ledger — raised: bootstrap
 - **Balances list (group hub home)** — derived Σ contributions − Σ allocations; sort most-negative first; "You (Name)" — area: ledger — raised: bootstrap
-- **Assumed member / bind** — mutations require assumed member; unbound = read-only browse — area: membership — raised: bootstrap
 - **Member invites** — HTTPS deep link join; mint access token; preselect / picker / add-new — area: invites — raised: bootstrap
 - **Settle-up suggestions** — minimise transfer count via group-net flows; prefill settlement expense — area: ledger — raised: bootstrap
 
@@ -29,10 +32,11 @@
 
 ## Polish
 
+- **Lobby index out of Secure Store** — move `lobby_group_ids` to Legend/SQLite; Secure Store for secrets only — area: client — raised: slice 0001
 - **Design system application** — locked palette/components in blueprint; apply across screens — area: ui — raised: bootstrap
 - **Debug telemetry** — crash reporter; tags group_id + device_user_id only — area: observability — raised: bootstrap
 - **Handoff checklist** — "Final spec section outline and the acceptance checklist proving the design is implementable" — area: meta — raised: bootstrap
 
 ## Delivered
 
-<!-- empty -->
+- **Walking skeleton** — delivered in [slice 0001](slices/0001-walking-skeleton.md)

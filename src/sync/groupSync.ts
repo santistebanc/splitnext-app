@@ -1,0 +1,213 @@
+import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
+import * as Crypto from 'expo-crypto';
+import {
+  createGroupRemote,
+  fetchEntity,
+  mergeEntities,
+  mintRealtimeAuth,
+} from '@/src/api/edge';
+import { env } from '@/src/config/env';
+import { shouldAcceptVersion } from '@/src/domain/version';
+import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
+import {
+  addLobbyGroupId,
+  getAccessToken,
+  saveAccessToken,
+} from '@/src/secrets/tokens';
+import { getGroupStore, initLocalGroup } from '@/src/store/groupStore';
+import type { GroupEntity } from '@/src/types/group';
+
+const channels = new Map<string, RealtimeChannel>();
+
+function supabaseClient() {
+  return createClient(env.supabaseUrl, env.supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+export async function createGroup(): Promise<string> {
+  const deviceUserId = await getOrCreateDeviceUserId();
+  const groupId = Crypto.randomUUID();
+  const updatedAt = new Date().toISOString();
+  const local: GroupEntity = {
+    id: groupId,
+    version: 1,
+    updated_at: updatedAt,
+    deleted_at: null,
+    name: '',
+    currency_label: 'EUR',
+    is_closed: false,
+  };
+
+  const store$ = getGroupStore(groupId);
+  initLocalGroup(store$, local);
+  store$.syncStatus.set('creating');
+
+  try {
+    const { access_token, group } = await createGroupRemote({
+      group_id: groupId,
+      device_user_id: deviceUserId,
+      name: local.name,
+      currency_label: local.currency_label,
+      updated_at: local.updated_at,
+    });
+    await saveAccessToken(groupId, access_token);
+    await addLobbyGroupId(groupId);
+    store$.group.set(group);
+    store$.syncStatus.set('on_server');
+    // Wake subscribe is best-effort; create already succeeded on the server.
+    try {
+      await startWakeSubscription(groupId);
+    } catch (wakeErr) {
+      store$.lastError.set(
+        wakeErr instanceof Error ? `wake:${wakeErr.message}` : 'wake_failed',
+      );
+    }
+    return groupId;
+  } catch (err) {
+    store$.syncStatus.set('error');
+    store$.lastError.set(err instanceof Error ? err.message : 'create_failed');
+    throw err;
+  }
+}
+
+export async function bumpGroupName(
+  groupId: string,
+  name: string,
+): Promise<void> {
+  const store$ = getGroupStore(groupId);
+  const current = store$.group.get();
+  const next: GroupEntity = {
+    ...current,
+    name,
+    version: current.version + 1,
+    updated_at: new Date().toISOString(),
+  };
+  store$.group.set(next);
+  store$.queue.set([
+    ...store$.queue.get(),
+    {
+      entity_type: 'groups',
+      id: groupId,
+      version: next.version,
+      payload: next,
+    },
+  ]);
+  await flushQueue(groupId);
+}
+
+export async function flushQueue(groupId: string): Promise<void> {
+  const store$ = getGroupStore(groupId);
+  const queue = store$.queue.get();
+  if (queue.length === 0) return;
+
+  const accessToken = await getAccessToken(groupId);
+  const deviceUserId = await getOrCreateDeviceUserId();
+  if (!accessToken) {
+    store$.syncStatus.set('error');
+    store$.lastError.set('missing_access_token');
+    return;
+  }
+
+  store$.syncStatus.set('merging');
+  try {
+    const { results } = await mergeEntities({
+      group_id: groupId,
+      device_user_id: deviceUserId,
+      access_token: accessToken,
+      items: queue,
+    });
+
+    const accepted = new Set(
+      results.filter((r) => r.status === 'accepted').map((r) => r.id),
+    );
+    // Drop accepted items; keep rejected/error for retry (version conflicts stay local-ahead).
+    store$.queue.set(queue.filter((item) => !accepted.has(item.id)));
+    store$.syncStatus.set('on_server');
+    store$.lastError.set(null);
+  } catch (err) {
+    store$.syncStatus.set('error');
+    store$.lastError.set(err instanceof Error ? err.message : 'merge_failed');
+  }
+}
+
+export async function applyRemoteFetch(
+  groupId: string,
+  entityType: string,
+  id: string,
+): Promise<void> {
+  const accessToken = await getAccessToken(groupId);
+  const deviceUserId = await getOrCreateDeviceUserId();
+  if (!accessToken) return;
+
+  try {
+    const { entity } = await fetchEntity({
+      group_id: groupId,
+      device_user_id: deviceUserId,
+      access_token: accessToken,
+      entity_type: entityType,
+      id,
+    });
+
+    const store$ = getGroupStore(groupId);
+    const local = store$.group.get();
+    if (shouldAcceptVersion(entity.version, local.version)) {
+      store$.group.set(entity);
+      store$.syncStatus.set('fetched');
+    }
+  } catch (err) {
+    const store$ = getGroupStore(groupId);
+    store$.lastError.set(
+      err instanceof Error ? `fetch:${err.message}` : 'fetch_failed',
+    );
+  }
+}
+
+export async function startWakeSubscription(groupId: string): Promise<void> {
+  if (channels.has(groupId)) return;
+
+  const accessToken = await getAccessToken(groupId);
+  const deviceUserId = await getOrCreateDeviceUserId();
+  if (!accessToken) return;
+
+  const auth = await mintRealtimeAuth({
+    group_id: groupId,
+    device_user_id: deviceUserId,
+    access_token: accessToken,
+  });
+
+  const client = supabaseClient();
+  if (auth.jwt) {
+    client.realtime.setAuth(auth.jwt);
+  }
+
+  const channel = client
+    .channel(auth.channel)
+    .on('broadcast', { event: 'wake' }, (msg) => {
+      const payload = msg.payload as {
+        group_id?: string;
+        entity_type?: string;
+        id?: string;
+        version?: number;
+      };
+      if (
+        payload.group_id === groupId &&
+        payload.entity_type &&
+        payload.id
+      ) {
+        void applyRemoteFetch(groupId, payload.entity_type, payload.id);
+      }
+    })
+    .subscribe();
+
+  channels.set(groupId, channel);
+}
+
+export async function openGroup(groupId: string): Promise<void> {
+  getGroupStore(groupId);
+  try {
+    await startWakeSubscription(groupId);
+  } catch {
+    // Opening a group for browse must not crash if Realtime is unavailable.
+  }
+}

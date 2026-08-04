@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "splitnext",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
@@ -33,7 +33,9 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
