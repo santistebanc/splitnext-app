@@ -2,8 +2,7 @@
 
 ## Foundation-risk
 
-- **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap
-- **Outbound queue auto-flush** — flush persisted queue on app open / reconnect so offline bumps upload without another tap — area: sync — raised: slice 0001
+- **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002; full protocol still open*
 - **Realtime JWT signing secret** — leave `anon_channel` fallback; mint short-lived JWT for private channel auth (D-006) — area: sync — raised: slice 0001
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
@@ -40,3 +39,4 @@
 ## Delivered
 
 - **Walking skeleton** — delivered in [slice 0001](slices/0001-walking-skeleton.md)
+- **Outbound queue auto-flush + thin reconnect fetch** — delivered in [slice 0002](slices/0002-queue-auto-flush.md)

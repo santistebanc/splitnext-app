@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0001
+Last updated: slice 0002
 
 ## Direction
 
@@ -26,6 +26,7 @@ Last updated: slice 0001
 - Create an empty group on device, mint a per-device access token, persist locally, sync group entity to Postgres — [slice 0001](slices/0001-walking-skeleton.md)
 - Open a group hub showing id, name, version, and sync status; bump name via merge + wake + fetch — [slice 0001](slices/0001-walking-skeleton.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
+- Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
 
 ## Stack
 
@@ -44,16 +45,17 @@ Last updated: slice 0001
 
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
-**Outbound queue** (client) — per-group array of `{ entity_type, id, version, payload }` on the Legend store; flushed to `merge`. Only `groups` today; no auto-flush on reconnect yet.
+**Outbound queue** (client) — per-group `{ entity_type, id, version, payload }` on the Legend store; flushed to `merge`. Auto-flushed on open/foreground via `syncGroup` (serialized per group with bump flushes).
 
 ## Routes / surfaces
 
 | Route | What it does | Shipped in |
 | --- | --- | --- |
-| `/` | Lobby: create group, list local group ids | slice 0001 |
-| `/group/[id]` | Hub: sync proof, bump name | slice 0001 |
+| `/` | Lobby: create group, list local group ids; root AppState sync | slice 0001 / 0002 |
+| `/group/[id]` | Hub: sync proof, bump name; open triggers syncGroup | slice 0001 / 0002 |
 
 ## Seams
 
-- `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest; symmetric client/server version rule
-- Edge Functions behind `src/api/edge.ts` — HTTP capability boundary (manual / phone demo)
+- `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest
+- `shouldAttemptFlush` / `queueAfterMergeResults` — `src/sync/queuePolicy.ts` — vitest
+- Edge Functions behind `src/api/edge.ts` — HTTP capability boundary

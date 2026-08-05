@@ -1,7 +1,10 @@
+import { useLobbyForegroundSync } from '@/src/sync/appForegroundSync';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 export default function RootLayout() {
+  useLobbyForegroundSync();
+
   return (
     <>
       <StatusBar style="dark" />

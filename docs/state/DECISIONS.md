@@ -10,3 +10,5 @@
 | D-006 | `rt-jwt` falls back to `auth_mode: anon_channel` when no mintable JWT secret is configured | slice 0001 | New Supabase projects use ES256 signing keys; legacy JWT secret is not injected into Edge Functions. Capability check still gates subscription; private minted JWT when `JWT_SECRET`/`SUPABASE_JWT_SECRET` is set |
 | D-007 | Fetch Edge Function slug is `fetch-entity` (not `fetch`) | slice 0001 | Slug `fetch` produced intermittent HTML/502 responses that broke client JSON parsing |
 | D-008 | Create path inserts group via `create-group`; merge→wake→fetch proven via hub bump | slice 0001 | Post-create merge at v1 would be rejected (`version_not_greater`); bump exercises the sync loop |
+| D-009 | On group open and app foreground: flush queue + one group fetch (thin missed-wake catch-up) | slice 0002 | Offline bumps must upload without another tap; full missed-wake protocol stays parked |
+| D-010 | Foreground sync covers all lobby group ids, not only the open group | slice 0002 | Offline edits on any known group should upload without opening that hub |

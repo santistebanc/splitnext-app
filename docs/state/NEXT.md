@@ -1,10 +1,10 @@
-# Slice 0002 — *(awaiting pick)*
+# Slice 0003 — *(awaiting pick)*
 
 **Tier** — —
 
 ## Goal
 
-Confirm the next slice in chat. Recommended candidates are listed in the board timeline / parking.
+Confirm the next slice in chat.
 
 ## Now → After
 

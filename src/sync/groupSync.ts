@@ -12,12 +12,31 @@ import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   addLobbyGroupId,
   getAccessToken,
+  listLobbyGroupIds,
   saveAccessToken,
 } from '@/src/secrets/tokens';
 import { getGroupStore, initLocalGroup } from '@/src/store/groupStore';
 import type { GroupEntity } from '@/src/types/group';
+import {
+  queueAfterMergeResults,
+  shouldAttemptFlush,
+} from '@/src/sync/queuePolicy';
 
 const channels = new Map<string, RealtimeChannel>();
+/** Serializes flush/sync per group so bump and foreground cannot race the queue. */
+const groupWork = new Map<string, Promise<void>>();
+
+function runExclusive(groupId: string, work: () => Promise<void>): Promise<void> {
+  const prev = groupWork.get(groupId) ?? Promise.resolve();
+  const next = prev.then(work, work);
+  groupWork.set(
+    groupId,
+    next.finally(() => {
+      if (groupWork.get(groupId) === next) groupWork.delete(groupId);
+    }),
+  );
+  return next;
+}
 
 function supabaseClient() {
   return createClient(env.supabaseUrl, env.supabaseAnonKey, {
@@ -55,7 +74,6 @@ export async function createGroup(): Promise<string> {
     await addLobbyGroupId(groupId);
     store$.group.set(group);
     store$.syncStatus.set('on_server');
-    // Wake subscribe is best-effort; create already succeeded on the server.
     try {
       await startWakeSubscription(groupId);
     } catch (wakeErr) {
@@ -96,10 +114,10 @@ export async function bumpGroupName(
   await flushQueue(groupId);
 }
 
-export async function flushQueue(groupId: string): Promise<void> {
+async function flushQueueInner(groupId: string): Promise<void> {
   const store$ = getGroupStore(groupId);
   const queue = store$.queue.get();
-  if (queue.length === 0) return;
+  if (!shouldAttemptFlush(queue.length)) return;
 
   const accessToken = await getAccessToken(groupId);
   const deviceUserId = await getOrCreateDeviceUserId();
@@ -118,17 +136,17 @@ export async function flushQueue(groupId: string): Promise<void> {
       items: queue,
     });
 
-    const accepted = new Set(
-      results.filter((r) => r.status === 'accepted').map((r) => r.id),
-    );
-    // Drop accepted items; keep rejected/error for retry (version conflicts stay local-ahead).
-    store$.queue.set(queue.filter((item) => !accepted.has(item.id)));
+    store$.queue.set(queueAfterMergeResults(queue, results));
     store$.syncStatus.set('on_server');
     store$.lastError.set(null);
   } catch (err) {
     store$.syncStatus.set('error');
     store$.lastError.set(err instanceof Error ? err.message : 'merge_failed');
   }
+}
+
+export async function flushQueue(groupId: string): Promise<void> {
+  return runExclusive(groupId, () => flushQueueInner(groupId));
 }
 
 export async function applyRemoteFetch(
@@ -161,6 +179,29 @@ export async function applyRemoteFetch(
       err instanceof Error ? `fetch:${err.message}` : 'fetch_failed',
     );
   }
+}
+
+/** Flush outbound queue then pull remote group if ahead. Serialized per group. */
+export async function syncGroup(groupId: string): Promise<void> {
+  return runExclusive(groupId, async () => {
+    getGroupStore(groupId);
+    await flushQueueInner(groupId);
+    await applyRemoteFetch(groupId, 'groups', groupId);
+  });
+}
+
+/** Foreground / lobby-wide catch-up for every group this device knows. */
+export async function syncAllLobbyGroups(): Promise<void> {
+  const ids = await listLobbyGroupIds();
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        await syncGroup(id);
+      } catch {
+        // Isolate failures so one group cannot block the others.
+      }
+    }),
+  );
 }
 
 export async function startWakeSubscription(groupId: string): Promise<void> {
@@ -210,4 +251,5 @@ export async function openGroup(groupId: string): Promise<void> {
   } catch {
     // Opening a group for browse must not crash if Realtime is unavailable.
   }
+  await syncGroup(groupId);
 }
