@@ -21,6 +21,8 @@ export function getGroupStore(groupId: string): Observable<GroupStore> {
       currency_label: 'EUR',
       is_closed: false,
     },
+    members: {},
+    binds: {},
     syncStatus: 'local',
     lastError: null,
     queue: [],

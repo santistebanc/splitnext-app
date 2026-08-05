@@ -2,19 +2,21 @@
 
 ## Foundation-risk
 
-- **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002; full protocol still open*
+- **Sync quality harden (post-0003)** — Deepen fat `groupSync` into small interfaces (outbound flush, inbound apply, wake, membership mutations); typed/clearable sync errors; queue item identity beyond bare `id`; tests on the sync pipeline (exclusive flush, merge results, roster apply). Not a feature slice — pays down demo-speed debt before more product surface. — area: sync — raised: slice 0003 · *user: do in the following slice*
+- **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002 + roster list in 0003; full protocol still open*
 - **Realtime JWT signing secret** — leave `anon_channel` fallback; mint short-lived JWT for private channel auth (D-006) — area: sync — raised: slice 0001
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
 
 ## Core value
 
-- **Assumed member / bind** — mutations require assumed member; unbound = read-only browse — area: membership — raised: bootstrap
-- **Members as merge entities** — add/rename/soft-delete members; schema + merge path — area: membership — raised: bootstrap
+- **Assumed member gates mutations** — expense/settle mutations require assumed member; unbound = hide mutate controls — area: membership — raised: bootstrap · *bind + You label shipped in 0003; gating lands with expenses*
+- **Member rename / soft-delete** — rename any assumed member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap
 - **Expense editor + invariants** — contributions/allocations, Hamilton rounding, defaults (payer = assumed member, equal shares) — area: ledger — raised: bootstrap
 - **Balances list (group hub home)** — derived Σ contributions − Σ allocations; sort most-negative first; "You (Name)" — area: ledger — raised: bootstrap
 - **Member invites** — HTTPS deep link join; mint access token; preselect / picker / add-new — area: invites — raised: bootstrap
 - **Settle-up suggestions** — minimise transfer count via group-net flows; prefill settlement expense — area: ledger — raised: bootstrap
+- **Leave group** — unbind + revoke this device’s access token; member history remains — area: membership — raised: bootstrap
 
 ## Breadth
 
@@ -40,3 +42,4 @@
 
 - **Walking skeleton** — delivered in [slice 0001](slices/0001-walking-skeleton.md)
 - **Outbound queue auto-flush + thin reconnect fetch** — delivered in [slice 0002](slices/0002-queue-auto-flush.md)
+- **Members + binds / assumed member (add, bind, roster pull)** — delivered in [slice 0003](slices/0003-members-binds.md)

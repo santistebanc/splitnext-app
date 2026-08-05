@@ -1,10 +1,10 @@
-# Slice 0003 — *(awaiting pick)*
+# Slice 0004 — *(awaiting pick)*
 
 **Tier** — —
 
 ## Goal
 
-Confirm the next slice in chat.
+Confirm the next slice in chat. Recommended: sync quality harden (parked after 0003).
 
 ## Now → After
 

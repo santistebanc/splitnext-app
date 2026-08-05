@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0002
+Last updated: slice 0003
 
 ## Direction
 
@@ -18,6 +18,7 @@ Last updated: slice 0002
 - Money as integer cents; version (not timestamps) for conflicts; soft-delete only
 - Device floor iOS 16+ / Android 12+; English-only; light-only UI
 - Clients never talk to Postgres; deny-all RLS; Edge Functions use service role after capability hash-check
+- Slice quality: thin scope, high craft inside the slice (seams + TDD + review); speed ≠ skip quality
 
 **Non-goals** — User accounts / OAuth, payment rails, contact import / social graphs, accounting / OCR / budgets / recurring bills, behavioural analytics, push notifications, marketing site, OTA updates, full CRDT sync frameworks, dedicated sync platforms (ElectricSQL, PowerSync, Replicache), group-wide invite UI (MVP), close/reopen UI (MVP)
 
@@ -27,6 +28,7 @@ Last updated: slice 0002
 - Open a group hub showing id, name, version, and sync status; bump name via merge + wake + fetch — [slice 0001](slices/0001-walking-skeleton.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
+- Add name-slot members, bind this device to one (assumed member), show You (Name) on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
 
 ## Stack
 
@@ -34,8 +36,8 @@ Last updated: slice 0002
 - UI state — Legend State v3 (`useValue`, per-group observable) — UI source of truth
 - Local durability — `expo-sqlite` kv-store via `observablePersistSqlite` + `configureObservableSync` — write-through persist
 - Secrets — `expo-secure-store` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary)
-- Server DB — Supabase Postgres — `groups`, `access_tokens`; deny-all RLS
-- Server API — Edge Functions `create-group`, `merge`, `fetch-entity`, `rt-jwt` — capability hash-check then service role
+- Server DB — Supabase Postgres — `groups`, `access_tokens`, `members`, `binds`; deny-all RLS
+- Server API — Edge Functions `create-group`, `merge`, `fetch-entity`, `list-roster`, `rt-jwt` — capability hash-check then service role
 - Wake channel — Realtime broadcast on `group:{id}`; payload is tip only; `rt-jwt` gates subscribe (anon_channel fallback — D-006)
 - Hosting — remote `splitnext-v3` — D-001
 
@@ -43,19 +45,24 @@ Last updated: slice 0002
 
 **Group** — `id`, `version`, `updated_at`, `deleted_at`, `name`, `currency_label`, `is_closed`. Client UUID v4; merge when `incoming.version > stored.version`.
 
+**Member** — `id`, `group_id`, `display_name`, `version`, `updated_at`, `deleted_at`. Name-slot; not a login. Soft-delete only (UI for delete/rename parked).
+
+**Bind** — `id`, `group_id`, `device_user_id`, `member_id`, `version`, `updated_at`, `deleted_at`. Active bind = assumed member. Unique: one active bind per device per group.
+
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
-**Outbound queue** (client) — per-group `{ entity_type, id, version, payload }` on the Legend store; flushed to `merge`. Auto-flushed on open/foreground via `syncGroup` (serialized per group with bump flushes).
+**Outbound queue** (client) — per-group `{ entity_type, id, version, payload }` on the Legend store; flushed to `merge` in flush order. Auto-flushed on open/foreground via `syncGroup`.
 
 ## Routes / surfaces
 
 | Route | What it does | Shipped in |
 | --- | --- | --- |
 | `/` | Lobby: create group, list local group ids; root AppState sync | slice 0001 / 0002 |
-| `/group/[id]` | Hub: sync proof, bump name; open triggers syncGroup | slice 0001 / 0002 |
+| `/group/[id]` | Hub: members list, add, This is me, You (Name); bump sync proof; open → syncGroup | slice 0001–0003 |
 
 ## Seams
 
 - `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest
 - `shouldAttemptFlush` / `queueAfterMergeResults` — `src/sync/queuePolicy.ts` — vitest
+- `assumedMemberIdFromBinds` / `deviceHasActiveBind` — `src/domain/assumedMember.ts` — vitest
 - Edge Functions behind `src/api/edge.ts` — HTTP capability boundary

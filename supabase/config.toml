@@ -13,3 +13,6 @@ verify_jwt = false
 
 [functions.rt-jwt]
 verify_jwt = false
+
+[functions.list-roster]
+verify_jwt = false

@@ -3,11 +3,17 @@ import * as Crypto from 'expo-crypto';
 import {
   createGroupRemote,
   fetchEntity,
+  listRoster,
   mergeEntities,
   mintRealtimeAuth,
 } from '@/src/api/edge';
 import { env } from '@/src/config/env';
-import { shouldAcceptVersion } from '@/src/domain/version';
+import { deviceHasActiveBind } from '@/src/domain/assumedMember';
+import {
+  shouldAcceptVersion,
+  sortByFlushOrder,
+  type EntityType,
+} from '@/src/domain/version';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   addLobbyGroupId,
@@ -16,7 +22,12 @@ import {
   saveAccessToken,
 } from '@/src/secrets/tokens';
 import { getGroupStore, initLocalGroup } from '@/src/store/groupStore';
-import type { GroupEntity } from '@/src/types/group';
+import type {
+  BindEntity,
+  GroupEntity,
+  MemberEntity,
+  SyncEntity,
+} from '@/src/types/group';
 import {
   queueAfterMergeResults,
   shouldAttemptFlush,
@@ -42,6 +53,45 @@ function supabaseClient() {
   return createClient(env.supabaseUrl, env.supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+function applyEntityToStore(
+  groupId: string,
+  entityType: string,
+  entity: SyncEntity,
+): void {
+  const store$ = getGroupStore(groupId);
+
+  if (entityType === 'groups') {
+    const remote = entity as GroupEntity;
+    const local = store$.group.get();
+    if (shouldAcceptVersion(remote.version, local.version)) {
+      store$.group.set(remote);
+      store$.syncStatus.set('fetched');
+    }
+    return;
+  }
+
+  if (entityType === 'members') {
+    const remote = entity as MemberEntity;
+    const members = store$.members.get() ?? {};
+    const localVersion = members[remote.id]?.version ?? -1;
+    if (shouldAcceptVersion(remote.version, localVersion)) {
+      store$.members.set({ ...members, [remote.id]: remote });
+      store$.syncStatus.set('fetched');
+    }
+    return;
+  }
+
+  if (entityType === 'binds') {
+    const remote = entity as BindEntity;
+    const binds = store$.binds.get() ?? {};
+    const localVersion = binds[remote.id]?.version ?? -1;
+    if (shouldAcceptVersion(remote.version, localVersion)) {
+      store$.binds.set({ ...binds, [remote.id]: remote });
+      store$.syncStatus.set('fetched');
+    }
+  }
 }
 
 export async function createGroup(): Promise<string> {
@@ -114,9 +164,76 @@ export async function bumpGroupName(
   await flushQueue(groupId);
 }
 
+export async function addMember(
+  groupId: string,
+  displayName: string,
+): Promise<string> {
+  const memberId = Crypto.randomUUID();
+  const member: MemberEntity = {
+    id: memberId,
+    group_id: groupId,
+    display_name: displayName.trim(),
+    version: 1,
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
+  };
+  const store$ = getGroupStore(groupId);
+  store$.members.set({ ...(store$.members.get() ?? {}), [memberId]: member });
+  store$.queue.set([
+    ...store$.queue.get(),
+    {
+      entity_type: 'members',
+      id: memberId,
+      version: member.version,
+      payload: member,
+    },
+  ]);
+  await flushQueue(groupId);
+  return memberId;
+}
+
+export async function bindMe(
+  groupId: string,
+  memberId: string,
+): Promise<void> {
+  const deviceUserId = await getOrCreateDeviceUserId();
+  const store$ = getGroupStore(groupId);
+  if (deviceHasActiveBind(store$.binds.get(), deviceUserId)) {
+    store$.lastError.set('already_bound');
+    return;
+  }
+
+  const member = (store$.members.get() ?? {})[memberId];
+  if (!member || member.deleted_at != null) {
+    store$.lastError.set('member_missing');
+    return;
+  }
+
+  const bind: BindEntity = {
+    id: Crypto.randomUUID(),
+    group_id: groupId,
+    device_user_id: deviceUserId,
+    member_id: memberId,
+    version: 1,
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
+  };
+  store$.binds.set({ ...(store$.binds.get() ?? {}), [bind.id]: bind });
+  store$.queue.set([
+    ...store$.queue.get(),
+    {
+      entity_type: 'binds',
+      id: bind.id,
+      version: bind.version,
+      payload: bind,
+    },
+  ]);
+  await flushQueue(groupId);
+}
+
 async function flushQueueInner(groupId: string): Promise<void> {
   const store$ = getGroupStore(groupId);
-  const queue = store$.queue.get();
+  const queue = sortByFlushOrder(store$.queue.get());
   if (!shouldAttemptFlush(queue.length)) return;
 
   const accessToken = await getAccessToken(groupId);
@@ -166,13 +283,7 @@ export async function applyRemoteFetch(
       entity_type: entityType,
       id,
     });
-
-    const store$ = getGroupStore(groupId);
-    const local = store$.group.get();
-    if (shouldAcceptVersion(entity.version, local.version)) {
-      store$.group.set(entity);
-      store$.syncStatus.set('fetched');
-    }
+    applyEntityToStore(groupId, entityType, entity);
   } catch (err) {
     const store$ = getGroupStore(groupId);
     store$.lastError.set(
@@ -181,12 +292,39 @@ export async function applyRemoteFetch(
   }
 }
 
-/** Flush outbound queue then pull remote group if ahead. Serialized per group. */
+async function pullRoster(groupId: string): Promise<void> {
+  const store$ = getGroupStore(groupId);
+  const accessToken = await getAccessToken(groupId);
+  const deviceUserId = await getOrCreateDeviceUserId();
+  if (!accessToken) return;
+
+  try {
+    const { members, binds } = await listRoster({
+      group_id: groupId,
+      device_user_id: deviceUserId,
+      access_token: accessToken,
+    });
+    for (const member of members) {
+      applyEntityToStore(groupId, 'members', member);
+    }
+    for (const bind of binds) {
+      applyEntityToStore(groupId, 'binds', bind);
+    }
+    store$.lastError.set(null);
+  } catch (err) {
+    store$.lastError.set(
+      err instanceof Error ? `roster:${err.message}` : 'roster_failed',
+    );
+  }
+}
+
+/** Flush outbound queue then pull remote group + roster. Serialized per group. */
 export async function syncGroup(groupId: string): Promise<void> {
   return runExclusive(groupId, async () => {
     getGroupStore(groupId);
     await flushQueueInner(groupId);
     await applyRemoteFetch(groupId, 'groups', groupId);
+    await pullRoster(groupId);
   });
 }
 
@@ -236,7 +374,11 @@ export async function startWakeSubscription(groupId: string): Promise<void> {
         payload.entity_type &&
         payload.id
       ) {
-        void applyRemoteFetch(groupId, payload.entity_type, payload.id);
+        void applyRemoteFetch(
+          groupId,
+          payload.entity_type as EntityType,
+          payload.id,
+        );
       }
     })
     .subscribe();

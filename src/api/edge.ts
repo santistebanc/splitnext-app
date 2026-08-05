@@ -1,5 +1,10 @@
 import { env } from '@/src/config/env';
-import type { GroupEntity } from '@/src/types/group';
+import type {
+  BindEntity,
+  GroupEntity,
+  MemberEntity,
+  SyncEntity,
+} from '@/src/types/group';
 
 type Json = Record<string, unknown>;
 
@@ -61,7 +66,7 @@ export async function mergeEntities(input: {
     entity_type: string;
     id: string;
     version: number;
-    payload: GroupEntity;
+    payload: SyncEntity;
   }>;
 }): Promise<{
   results: Array<{ id: string; status: string; reason?: string }>;
@@ -82,7 +87,7 @@ export async function fetchEntity(input: {
   access_token: string;
   entity_type: string;
   id: string;
-}): Promise<{ entity: GroupEntity }> {
+}): Promise<{ entity: SyncEntity }> {
   return callFunction(
     'fetch-entity',
     {
@@ -90,6 +95,21 @@ export async function fetchEntity(input: {
       entity_type: input.entity_type,
       id: input.id,
     },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}
+
+export async function listRoster(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+}): Promise<{ members: MemberEntity[]; binds: BindEntity[] }> {
+  return callFunction(
+    'list-roster',
+    { group_id: input.group_id },
     {
       accessToken: input.access_token,
       deviceUserId: input.device_user_id,

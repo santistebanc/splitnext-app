@@ -12,3 +12,8 @@
 | D-008 | Create path inserts group via `create-group`; merge→wake→fetch proven via hub bump | slice 0001 | Post-create merge at v1 would be rejected (`version_not_greater`); bump exercises the sync loop |
 | D-009 | On group open and app foreground: flush queue + one group fetch (thin missed-wake catch-up) | slice 0002 | Offline bumps must upload without another tap; full missed-wake protocol stays parked |
 | D-010 | Foreground sync covers all lobby group ids, not only the open group | slice 0002 | Offline edits on any known group should upload without opening that hub |
+| D-011 | Create group stays empty; creator binds via Add member → This is me | slice 0003 | Matches empty-create direction; no auto-member |
+| D-012 | On open/foreground, list members + binds for the group (apply by version) | slice 0003 | Thin roster catch-up without full missed-wake protocol |
+| D-013 | Slice 0003 hub UI is list + add + This is me + You (Name); rename/leave/rebind parked | slice 0003 | Prove membership spine before chrome |
+| D-014 | At most one active bind per device_user_id per group; same member on multiple devices allowed | slice 0003 | Assumed member is per-install; claimed-slot policy stays with invites |
+| D-015 | Bind.member_id must reference a member in the same group (composite FK + merge check) | slice 0003 | Prevent cross-group bind via crafted merge |

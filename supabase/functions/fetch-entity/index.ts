@@ -1,6 +1,11 @@
 /// <reference path="../types.d.ts" />
 import { resolveAccessToken } from '../_shared/access.ts';
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
+import {
+  BIND_SELECT,
+  GROUP_SELECT,
+  MEMBER_SELECT,
+} from '../_shared/entities.ts';
 import { bearerToken, serviceClient } from '../_shared/supabase.ts';
 
 Deno.serve(async (req: Request) => {
@@ -31,27 +36,47 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'unauthorized' }, 401);
     }
 
-    if (entityType !== 'groups' || id !== groupId) {
-      return jsonResponse({ error: 'unsupported' }, 400);
-    }
-
     const supabase = serviceClient();
-    const { data, error } = await supabase
-      .from('groups')
-      .select(
-        'id, version, updated_at, deleted_at, name, currency_label, is_closed',
-      )
-      .eq('id', id)
-      .maybeSingle();
 
-    if (error) {
-      return jsonResponse({ error: error.message }, 500);
-    }
-    if (!data) {
-      return jsonResponse({ error: 'not_found' }, 404);
+    if (entityType === 'groups') {
+      if (id !== groupId) {
+        return jsonResponse({ error: 'group_mismatch' }, 400);
+      }
+      const { data, error } = await supabase
+        .from('groups')
+        .select(GROUP_SELECT)
+        .eq('id', id)
+        .maybeSingle();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      if (!data) return jsonResponse({ error: 'not_found' }, 404);
+      return jsonResponse({ entity: data });
     }
 
-    return jsonResponse({ entity: data });
+    if (entityType === 'members') {
+      const { data, error } = await supabase
+        .from('members')
+        .select(MEMBER_SELECT)
+        .eq('id', id)
+        .eq('group_id', groupId)
+        .maybeSingle();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      if (!data) return jsonResponse({ error: 'not_found' }, 404);
+      return jsonResponse({ entity: data });
+    }
+
+    if (entityType === 'binds') {
+      const { data, error } = await supabase
+        .from('binds')
+        .select(BIND_SELECT)
+        .eq('id', id)
+        .eq('group_id', groupId)
+        .maybeSingle();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      if (!data) return jsonResponse({ error: 'not_found' }, 404);
+      return jsonResponse({ entity: data });
+    }
+
+    return jsonResponse({ error: 'unsupported' }, 400);
   } catch (err) {
     console.error('fetch-entity', err);
     return jsonResponse({ error: 'internal' }, 500);
