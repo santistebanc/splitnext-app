@@ -3,16 +3,31 @@ export function shouldAttemptFlush(queueLength: number): boolean {
   return queueLength > 0;
 }
 
-type QueueItem = { id: string };
-type MergeResult = { id: string; status: string };
+type QueueItem = { entity_type: string; id: string; version: number };
+type MergeResult = {
+  entity_type: string;
+  id: string;
+  version: number;
+  status: string;
+};
 
-/** Drop items the server accepted; keep rejected/error for retry. */
+function itemKey(item: {
+  entity_type: string;
+  id: string;
+  version: number;
+}): string {
+  return `${item.entity_type}:${item.id}:${item.version}`;
+}
+
+/** Drop items the server accepted at the exact entity_type+id+version. */
 export function queueAfterMergeResults<T extends QueueItem>(
   queue: T[],
   results: MergeResult[],
 ): T[] {
   const accepted = new Set(
-    results.filter((r) => r.status === 'accepted').map((r) => r.id),
+    results
+      .filter((r) => r.status === 'accepted')
+      .map((r) => itemKey(r)),
   );
-  return queue.filter((item) => !accepted.has(item.id));
+  return queue.filter((item) => !accepted.has(itemKey(item)));
 }

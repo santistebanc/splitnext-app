@@ -10,6 +10,7 @@ import {
   bumpGroupName,
   openGroup,
 } from '@/src/sync/groupSync';
+import { coerceSyncError } from '@/src/sync/syncErrors';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -30,7 +31,8 @@ export default function GroupHubScreen() {
   const members = useValue(store$.members);
   const binds = useValue(store$.binds);
   const syncStatus = useValue(store$.syncStatus);
-  const lastError = useValue(store$.lastError);
+  const lastErrorRaw = useValue(store$.lastError);
+  const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -102,7 +104,11 @@ export default function GroupHubScreen() {
 
       <Text style={styles.label}>Sync</Text>
       <Text style={styles.status}>{syncStatus}</Text>
-      {lastError ? <Text style={styles.error}>{lastError}</Text> : null}
+      {lastError ? (
+        <Text style={styles.error}>
+          {lastError.code}: {lastError.message}
+        </Text>
+      ) : null}
 
       <Text style={styles.label}>Members</Text>
       {memberList.length === 0 ? (

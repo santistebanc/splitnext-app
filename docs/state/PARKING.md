@@ -2,7 +2,8 @@
 
 ## Foundation-risk
 
-- **Sync quality harden (post-0003)** — Deepen fat `groupSync` into small interfaces (outbound flush, inbound apply, wake, membership mutations); typed/clearable sync errors; queue item identity beyond bare `id`; tests on the sync pipeline (exclusive flush, merge results, roster apply). Not a feature slice — pays down demo-speed debt before more product surface. — area: sync — raised: slice 0003 · *user: do in the following slice*
+- **Contract test against a local Supabase stack** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real `merge` / `fetch-entity` / `list-roster` at close when their shapes change — area: sync — raised: slice 0004
+- **Symbol-level change attribution on the board** — the working-tree delta maps changed *files* to symbols, so a shared file drags its neighbours in; needs diff-hunk ranges to fix — area: tooling — raised: slice 0004
 - **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002 + roster list in 0003; full protocol still open*
 - **Realtime JWT signing secret** — leave `anon_channel` fallback; mint short-lived JWT for private channel auth (D-006) — area: sync — raised: slice 0001
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap

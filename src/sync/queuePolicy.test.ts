@@ -12,15 +12,42 @@ describe('shouldAttemptFlush', () => {
 });
 
 describe('queueAfterMergeResults', () => {
-  it('removes accepted ids and keeps the rest', () => {
+  it('drops only the accepted entity_type+id+version', () => {
     const queue = [
-      { id: 'a', version: 2 },
-      { id: 'b', version: 3 },
+      { entity_type: 'groups' as const, id: 'g1', version: 2 },
+      { entity_type: 'groups' as const, id: 'g1', version: 3 },
+      { entity_type: 'members' as const, id: 'm1', version: 1 },
     ];
     const next = queueAfterMergeResults(queue, [
-      { id: 'a', status: 'accepted' },
-      { id: 'b', status: 'rejected' },
+      {
+        entity_type: 'groups',
+        id: 'g1',
+        version: 2,
+        status: 'accepted',
+      },
+      {
+        entity_type: 'members',
+        id: 'm1',
+        version: 1,
+        status: 'rejected',
+      },
     ]);
-    expect(next).toEqual([{ id: 'b', version: 3 }]);
+    expect(next).toEqual([
+      { entity_type: 'groups', id: 'g1', version: 3 },
+      { entity_type: 'members', id: 'm1', version: 1 },
+    ]);
+  });
+
+  it('does not drop a same id at a different version', () => {
+    const queue = [{ entity_type: 'groups' as const, id: 'g1', version: 5 }];
+    const next = queueAfterMergeResults(queue, [
+      {
+        entity_type: 'groups',
+        id: 'g1',
+        version: 4,
+        status: 'accepted',
+      },
+    ]);
+    expect(next).toEqual(queue);
   });
 });

@@ -1,4 +1,5 @@
 import type { EntityType } from '@/src/domain/version';
+import type { SyncError } from '@/src/types/syncError';
 
 export type GroupEntity = {
   id: string;
@@ -51,6 +52,7 @@ export type GroupStore = {
   members: Record<string, MemberEntity>;
   binds: Record<string, BindEntity>;
   syncStatus: SyncStatus;
-  lastError: string | null;
+  /** Typed sync error; may briefly be a legacy string from older persists. */
+  lastError: SyncError | string | null;
   queue: OutboundItem[];
 };

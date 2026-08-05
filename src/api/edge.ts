@@ -69,7 +69,13 @@ export async function mergeEntities(input: {
     payload: SyncEntity;
   }>;
 }): Promise<{
-  results: Array<{ id: string; status: string; reason?: string }>;
+  results: Array<{
+    id: string;
+    entity_type: string;
+    version: number;
+    status: string;
+    reason?: string;
+  }>;
 }> {
   return callFunction(
     'merge',

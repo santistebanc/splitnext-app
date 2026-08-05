@@ -17,3 +17,7 @@
 | D-013 | Slice 0003 hub UI is list + add + This is me + You (Name); rename/leave/rebind parked | slice 0003 | Prove membership spine before chrome |
 | D-014 | At most one active bind per device_user_id per group; same member on multiple devices allowed | slice 0003 | Assumed member is per-install; claimed-slot policy stays with invites |
 | D-015 | Bind.member_id must reference a member in the same group (composite FK + merge check) | slice 0003 | Prevent cross-group bind via crafted merge |
+| D-016 | Outbound queue identity is `entity_type + id + version`; `merge` returns all three per result | slice 0004 | Dropping by bare `id` discarded a pending newer version of the same entity |
+| D-017 | `lastError` is a typed `SyncError` `{ code, message, at }`, cleared on every success; old string values are coerced on read | slice 0004 | String prefixes could not be matched on, and stuck red after a good sync |
+| D-018 | Flow tests run the real client against a fake `src/api/edge.ts`, importing the server's own `shouldAccept` | slice 0004 | One wire boundary makes flows testable in process; sharing the rule stops the fake from disagreeing with the server |
+| D-019 | Flow tests gate the demo gate and slice close, not every commit | slice 0004 | Commits inside a slice are work-in-progress; a per-commit gate gets bypassed rather than obeyed |

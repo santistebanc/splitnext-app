@@ -14,6 +14,7 @@ import { publishWake } from '../_shared/wake.ts';
 type Result = {
   id: string;
   entity_type: string;
+  version: number;
   status: 'accepted' | 'rejected' | 'error';
   reason?: string;
 };
@@ -74,7 +75,11 @@ async function mergeOne(
   groupId: string,
   item: MergeItem,
 ): Promise<Result> {
-  const base = { id: item.id, entity_type: item.entity_type };
+  const base = {
+    id: item.id,
+    entity_type: item.entity_type,
+    version: item.version,
+  };
 
   if (
     item.entity_type !== 'groups' &&

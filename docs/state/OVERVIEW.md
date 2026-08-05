@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0003
+Last updated: slice 0004
 
 ## Direction
 
@@ -29,6 +29,7 @@ Last updated: slice 0003
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
 - Add name-slot members, bind this device to one (assumed member), show You (Name) on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
+- Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version`; a test per flow — [slice 0004](slices/0004-sync-quality-harden.md)
 
 ## Stack
 
@@ -65,4 +66,6 @@ Last updated: slice 0003
 - `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest
 - `shouldAttemptFlush` / `queueAfterMergeResults` — `src/sync/queuePolicy.ts` — vitest
 - `assumedMemberIdFromBinds` / `deviceHasActiveBind` — `src/domain/assumedMember.ts` — vitest
-- Edge Functions behind `src/api/edge.ts` — HTTP capability boundary
+- Edge Functions behind `src/api/edge.ts` — HTTP capability boundary; faked there by the flow tests
+- `flushQueue` / `applyRemoteFetch` / `pullRoster` / `startWakeSubscription` — `src/sync/` — flow tests (`src/flows/F-*.flow.test.ts`)
+- `syncError` / `coerceSyncError` — `src/sync/syncErrors.ts` — vitest
