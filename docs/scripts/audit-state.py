@@ -129,6 +129,8 @@ if nxt["number"] in nums:
 git = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True)
 state_text = " ".join(p.read_text() for p in STATE.rglob("*.md"))
 for line in git.stdout.splitlines():
+    if line[:2].strip().startswith("D"):
+        continue  # a deleted file needs no map row
     path = line[3:].strip()
     if not path.startswith("src/") or not path.endswith(".ts"):
         continue

@@ -1,7 +1,11 @@
 /// <reference path="../types.d.ts" />
 import { resolveAccessToken } from '../_shared/access.ts';
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
-import { BIND_SELECT, MEMBER_SELECT } from '../_shared/entities.ts';
+import {
+  BIND_SELECT,
+  EXPENSE_SELECT,
+  MEMBER_SELECT,
+} from '../_shared/entities.ts';
 import { bearerToken, serviceClient } from '../_shared/supabase.ts';
 
 Deno.serve(async (req: Request) => {
@@ -31,9 +35,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase = serviceClient();
-    const [membersRes, bindsRes] = await Promise.all([
+    const [membersRes, bindsRes, expensesRes] = await Promise.all([
       supabase.from('members').select(MEMBER_SELECT).eq('group_id', groupId),
       supabase.from('binds').select(BIND_SELECT).eq('group_id', groupId),
+      supabase.from('expenses').select(EXPENSE_SELECT).eq('group_id', groupId),
     ]);
 
     if (membersRes.error) {
@@ -42,10 +47,14 @@ Deno.serve(async (req: Request) => {
     if (bindsRes.error) {
       return jsonResponse({ error: bindsRes.error.message }, 500);
     }
+    if (expensesRes.error) {
+      return jsonResponse({ error: expensesRes.error.message }, 500);
+    }
 
     return jsonResponse({
       members: membersRes.data ?? [],
       binds: bindsRes.data ?? [],
+      expenses: expensesRes.data ?? [],
     });
   } catch (err) {
     console.error('list-roster', err);

@@ -1,6 +1,7 @@
 import { env } from '@/src/config/env';
 import type {
   BindEntity,
+  ExpenseEntity,
   GroupEntity,
   MemberEntity,
   SyncEntity,
@@ -112,7 +113,11 @@ export async function listRoster(input: {
   group_id: string;
   device_user_id: string;
   access_token: string;
-}): Promise<{ members: MemberEntity[]; binds: BindEntity[] }> {
+}): Promise<{
+  members: MemberEntity[];
+  binds: BindEntity[];
+  expenses?: ExpenseEntity[];
+}> {
   return callFunction(
     'list-roster',
     { group_id: input.group_id },

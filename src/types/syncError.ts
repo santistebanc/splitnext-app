@@ -5,7 +5,7 @@ export type SyncErrorCode =
   | 'roster_failed'
   | 'wake_failed'
   | 'create_failed'
-  | 'already_bound'
+  | 'binding_closed'
   | 'member_missing'
   | 'unknown';
 

@@ -38,14 +38,15 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-shouldAcceptVersion | `shouldAcceptVersion` | Pure | `src/domain/version.ts` | Decides who wins when two copies of an entity disagree: the incoming one, but only if its version number is strictly higher. |
 | L-sortByFlushOrder | `sortByFlushOrder` | Pure | `src/domain/version.ts` | Orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it. |
 | L-assumedMember | `assumedMemberIdFromBinds` | Pure | `src/domain/assumedMember.ts` | Answers "which member am I in this group?" by finding this device's live bind. |
-| L-deviceHasBind | `deviceHasActiveBind` | Pure | `src/domain/assumedMember.ts` | Answers "has this device already claimed a member here?", which is what hides the This is me button. |
+| L-bindingOpen | `bindingIsOpen` | Pure | `src/domain/assumedMember.ts` | Answers "can this device still say which member it is?" — yes until the group's first live expense, which is what shows or hides the This is me button. |
 | L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes. |
 | L-openGroup | `openGroup` | Job | `src/sync/groupSync.ts` | Opens a group for viewing — subscribes for wakes, then runs a full sync. Realtime being down does not block opening. |
 | L-syncGroup | `syncGroup` | Job | `src/sync/groupSync.ts` | One full round trip for a group: push everything pending, pull the group back, then pull its roster. Runs alone per group so nothing races. |
 | L-syncAllLobby | `syncAllLobbyGroups` | Job | `src/sync/groupSync.ts` | Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest. |
 | L-bumpName | `bumpGroupName` | Job | `src/sync/groupSync.ts` | Renames a group: the new name shows immediately, then goes to the server as the next version. |
 | L-addMember | `addMember` | Job | `src/sync/groupSync.ts` | Adds a person to the group locally, then sends them to the server. |
-| L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person, refusing if the device already claimed someone or the member is gone. |
+| L-addExpense | `addExpense` | Job | `src/sync/groupSync.ts` | Records a cost: refuses anything that is not a positive whole number of cents, writes it locally against the paying member, then sends it. |
+| L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. Refuses once the group has an expense, or if the member is gone. |
 | L-runExclusive | `runExclusive` | Job | `src/sync/exclusive.ts` | Queues async work per group so a push and a pull can never overlap on the same group. |
 | L-flushQueue | `flushQueue` | Job | `src/sync/outbound.ts` | Sends everything pending for a group in dependency order, keeps whatever the server did not accept, and records a typed error when it fails. |
 | L-shouldFlush | `shouldAttemptFlush` | Pure | `src/sync/queuePolicy.ts` | Says whether a push is worth making at all — an empty queue is a no-op, not a request. |
@@ -53,7 +54,7 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-applyRemoteEntity | `applyRemoteEntity` | Pure | `src/sync/inboundApply.ts` | Works out the next local state for one incoming entity, or says no change if the local copy is already as new. Pure, so it is unit-tested. |
 | L-commitRemote | `commitRemoteEntity` | State | `src/sync/inbound.ts` | Writes the accepted result of that decision into the store. |
 | L-applyRemoteFetch | `applyRemoteFetch` | Job | `src/sync/inbound.ts` | Fetches one entity from the server and commits it, clearing or setting the group's error. |
-| L-pullRoster | `pullRoster` | Job | `src/sync/inbound.ts` | Fetches every member and bind of a group and commits them one by one, so the roster catches up in a single call. |
+| L-pullRoster | `pullRoster` | Job | `src/sync/inbound.ts` | Fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call. |
 | L-wakeSub | `startWakeSubscription` | Network | `src/sync/wake.ts` | Listens on the group's Realtime channel; a wake says only what changed, and this fetches that one entity. One subscription per group. |
 | L-foreground | `useLobbyForegroundSync` | Job | `src/sync/appForegroundSync.ts` | Runs the lobby-wide catch-up on mount and every time the app returns to the foreground. |
 | L-syncError | `syncError` / `coerceSyncError` | Pure | `src/sync/syncErrors.ts` | Gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape. |
@@ -72,7 +73,7 @@ The client side of the wire — HTTP calls out of the device.
 | L-edgeCreate | `createGroupRemote` | Network | `src/api/edge.ts` | Asks the server to register a new group and hand back its access token. |
 | L-edgeMerge | `mergeEntities` | Network | `src/api/edge.ts` | Pushes a batch of pending changes and reports per item whether the server accepted them. |
 | L-edgeFetch | `fetchEntity` | Network | `src/api/edge.ts` | Asks for one entity by type and id — the call a wake triggers. |
-| L-edgeRoster | `listRoster` | Network | `src/api/edge.ts` | Asks for a group's whole roster of members and binds in one request. |
+| L-edgeRoster | `listRoster` | Network | `src/api/edge.ts` | Asks for a group's whole roster — members, binds and expenses — in one request. |
 | L-edgeRtJwt | `mintRealtimeAuth` | Network | `src/api/edge.ts` | Trades the group's access token for permission to listen on its Realtime channel. |
 
 ## Server
@@ -84,7 +85,7 @@ Edge Functions and their shared helpers.
 | L-efCreate | `create-group` | Endpoint | `supabase/functions/create-group` | Creates the group row and issues an access token, storing only its hash. |
 | L-efMerge | `merge` / `mergeOne` | Endpoint | `supabase/functions/merge` | The write path: applies each pushed item if its version wins, reports accepted or rejected per item, and wakes the group's other devices. |
 | L-efFetch | `fetch-entity` | Endpoint | `supabase/functions/fetch-entity` | Returns one entity to a caller whose token proves access to that group. |
-| L-efRoster | `list-roster` | Endpoint | `supabase/functions/list-roster` | Returns every member and bind of a group in one response. |
+| L-efRoster | `list-roster` | Endpoint | `supabase/functions/list-roster` | Returns every member, bind and expense of a group in one response. |
 | L-efRtJwt | `rt-jwt` | Endpoint | `supabase/functions/rt-jwt` | Issues a short-lived Realtime token, falling back to a shared anonymous channel when it cannot. |
 | L-efAccess | `resolveAccessToken` | Endpoint | `supabase/functions/_shared/access.ts` | The door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device. |
 | L-efWake | `publishWake` | Network | `supabase/functions/_shared/wake.ts` | Tells the group's other devices that something changed, naming only what — never the data itself. A failed wake never undoes the write. |

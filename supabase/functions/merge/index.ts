@@ -3,6 +3,7 @@ import { resolveAccessToken } from '../_shared/access.ts';
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import {
   bindRow,
+  expenseRow,
   groupRow,
   type MergeItem,
   memberRow,
@@ -84,7 +85,8 @@ async function mergeOne(
   if (
     item.entity_type !== 'groups' &&
     item.entity_type !== 'members' &&
-    item.entity_type !== 'binds'
+    item.entity_type !== 'binds' &&
+    item.entity_type !== 'expenses'
   ) {
     return { ...base, status: 'error', reason: 'unsupported_entity' };
   }
@@ -93,19 +95,14 @@ async function mergeOne(
     return { ...base, status: 'error', reason: 'group_mismatch' };
   }
 
-  if (item.entity_type === 'members' || item.entity_type === 'binds') {
+  if (item.entity_type !== 'groups') {
     const payloadGroup = item.payload.group_id as string | undefined;
     if (payloadGroup && payloadGroup !== groupId) {
       return { ...base, status: 'error', reason: 'group_mismatch' };
     }
   }
 
-  const table =
-    item.entity_type === 'groups'
-      ? 'groups'
-      : item.entity_type === 'members'
-        ? 'members'
-        : 'binds';
+  const table = item.entity_type;
 
   const { data: existing, error: readError } = await supabase
     .from(table)
@@ -127,6 +124,26 @@ async function mergeOne(
     row = groupRow(item);
   } else if (item.entity_type === 'members') {
     row = memberRow(item, groupId);
+  } else if (item.entity_type === 'expenses') {
+    row = expenseRow(item, groupId);
+    if (!row.payer_member_id) {
+      return { ...base, status: 'error', reason: 'invalid_expense' };
+    }
+    if (!Number.isInteger(row.amount_cents) || (row.amount_cents as number) <= 0) {
+      return { ...base, status: 'error', reason: 'invalid_amount' };
+    }
+    const { data: payer, error: payerError } = await supabase
+      .from('members')
+      .select('id')
+      .eq('id', row.payer_member_id)
+      .eq('group_id', groupId)
+      .maybeSingle();
+    if (payerError) {
+      return { ...base, status: 'error', reason: payerError.message };
+    }
+    if (!payer) {
+      return { ...base, status: 'rejected', reason: 'payer_not_in_group' };
+    }
   } else {
     row = bindRow(item, groupId);
     if (!row.device_user_id || !row.member_id) {

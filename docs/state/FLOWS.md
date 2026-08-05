@@ -43,7 +43,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
    - `L-queuePolicy` drops exactly the versions the server accepted and keeps the rest
    - `L-syncError` clears once the push succeeds
 3. `L-applyRemoteFetch` pulls the group row back through `L-edgeFetch` / `L-efFetch`, and `L-applyRemoteEntity` asks `L-shouldAcceptVersion` whether it is newer before `L-commitRemote` writes it.
-4. `L-pullRoster` pulls every member and bind in one call through `L-edgeRoster` / `L-efRoster` and commits each one the same way.
+4. `L-pullRoster` pulls every member, bind and expense in one call through `L-edgeRoster` / `L-efRoster` and commits each one the same way.
 
 ## F-foreground — App foreground
 
@@ -62,16 +62,28 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 2. The member is written into the store at version 1 and queued — the list updates before any network call.
 3. `L-flushQueue` pushes it, exactly as in Sync one group step 2.
 
+## F-add-expense — Add expense
+
+**Trigger** — On the hub, the person types an amount and taps **Add expense**.  
+**Outcome** — The cost is listed immediately against the member who paid, reaches the server on the next push, and the This is me buttons go away — see This is me.
+
+1. `L-hub` parses the typed amount into whole cents and calls `L-addExpense` with the assumed member as payer.
+2. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
+3. The expense is written into the store at version 1 and queued — the list updates before any network call.
+4. `L-flushQueue` pushes it. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
+
 ## F-bind — This is me
 
-**Trigger** — On the hub, the person taps **This is me** on a member row.  
-**Outcome** — That member is this device's own person; the hub shows You (Name) and the button disappears.
+**Trigger** — On the hub, the person taps **This is me** on a member row. Every member offers the button while the group has no expenses, so the choice can be made and changed freely.  
+**Outcome** — That member is this device's own person; the hub shows You (Name) and that row's button goes away, while the others stay offerable until the first expense.
 
-1. `L-hub` calls `L-bindMe` with the member tapped.
-2. `L-deviceHasBind` refuses if this device already claimed someone, recording `already_bound`; a missing member records `member_missing`.
-3. A bind linking this device to that member is written locally and queued.
-4. `L-flushQueue` pushes it, and the server rejects it unless the member belongs to the same group.
-5. `L-assumedMember` now resolves this device to that member, which is what puts You (Name) on the hub.
+1. `L-hub` shows the button on every member except the one already claimed, as long as `L-bindingOpen` says the group has no live expense.
+2. `L-hub` calls `L-bindMe` with the member tapped.
+3. `L-bindMe` refuses once an expense exists, recording `binding_closed` — the UI hides the button by then, so this is the rule behind the rule, not a message anyone should normally see. A missing member records `member_missing`.
+4. A bind linking this device to that member is written locally and queued. If this device already had a bind, that same bind is re-pointed at the new member at the next version rather than a second one being created, so "which member am I?" never depends on which bind is found first.
+5. `L-flushQueue` pushes it, and the server rejects it unless the member belongs to the same group.
+6. `L-assumedMember` now resolves this device to that member, which is what puts You (Name) on the hub.
+7. The first expense closes it: `L-bindingOpen` turns false, every remaining button disappears, and the choice is fixed until some future slice offers a deliberate way to change it.
 
 ## F-bump — Bump group name
 

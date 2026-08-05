@@ -3,6 +3,7 @@ import { resolveAccessToken } from '../_shared/access.ts';
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import {
   BIND_SELECT,
+  EXPENSE_SELECT,
   GROUP_SELECT,
   MEMBER_SELECT,
 } from '../_shared/entities.ts';
@@ -68,6 +69,18 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await supabase
         .from('binds')
         .select(BIND_SELECT)
+        .eq('id', id)
+        .eq('group_id', groupId)
+        .maybeSingle();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      if (!data) return jsonResponse({ error: 'not_found' }, 404);
+      return jsonResponse({ entity: data });
+    }
+
+    if (entityType === 'expenses') {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(EXPENSE_SELECT)
         .eq('id', id)
         .eq('group_id', groupId)
         .maybeSingle();

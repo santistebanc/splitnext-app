@@ -11,7 +11,8 @@
 
 ## Core value
 
-- **Assumed member gates mutations** — expense/settle mutations require assumed member; unbound = hide mutate controls — area: membership — raised: bootstrap · *bind + You label shipped in 0003; gating lands with expenses*
+- **Reopen the binding choice after an expense exists** — "in the future it will be possible to change in other way" — the first expense closes it for good today (D-020); reopening has to decide what happens to expenses already attributed to the old member — area: membership — raised: slice 0005
+
 - **Member rename / soft-delete** — rename any assumed member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap
 - **Expense editor + invariants** — contributions/allocations, Hamilton rounding, defaults (payer = assumed member, equal shares) — area: ledger — raised: bootstrap
 - **Balances list (group hub home)** — derived Σ contributions − Σ allocations; sort most-negative first; "You (Name)" — area: ledger — raised: bootstrap
@@ -40,6 +41,8 @@
 - **Handoff checklist** — "Final spec section outline and the acceptance checklist proving the design is implementable" — area: meta — raised: bootstrap
 
 ## Delivered
+
+- **Assumed member gates mutations** — delivered in [slice 0005](slices/0005-expense-spine.md); the expense form only appears once this device is bound
 
 - **Walking skeleton** — delivered in [slice 0001](slices/0001-walking-skeleton.md)
 - **Outbound queue auto-flush + thin reconnect fetch** — delivered in [slice 0002](slices/0002-queue-auto-flush.md)

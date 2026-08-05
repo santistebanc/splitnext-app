@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0004
+Last updated: slice 0005
 
 ## Direction
 
@@ -29,7 +29,9 @@ Last updated: slice 0004
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
 - Add name-slot members, bind this device to one (assumed member), show You (Name) on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
-- Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version`; a test per flow — [slice 0004](slices/0004-sync-quality-harden.md)
+- Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version` — [slice 0004](slices/0004-sync-quality-harden.md)
+- Record an expense against the member who paid — integer cents, listed on the hub, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md)
+- Choose which member you are, and change that choice, until the group's first expense fixes it — [slice 0005](slices/0005-expense-spine.md)
 
 ## Stack
 
@@ -48,7 +50,9 @@ Last updated: slice 0004
 
 **Member** — `id`, `group_id`, `display_name`, `version`, `updated_at`, `deleted_at`. Name-slot; not a login. Soft-delete only (UI for delete/rename parked).
 
-**Bind** — `id`, `group_id`, `device_user_id`, `member_id`, `version`, `updated_at`, `deleted_at`. Active bind = assumed member. Unique: one active bind per device per group.
+**Bind** — `id`, `group_id`, `device_user_id`, `member_id`, `version`, `updated_at`, `deleted_at`. Active bind = assumed member. Unique: one active bind per device per group — re-choosing re-points that bind at a higher version rather than adding a second.
+
+**Expense** — `id`, `group_id`, `payer_member_id`, `amount_cents`, `description`, `version`, `updated_at`, `deleted_at`. Integer cents only. Who *owes* is not modelled yet; allocations come with balances.
 
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
@@ -59,13 +63,12 @@ Last updated: slice 0004
 | Route | What it does | Shipped in |
 | --- | --- | --- |
 | `/` | Lobby: create group, list local group ids; root AppState sync | slice 0001 / 0002 |
-| `/group/[id]` | Hub: members list, add, This is me, You (Name); bump sync proof; open → syncGroup | slice 0001–0003 |
+| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), You (Name); expenses list + add; bump sync proof; open → syncGroup | slice 0001–0005 |
 
 ## Seams
 
 - `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest
 - `shouldAttemptFlush` / `queueAfterMergeResults` — `src/sync/queuePolicy.ts` — vitest
-- `assumedMemberIdFromBinds` / `deviceHasActiveBind` — `src/domain/assumedMember.ts` — vitest
-- Edge Functions behind `src/api/edge.ts` — HTTP capability boundary; faked there by the flow tests
-- `flushQueue` / `applyRemoteFetch` / `pullRoster` / `startWakeSubscription` — `src/sync/` — flow tests (`src/flows/F-*.flow.test.ts`)
+- `assumedMemberIdFromBinds` / `bindingIsOpen` — `src/domain/assumedMember.ts` — vitest
+- Edge Functions behind `src/api/edge.ts` — the HTTP capability boundary; the place a fake would go if one comes back
 - `syncError` / `coerceSyncError` — `src/sync/syncErrors.ts` — vitest

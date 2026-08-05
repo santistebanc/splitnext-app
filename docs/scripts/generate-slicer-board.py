@@ -835,6 +835,8 @@ def render() -> str:
         return "".join(parts)
 
     def test_block(f: dict) -> str:
+        if not tests:
+            return ""  # no flow tests in the tree at all — not a finding
         t = tests.get(f["id"])
         if not t:
             return (
@@ -1982,7 +1984,7 @@ apply();
         <p class="kicker">Current system</p>
         <h1>How it runs end to end</h1>
         <p class="lede">Each flow is one path a person can trigger, start to finish. A band marks each stretch by the area it runs in — UI, device, edge, server — and every symbol named inside carries the glyph of its <a href="#symbols">kind</a>. Click any symbol to open it in <a href="#symbols">Symbols</a>.</p>
-        <p class="why">{sum(1 for f in flows if f['id'] in tests)} of {len(flows)} flows have a test naming them — run <code class="ref">npm test</code>.</p>
+        {f'<p class="why">{sum(1 for f in flows if f["id"] in tests)} of {len(flows)} flows have a test naming them — run <code class="ref">npm test</code>.</p>' if tests else ''}
         <div class="fkey">
           {''.join(layer_key)}
           <button type="button" class="btn" id="fold-all" aria-pressed="false">Expand all</button>

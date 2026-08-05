@@ -1,10 +1,11 @@
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   assumedMemberIdFromBinds,
-  deviceHasActiveBind,
+  bindingIsOpen,
 } from '@/src/domain/assumedMember';
 import { getGroupStore } from '@/src/store/groupStore';
 import {
+  addExpense,
   addMember,
   bindMe,
   bumpGroupName,
@@ -30,11 +31,14 @@ export default function GroupHubScreen() {
   const group = useValue(store$.group);
   const members = useValue(store$.members);
   const binds = useValue(store$.binds);
+  const expenses = useValue(store$.expenses);
   const syncStatus = useValue(store$.syncStatus);
   const lastErrorRaw = useValue(store$.lastError);
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [what, setWhat] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -50,13 +54,8 @@ export default function GroupHubScreen() {
         : null,
     [binds, deviceUserId],
   );
-  const alreadyBound = useMemo(
-    () =>
-      deviceUserId
-        ? deviceHasActiveBind(binds ?? {}, deviceUserId)
-        : true,
-    [binds, deviceUserId],
-  );
+  /** Every member stays offerable until the first expense lands. */
+  const canChoose = useMemo(() => bindingIsOpen(expenses ?? {}), [expenses]);
 
   const memberList = useMemo(
     () =>
@@ -65,6 +64,42 @@ export default function GroupHubScreen() {
         .sort((a, b) => a.display_name.localeCompare(b.display_name)),
     [members],
   );
+
+  const expenseList = useMemo(
+    () =>
+      Object.values(expenses ?? {})
+        .filter((e) => e.deleted_at == null)
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+    [expenses],
+  );
+
+  const nameOf = (memberId: string) =>
+    (members ?? {})[memberId]?.display_name || '(unnamed)';
+
+  /** "12,34" and "12.34" both mean 1234 cents; anything else is not money. */
+  const parseCents = (text: string): number | null => {
+    const cleaned = text.trim().replace(',', '.');
+    if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+    return Math.round(Number(cleaned) * 100);
+  };
+
+  const onAddExpense = async () => {
+    const cents = parseCents(amount);
+    if (cents === null || cents <= 0 || busy) return;
+    if (!assumedMemberId) return;
+    setBusy(true);
+    try {
+      await addExpense(groupId, {
+        payerMemberId: assumedMemberId,
+        amountCents: cents,
+        description: what,
+      });
+      setAmount('');
+      setWhat('');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onBump = () => {
     void bumpGroupName(groupId, 'Demo ' + (group.version + 1));
@@ -82,7 +117,7 @@ export default function GroupHubScreen() {
   };
 
   const onBind = async (memberId: string) => {
-    if (busy || alreadyBound) return;
+    if (busy || !canChoose) return;
     setBusy(true);
     try {
       await bindMe(groupId, memberId);
@@ -125,7 +160,7 @@ export default function GroupHubScreen() {
           return (
             <View key={m.id} style={styles.memberRow}>
               <Text style={isYou ? styles.you : styles.value}>{label}</Text>
-              {!alreadyBound ? (
+              {canChoose && !isYou ? (
                 <Pressable
                   style={styles.smallButton}
                   onPress={() => void onBind(m.id)}
@@ -156,6 +191,58 @@ export default function GroupHubScreen() {
         <Text style={styles.buttonText}>Add member</Text>
       </Pressable>
 
+      <Text style={styles.label}>Expenses</Text>
+      {expenseList.length === 0 ? (
+        <Text style={styles.hint}>
+          {assumedMemberId
+            ? 'No expenses yet — add the first one. Adding it fixes who you are.'
+            : 'Tap This is me on a member first; expenses are recorded against you.'}
+        </Text>
+      ) : (
+        expenseList.map((e) => (
+          <View key={e.id} style={styles.memberRow}>
+            <Text style={styles.value}>
+              {e.description || '(no description)'} · {nameOf(e.payer_member_id)}
+            </Text>
+            <Text style={styles.you}>
+              {(e.amount_cents / 100).toFixed(2)} {group.currency_label}
+            </Text>
+          </View>
+        ))
+      )}
+
+      {assumedMemberId ? (
+        <>
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+            placeholder={`Amount (${group.currency_label})`}
+            placeholderTextColor="#8a8d82"
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+          />
+          <TextInput
+            style={styles.input}
+            value={what}
+            onChangeText={setWhat}
+            placeholder="What for"
+            placeholderTextColor="#8a8d82"
+          />
+          <Pressable
+            style={[
+              styles.button,
+              busy || parseCents(amount) === null ? styles.buttonDisabled : null,
+            ]}
+            onPress={() => void onAddExpense()}
+            accessibilityRole="button"
+            disabled={busy || parseCents(amount) === null}
+          >
+            <Text style={styles.buttonText}>Add expense</Text>
+          </Pressable>
+        </>
+      ) : null}
+
       <Pressable
         style={styles.secondaryButton}
         onPress={onBump}
@@ -165,8 +252,9 @@ export default function GroupHubScreen() {
       </Pressable>
 
       <Text style={styles.hint}>
-        Add a member, tap This is me, kill and reopen — You (Name) should stick.
-        Another device with this group pulls the roster on open.
+        Add a member, tap This is me, then record an expense. Kill and reopen —
+        You (Name) and the expense should stick. Another device with this group
+        pulls both on open.
       </Text>
     </ScrollView>
   );

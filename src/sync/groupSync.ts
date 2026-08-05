@@ -1,6 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
-import { deviceHasActiveBind } from '@/src/domain/assumedMember';
+import { bindingIsOpen } from '@/src/domain/assumedMember';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   addLobbyGroupId,
@@ -18,6 +18,7 @@ import { syncError } from '@/src/sync/syncErrors';
 import { startWakeSubscription } from '@/src/sync/wake';
 import type {
   BindEntity,
+  ExpenseEntity,
   GroupEntity,
   MemberEntity,
 } from '@/src/types/group';
@@ -133,14 +134,65 @@ export async function addMember(
   return memberId;
 }
 
+/** What the hub knows when someone records a cost. */
+export type NewExpense = {
+  payerMemberId: string;
+  /** Integer cents. Rejected outright if it is not — money never rounds here. */
+  amountCents: number;
+  description: string;
+};
+
+export async function addExpense(
+  groupId: string,
+  { payerMemberId, amountCents, description }: NewExpense,
+): Promise<string> {
+  if (!Number.isInteger(amountCents)) {
+    throw new Error('amount must be integer cents');
+  }
+  if (amountCents <= 0) {
+    throw new Error('amount must be greater than zero');
+  }
+
+  const store$ = getGroupStore(groupId);
+  const payer = (store$.members.get() ?? {})[payerMemberId];
+  if (!payer || payer.deleted_at != null) {
+    store$.lastError.set(syncError('member_missing'));
+    return '';
+  }
+
+  const expense: ExpenseEntity = {
+    id: Crypto.randomUUID(),
+    group_id: groupId,
+    payer_member_id: payerMemberId,
+    amount_cents: amountCents,
+    description: description.trim(),
+    version: 1,
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
+  };
+  store$.expenses.set({ ...(store$.expenses.get() ?? {}), [expense.id]: expense });
+  store$.queue.set([
+    ...(store$.queue.get() ?? []),
+    {
+      entity_type: 'expenses',
+      id: expense.id,
+      version: expense.version,
+      payload: expense,
+    },
+  ]);
+  await flushQueue(groupId);
+  return expense.id;
+}
+
 export async function bindMe(
   groupId: string,
   memberId: string,
 ): Promise<void> {
   const deviceUserId = await getOrCreateDeviceUserId();
   const store$ = getGroupStore(groupId);
-  if (deviceHasActiveBind(store$.binds.get() ?? {}, deviceUserId)) {
-    store$.lastError.set(syncError('already_bound'));
+  const binds = store$.binds.get() ?? {};
+  if (!bindingIsOpen(store$.expenses.get() ?? {})) {
+    store$.lastError.set(syncError('binding_closed'));
     return;
   }
 
@@ -150,16 +202,24 @@ export async function bindMe(
     return;
   }
 
+  // One bind per device per group: changing your mind moves the existing bind
+  // to the new member rather than leaving a second live one behind, which
+  // would make "which member am I?" depend on iteration order.
+  const existing = Object.values(binds).find(
+    (b) => b.device_user_id === deviceUserId && b.deleted_at == null,
+  );
+  if (existing?.member_id === memberId) return;
+
   const bind: BindEntity = {
-    id: Crypto.randomUUID(),
+    id: existing?.id ?? Crypto.randomUUID(),
     group_id: groupId,
     device_user_id: deviceUserId,
     member_id: memberId,
-    version: 1,
+    version: existing ? existing.version + 1 : 1,
     updated_at: new Date().toISOString(),
     deleted_at: null,
   };
-  store$.binds.set({ ...(store$.binds.get() ?? {}), [bind.id]: bind });
+  store$.binds.set({ ...binds, [bind.id]: bind });
   store$.queue.set([
     ...(store$.queue.get() ?? []),
     {

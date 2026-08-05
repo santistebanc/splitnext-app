@@ -1,6 +1,7 @@
 import { shouldAcceptVersion } from '../domain/version';
 import type {
   BindEntity,
+  ExpenseEntity,
   GroupEntity,
   MemberEntity,
   SyncEntity,
@@ -10,6 +11,7 @@ export type InboundState = {
   group: GroupEntity;
   members: Record<string, MemberEntity>;
   binds: Record<string, BindEntity>;
+  expenses: Record<string, ExpenseEntity>;
 };
 
 /** Pure apply: returns next state if remote wins by version, else null. */
@@ -31,6 +33,16 @@ export function applyRemoteEntity(
     return {
       ...state,
       members: { ...state.members, [remote.id]: remote },
+    };
+  }
+
+  if (entityType === 'expenses') {
+    const remote = entity as ExpenseEntity;
+    const localVersion = state.expenses[remote.id]?.version ?? -1;
+    if (!shouldAcceptVersion(remote.version, localVersion)) return null;
+    return {
+      ...state,
+      expenses: { ...state.expenses, [remote.id]: remote },
     };
   }
 
