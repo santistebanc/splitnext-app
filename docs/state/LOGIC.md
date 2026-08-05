@@ -60,8 +60,10 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-syncError | `syncError` / `coerceSyncError` | Pure | `src/sync/syncErrors.ts` | Gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape. |
 | L-getGroupStore | `getGroupStore` | State | `src/store/groupStore.ts` | Hands out the one observable state object per group — group, members, binds, sync status, pending queue — persisted to SQLite so it survives restarts. |
 | L-initLocalGroup | `initLocalGroup` | State | `src/store/groupStore.ts` | Seeds a freshly created group into its store as local-only, before the server knows about it. |
-| L-deviceUser | `getOrCreateDeviceUserId` | State | `src/device/deviceUser.ts` | The identity of this install: one id, generated once and kept in Secure Store, since there are no accounts. |
-| L-accessToken | `getAccessToken` / `saveAccessToken` | State | `src/secrets/tokens.ts` | Keeps each group's capability token in Secure Store — holding it is what proves access to that group. |
+| L-deviceUser | `getOrCreateDeviceUserId` | State | `src/device/deviceUser.ts` | The identity of this install: one id, generated once and kept in the secret store, since there are no accounts. |
+| L-secureStorage | `getSecret` / `setSecret` | State | `src/secrets/secureStorage.ts` | The one door to the device's secrets. Native goes to the OS keychain; the web build swaps in `localStorage`, which is why nothing wider than a per-group token belongs here. |
+| L-persistPlugin | `persistPlugin` | State | `src/store/persistPlugin.ts` | Where a store survives a restart: SQLite on a device, `localStorage` on web, so the browser target needs no wasm. |
+| L-accessToken | `getAccessToken` / `saveAccessToken` | State | `src/secrets/tokens.ts` | Keeps each group's capability token in the secret store — holding it is what proves access to that group. |
 | L-lobbyIds | `listLobbyGroupIds` / `addLobbyGroupId` | State | `src/secrets/tokens.ts` | The device's list of known group ids, which is what the lobby and the catch-up sync iterate over. Temporary home. |
 
 ## Edge

@@ -1,8 +1,7 @@
-import { observablePersistSqlite } from '@legendapp/state/persist-plugins/expo-sqlite';
 import { configureObservableSync } from '@legendapp/state/sync';
-import Storage from 'expo-sqlite/kv-store';
 
-const persistPlugin = observablePersistSqlite(Storage);
+import { persistPlugin } from './persistPlugin';
+
 let configured = false;
 
 export function getPersistPlugin() {

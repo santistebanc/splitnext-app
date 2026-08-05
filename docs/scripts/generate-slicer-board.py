@@ -309,6 +309,16 @@ def parse_next(text: str) -> dict:
         if len(cells) >= 2:
             seams.append({"seam": cells[0], "behavior": cells[1]})
 
+    # The self-review while it is still a review — kept here during the build,
+    # moved into the archive's Report at close.
+    edge = []
+    for ln in section("Edge paths").splitlines():
+        if not ln.startswith("|") or "---" in ln or "Surface" in ln:
+            continue
+        cells = [c.strip() for c in ln.strip("|").split("|")]
+        if len(cells) >= 3 and any(cells[:3]):
+            edge.append({"surface": cells[0], "state": cells[1], "what": cells[2]})
+
     m = re.search(r"(\d{4})", title)
     return {
         "title": title,
@@ -319,6 +329,7 @@ def parse_next(text: str) -> dict:
         "plan": bullets("Plan"),
         "seams": seams,
         "acceptance": bullets("Acceptance"),
+        "edge_paths": edge,
         "out_of_scope": bullets("Out of scope"),
     }
 
@@ -452,6 +463,25 @@ def parse_report(text: str) -> dict | None:
 
     pulse = section("Diff pulse").strip().strip("`")
 
+    # Edge paths — the written-down self-review. Surface | State | What happens.
+    edge = []
+    for ln in section("Edge paths").splitlines():
+        if not ln.startswith("|") or "---" in ln or "Surface" in ln:
+            continue
+        cells = [c.strip() for c in ln.strip("|").split("|")]
+        if len(cells) >= 3 and any(cells[:3]):
+            edge.append({"surface": cells[0], "state": cells[1], "what": cells[2]})
+
+    # Shots — `file.png` — caption. A line with no file is the "could not capture" note.
+    shots = []
+    for ln in section("Shots").splitlines():
+        if not ln.strip().startswith("-"):
+            continue
+        body = re.sub(r"^-\s*", "", ln).strip()
+        m = re.match(r"`?([\w.\-]+\.(?:png|jpg|jpeg|webp|gif))`?\s*(?:—|--|-)?\s*(.*)", body)
+        if m:
+            shots.append({"file": m.group(1), "caption": m.group(2).strip()})
+
     # archive filename from head
     return {
         "title": head[2:].strip() if head.startswith("#") else head,
@@ -463,6 +493,8 @@ def parse_report(text: str) -> dict | None:
         "flow_delta": bullets("Flow delta"),
         "surfaces": surfaces,
         "decisions": decisions,
+        "edge_paths": edge,
+        "shots": shots,
         "pulse": pulse,
     }
 
@@ -666,6 +698,59 @@ def delta_block(bullets: list[str]) -> str:
         for piece in pieces
     )
     return f'<div class="rows">{rows}</div>' if rows else '<p class="empty">Nothing.</p>'
+
+
+def shots_html(shots: list[dict]) -> str:
+    """Screenshots from the demo gate — the only non-prose record of the app.
+
+    Referenced by relative path, never inlined: a data URI would add a few
+    hundred KB per slice to a file that is regenerated and diffed constantly.
+    """
+    cards = []
+    for shot in shots:
+        rel = f"docs/state/shots/{shot['file']}"
+        if not (ROOT / rel).exists():
+            continue
+        cap = (
+            f'<figcaption>{esc(shot["caption"])}</figcaption>'
+            if shot.get("caption")
+            else ""
+        )
+        cards.append(
+            f'<figure class="shot"><a class="shot-open" href="{esc(editor_uri(rel, None))}" '
+            f'data-path="{esc(rel)}" title="{esc(shot["file"])}">'
+            f'<img src="state/shots/{esc(shot["file"])}" loading="lazy" '
+            f'alt="{esc(shot.get("caption") or shot["file"])}"></a>{cap}</figure>'
+        )
+    # No shots is not an error state — the absence speaks for itself.
+    return f'<div class="shots">{"".join(cards)}</div>' if cards else ""
+
+
+def shots_on_disk(number: str) -> list[dict]:
+    """Shots for a slice in flight: they land at the demo gate, before any archive."""
+    if not number:
+        return []
+    folder = STATE / "shots"
+    if not folder.is_dir():
+        return []
+    return [
+        {"file": p.name, "caption": ""}
+        for p in sorted(folder.glob(f"{number}-*"))
+        if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+    ]
+
+
+def edge_paths_html(rows: list[dict]) -> str:
+    """The self-review as rows. Every row was checked, so nothing is ranked."""
+    if not rows:
+        return ""
+    out = "".join(
+        f'<div class="edge"><span class="edge-s">{chipify_logic_ids(r["surface"])}</span>'
+        f'<span class="edge-w">{rich(r["state"])}</span>'
+        f'<span class="edge-b">{rich(r["what"])}</span></div>'
+        for r in rows
+    )
+    return f'<div class="rows edgerows">{out}</div>'
 
 
 def flow_tests() -> dict[str, dict]:
@@ -1129,6 +1214,16 @@ def render() -> str:
             return f'<span class="chip chip-dec" title="{esc(did)}">{esc(text)}</span>'
 
         dec = "".join(dec_chip(d) for d in report["decisions"])
+        closed_shots = shots_html(report["shots"])
+        closed_shots = (
+            f'<h3 id="n-shots">What it looked like</h3>{closed_shots}'
+            if closed_shots
+            else ""
+        )
+        closed_edge = edge_paths_html(report["edge_paths"])
+        closed_edge = (
+            f'<h3 id="n-edge">Edge paths checked</h3>{closed_edge}' if closed_edge else ""
+        )
         newest_search = " ".join(
             [
                 report["title"],
@@ -1142,6 +1237,7 @@ def render() -> str:
   <h4 class="closed-title">{esc(report['title'])}</h4>
   <p class="lede">{esc(report['headline'])}</p>
   <p class="why">{esc(report['meta'])} · archive <code class="ref">{esc(arch_name)}</code></p>
+  {closed_shots}
 
   <h3 id="n-highlights">Highlights</h3>
   <ul class="bullets">{hl}</ul>
@@ -1157,6 +1253,8 @@ def render() -> str:
 
   <h3 id="n-flows">Flows that slice touched</h3>
   {flow_d}
+
+  {closed_edge}
 
   <h3 id="n-surfaces">Surfaces touched</h3>
   <div class="rows swrows">{surf}</div>
@@ -1174,6 +1272,24 @@ def render() -> str:
         newest_search = ""
 
     if in_progress:
+        # Shots for a slice in flight come off disk: they land at the demo gate,
+        # before there is an archive to caption them.
+        live_edge = edge_paths_html(nxt["edge_paths"])
+        live_edge = (
+            f'<h3 id="p-edge">Edge paths checked</h3>'
+            f'<p class="why">The self-review so far — each row is a non-happy state that '
+            f'was actually walked. Moves into the archive at close.</p>{live_edge}'
+            if live_edge
+            else ""
+        )
+        live_shots = shots_html(shots_on_disk(nxt["number"]))
+        live_shots = (
+            f'<h3 id="p-shots">What it looks like</h3>'
+            f'<p class="why">Captured at the demo gate — regenerate after a new capture.</p>'
+            f"{live_shots}"
+            if live_shots
+            else ""
+        )
         newest_html = f"""
 <section class="page" id="newest" data-title="This slice" tabindex="-1"
          data-search="{esc((nxt['title'] + ' ' + nxt['goal'] + ' ' + newest_search).lower())}">
@@ -1187,6 +1303,8 @@ def render() -> str:
     <div style="--sc:var(--s2)"><b>{esc(branch or '—')}</b><span>Branch</span></div>
     <div style="--sc:var(--s5)"><b>{len(nxt['acceptance'])}</b><span>Acceptance checks</span></div>
   </div>
+
+  {live_shots}
 
   <h3 id="p-touched">Symbols in the changed files</h3>
   <p class="why">Mapped from the working tree — {esc(stat or 'no tracked edits yet')} since <code class="ref">{esc(last_commit)}</code>.</p>
@@ -1213,6 +1331,8 @@ def render() -> str:
 
   <h3 id="p-accept">Acceptance</h3>
   <ul class="bullets">{accept_items}</ul>
+
+  {live_edge}
 
   <h3 id="p-scope">Out of scope</h3>
   <div>{scope_chips}</div>
@@ -1627,6 +1747,23 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 .sw2 b{font:700 .66rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding-top:.1rem}
 .mono{font-family:var(--mono);font-size:.84rem}
 .diff{color:var(--muted)}
+
+/* ---------------- shots + edge paths ---------------- */
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));
+  gap:var(--sp-2);margin:var(--sp-3) 0}
+.shot{margin:0;border:1px solid var(--line);background:var(--surface)}
+.shot a{display:block;line-height:0;background:var(--surface-2)}
+.shot img{display:block;width:100%;height:auto}
+.shot a:hover{outline:2px solid var(--accent);outline-offset:-2px}
+.shot figcaption{font:700 .65rem var(--sans);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--faint);padding:.45rem .6rem;border-top:1px solid var(--line);line-height:1.4}
+.edge{display:grid;grid-template-columns:minmax(0,13rem) minmax(0,11rem) minmax(0,1fr);
+  gap:1rem;padding:.55rem 1rem;border-bottom:1px solid var(--line);
+  background:var(--surface);font-size:.85rem;align-items:baseline}
+.edge:last-child{border-bottom:0}
+.edgerows{border-bottom:1px solid var(--line)}
+.edge-w{font:700 .68rem var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.edge-b{color:var(--muted)}
 .empty{color:var(--faint);font-size:.87rem;padding:1rem;border:1px dashed var(--line);background:var(--surface)}
 .empty.is-hidden{display:none}
 
@@ -1656,6 +1793,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
   .pages{padding:1.2rem 1rem}
   .fstep{grid-template-columns:2.2rem minmax(0,1fr);gap:.5rem}
   .sw2{grid-template-columns:1fr;gap:.15rem}
+  .edge{grid-template-columns:1fr;gap:.2rem}
   h1{font-size:1.6rem}
 }
 @media print{
@@ -1663,7 +1801,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
   .layout{display:block}
   .page{display:block!important;break-before:page}
   .fsteps[hidden]{display:block!important}
-  .row,.fcase,.statbar{break-inside:avoid}
+  .row,.fcase,.statbar,.shot,.edge{break-inside:avoid}
   body{background:#fff;color:#000;font-size:11pt}
 }
 """
@@ -1856,7 +1994,7 @@ addEventListener('resize',closePop);
 // window. On file:// fall through to the cursor:// href, which does not.
 const servedLocally=location.protocol==='http:'||location.protocol==='https:';
 document.addEventListener('click',e=>{
-  const a=e.target.closest && e.target.closest('a.ref.src');
+  const a=e.target.closest && e.target.closest('a.ref.src, a.shot-open');
   if(!a||!servedLocally||!a.dataset.path)return;
   e.preventDefault();
   const q=new URLSearchParams({path:a.dataset.path,line:a.dataset.line||''});

@@ -3,6 +3,7 @@
 ## Foundation-risk
 
 - **Contract test against a local Supabase stack** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real `merge` / `fetch-entity` / `list-roster` at close when their shapes change — area: sync — raised: slice 0004
+- **Browser-driven flow tests** — the web target runs the whole app headless (Playwright drove create → add member → bind → add expense against the real Edge Functions), so end-to-end tests are possible for the first time; nothing is committed yet, and web does not exercise the SQLite persist adapter — area: testing — raised: slice 0006
 - **Symbol-level change attribution on the board** — the working-tree delta maps changed *files* to symbols, so a shared file drags its neighbours in; needs diff-hunk ranges to fix — area: tooling — raised: slice 0004
 - **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002 + roster list in 0003; full protocol still open*
 - **Realtime JWT signing secret** — leave `anon_channel` fallback; mint short-lived JWT for private channel auth (D-006) — area: sync — raised: slice 0001

@@ -1,72 +1,57 @@
-# Slice 0005 — expense spine
+# Slice 0006 — web target
 
-**Tier** — core value
+**Tier** — foundation-risk
 
 ## Goal
 
-Record a shared cost and watch it sync: an expense with a payer and an amount, added from the hub, flushed through the same merge path as members and binds. First ledger surface — the reason the sync spine exists. Balances stay out of scope; this slice proves an expense survives the round trip.
+Run the whole app in a browser, so a change can be driven end to end without a phone in hand. Two native-only dependencies stand in the way; each gets a seam with a web implementation rather than a `Platform.OS` branch scattered through callers. This is what makes headless runs and board screenshots possible at all.
 
 ## Before → After
 
-| Aspect | Before | After |
+| | Now | After |
 | --- | --- | --- |
-| Ledger | Nothing to record | Add expense: payer, amount, description |
-| Entities synced | `groups`, `members`, `binds` | + `expenses`, through the same `L-edgeMerge` path |
-| Money | Not represented | Integer cents; no floats anywhere |
-| Hub | Members list | Members list + expenses list, newest first |
-| Choosing who you are | One shot: the button vanished for good once this device bound (`L-deviceHasBind`) | Open until the group's first expense: every member offers it, and the choice can be moved (`L-bindingOpen`) |
-| Server | Three tables | + `expenses`, deny-all RLS, same version rule |
+| Web | `npm run web` bundles, then throws on the first screen that touches secrets | The whole app runs; create → add member → This is me → add expense works in a browser |
+| Secrets | `expo-secure-store` imported directly by `L-accessToken`, `L-lobbyIds`, `L-deviceUser` | All three go through `L-secureStorage`; the native module is never imported on web |
+| Durability | `L-getGroupStore` persists via `expo-sqlite` on every platform | `L-persistPlugin` picks per platform — SQLite on device, `localStorage` on web |
+| Testing | Phone only, by hand | A browser can drive the real flows against the real Edge Functions |
+| Board evidence | Prose only | Screenshots in `docs/state/shots/`, rendered on the slice page |
 
 ## Plan
 
-1. `expenses` migration; widen `L-efMerge` / `L-efFetch` / `L-efRoster` to carry the new entity type; deploy.
-2. Expense entity in `src/types/group.ts`. `L-sortByFlushOrder` already orders `expenses` after `binds` — confirm with a test rather than assuming.
-3. `addExpense` in the sync client, mirroring `L-addMember`: local write at version 1, queue, flush.
-4. `L-hub`: add-expense form (payer defaults to the assumed member) and an expenses list.
-5. Document the new flow as `F-add-expense` in `FLOWS.md`.
-6. `L-bindingOpen` replaces `deviceHasActiveBind` as the gate on `L-bindMe` and on the hub's button: expenses close binding, not the bind itself. Re-binding moves the existing bind to the new member at the next version instead of creating a second live one.
+1. `L-secureStorage` — `getSecret` / `setSecret` behind one small interface, with a `.web.ts` twin on `localStorage`. Point `L-accessToken`, `L-lobbyIds` and `L-deviceUser` at it.
+2. `L-persistPlugin` — lift the plugin out of `persist.ts` so the platform split is one file, not a branch inside the configure logic.
+3. Prove the app runs: bundle, then drive the real flows in a headless browser and read the console.
+4. Teach the board to render `### Edge paths` and `### Shots`, so the self-review and the screenshots have somewhere to land.
 
 ## Seams under test
 
 | Seam | Behavior |
 | --- | --- |
-| `L-sortByFlushOrder` | An expense flushes after the member it names as payer |
-| `addExpense` | Amount is integer cents; a negative or non-integer amount never reaches the queue |
-| `L-bindingOpen` | Open on an empty group and on one holding only tombstoned expenses; closed as soon as one live expense exists |
+| `L-secureStorage` | The only place the keychain is named; a fake here replaces secrets wholesale |
+| `L-persistPlugin` | The only place durability is chosen; swapping it cannot reach the callers |
 
 ## Acceptance
 
-- Phone: open group → add expense (payer = You) → kill/reopen → the expense is still there.
-- Two devices: an expense added on A appears on B without B being touched.
-- Money never becomes a float; the amount round-trips exactly.
-- Before any expense: every member offers **This is me**, and tapping a second one moves the claim. After the first expense: no member offers it.
-- `npm test` and `npm run typecheck` green.
+- `npm run web` serves the app; create group → add member → This is me → add expense completes with an empty console.
+- State survives a fresh page: the lobby lists the group and the hub still shows You (Name).
+- Native is untouched — typecheck and the full suite stay green, and no caller imports `expo-secure-store` or `expo-sqlite` directly any more.
 
 ## Edge paths
 
 | Surface | State | What happens |
 | --- | --- | --- |
-| `L-hub` | group has no members yet | The list says "No members yet — add yourself first"; no button to offer. |
-| `L-hub` | this device has not bound | Every member offers **This is me**; the expense form is hidden and the hint says to tap it first. |
-| `L-hub` | bound, still no expenses | The claimed row reads You (Name) with no button; every other member still offers one, so the choice can be moved. |
-| `L-hub` | first expense exists | No member offers the button, including unclaimed ones. |
-| `L-bindMe` | tapped after an expense exists | Refuses with `binding_closed` and writes nothing — the UI has already hidden the button, so this is the rule, not the message. |
-| `L-bindMe` | tapped on the member already claimed | Returns without queueing anything; no wasted version bump, no wake for a no-op. |
-| `L-bindMe` | re-bound before any expense | The existing bind is re-pointed at the new member at version + 1; the server accepts the higher version. Verified through a full `L-pullRoster` round trip. |
-| `L-bindMe` | member deleted between render and tap | Refuses with `member_missing`. |
+| `L-secureStorage` | web, static prerender with no `window` | Falls back to an in-memory map rather than throwing during the export render. |
+| `L-secureStorage` | web, cookies blocked | `localStorage` throws on access rather than returning null; caught, falls back to memory. |
+| `L-persistPlugin` | web, headless browser | `localStorage`, so no wasm and no OPFS — the reason the documented sqlite web path was abandoned. |
+| `L-getGroupStore` | web, second page load | Store rehydrates from `localStorage`; verified by reloading onto the hub and seeing You (Name) survive. |
 
 ## Out of scope
 
-- Balances list and settle-up suggestions — they derive from this, and they are the next slice
-- Editing or deleting an expense
-- Any way to change who you are once an expense exists — deliberately closed for now; a later slice reopens it explicitly
-- Unequal splits, shares, percentages
-- Currency conversion; `currency_label` stays a label
-- Attachments, or notes beyond one description line
+- Committing a browser test harness — the run was ad hoc; making it a suite is its own slice, parked
+- Deploying the web build anywhere
+- `expo-sqlite` on web via wasm — attempted and abandoned; see the note in `persistPlugin.web.ts`
+- Responsive or desktop layout; web renders the phone layout as-is
 
 ## Parked this session
 
-- **Flow tests and the fake edge server** — removed in 0005; the harness cost more than it paid while the shape of the app is still moving. Revisit when the surfaces settle; the board still reads coverage from test filenames if they come back
-- Hub component split (still)
-- Lobby ids out of Secure Store
-- Symbol-level change attribution on the board
+- **Browser-driven flow tests** — now possible for the first time — foundation-risk

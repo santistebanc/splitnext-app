@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0005
+Last updated: slice 0006
 
 ## Direction
 
@@ -14,7 +14,7 @@ Last updated: slice 0005
 - Stack: Expo React Native, Expo Router, Legend State, expo-sqlite, Supabase Postgres + Edge Functions + Realtime (wake-only)
 - Remote Supabase project `splitnext-v3` (`ycpkguwfxlhpovnsuujr`, eu-central-1)
 - Access tokens in `expo-secure-store`
-- Dev/demo: physical phone + Expo Go
+- Dev/demo: physical phone + Expo Go; `npm run web` runs the whole app in a browser for testing and screenshots
 - Money as integer cents; version (not timestamps) for conflicts; soft-delete only
 - Device floor iOS 16+ / Android 12+; English-only; light-only UI
 - Clients never talk to Postgres; deny-all RLS; Edge Functions use service role after capability hash-check
@@ -32,13 +32,14 @@ Last updated: slice 0005
 - Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version` — [slice 0004](slices/0004-sync-quality-harden.md)
 - Record an expense against the member who paid — integer cents, listed on the hub, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md)
 - Choose which member you are, and change that choice, until the group's first expense fixes it — [slice 0005](slices/0005-expense-spine.md)
+- Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
 
 ## Stack
 
-- Client — Expo RN 57 + Expo Router — mobile-first; web secondary (SQLite web alpha)
+- Client — Expo RN 57 + Expo Router — mobile-first; web is a real second target, used for headless testing and board screenshots
 - UI state — Legend State v3 (`useValue`, per-group observable) — UI source of truth
-- Local durability — `expo-sqlite` kv-store via `observablePersistSqlite` + `configureObservableSync` — write-through persist
-- Secrets — `expo-secure-store` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary)
+- Local durability — `expo-sqlite` kv-store via `observablePersistSqlite` + `configureObservableSync` — write-through persist; web swaps the plugin for `localStorage` (`persistPlugin.web.ts`) because expo-sqlite's web path is wasm over OPFS, which headless Chromium cannot run
+- Secrets — `expo-secure-store` behind `src/secrets/secureStorage.ts` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary). Web has no keychain and falls back to `localStorage`
 - Server DB — Supabase Postgres — `groups`, `access_tokens`, `members`, `binds`; deny-all RLS
 - Server API — Edge Functions `create-group`, `merge`, `fetch-entity`, `list-roster`, `rt-jwt` — capability hash-check then service role
 - Wake channel — Realtime broadcast on `group:{id}`; payload is tip only; `rt-jwt` gates subscribe (anon_channel fallback — D-006)
@@ -72,3 +73,5 @@ Last updated: slice 0005
 - `assumedMemberIdFromBinds` / `bindingIsOpen` — `src/domain/assumedMember.ts` — vitest
 - Edge Functions behind `src/api/edge.ts` — the HTTP capability boundary; the place a fake would go if one comes back
 - `syncError` / `coerceSyncError` — `src/sync/syncErrors.ts` — vitest
+- `getSecret` / `setSecret` — `src/secrets/secureStorage.ts` — the platform split for secrets; a fake here replaces the keychain
+- `persistPlugin` — `src/store/persistPlugin.ts` — the platform split for durability
