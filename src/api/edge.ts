@@ -59,6 +59,37 @@ export async function createGroupRemote(input: {
   return callFunction('create-group', input);
 }
 
+export async function createInviteRemote(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+  member_id: string;
+}): Promise<{ code: string; expires_at: string }> {
+  return callFunction(
+    'create-invite',
+    { group_id: input.group_id, member_id: input.member_id },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}
+
+/**
+ * The one call made without an access token: the code *is* the capability,
+ * which is what lets a device with nothing join a group it has never seen.
+ */
+export async function redeemInviteRemote(input: {
+  device_user_id: string;
+  code: string;
+}): Promise<{ access_token: string; group: GroupEntity; member_id: string }> {
+  return callFunction(
+    'redeem-invite',
+    { code: input.code },
+    { deviceUserId: input.device_user_id },
+  );
+}
+
 export async function mergeEntities(input: {
   group_id: string;
   device_user_id: string;

@@ -7,6 +7,8 @@ export type SyncErrorCode =
   | 'create_failed'
   | 'binding_closed'
   | 'member_missing'
+  | 'invite_failed'
+  | 'redeem_failed'
   | 'unknown';
 
 export type SyncError = {

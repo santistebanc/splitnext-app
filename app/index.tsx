@@ -5,16 +5,30 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
+import { isWellFormedInviteCode } from '@/src/domain/inviteCode';
 import { listLobbyGroupIds } from '@/src/secrets/tokens';
-import { createGroup } from '@/src/sync/groupSync';
+import { createGroup, redeemInvite } from '@/src/sync/groupSync';
+
+/** What each redeem failure means to the person holding the code. */
+const JOIN_MESSAGES: Record<string, string> = {
+  invalid_code: 'That code does not match an invite.',
+  already_redeemed: 'That code has already been used.',
+  expired: 'That invite has expired — ask for a new one.',
+  member_gone: 'The person that invite was for is no longer in the group.',
+  member_already_bound:
+    'Someone already joined as that person — ask for a new invite.',
+  already_joined: 'You are already in that group.',
+};
 
 export default function LobbyScreen() {
   const router = useRouter();
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [code, setCode] = useState('');
 
   const refresh = useCallback(async () => {
     setGroupIds(await listLobbyGroupIds());
@@ -38,6 +52,23 @@ export default function LobbyScreen() {
     }
   };
 
+  const onJoin = async () => {
+    if (busy || !isWellFormedInviteCode(code)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { groupId } = await redeemInvite(code);
+      setCode('');
+      await refresh();
+      router.push(`/group/${groupId}`);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'join_failed';
+      setError(JOIN_MESSAGES[reason] ?? `Could not join: ${reason}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.brand}>SplitNext</Text>
@@ -54,6 +85,32 @@ export default function LobbyScreen() {
         ) : (
           <Text style={styles.buttonText}>Create group</Text>
         )}
+      </Pressable>
+
+      <Text style={styles.section}>Join with code</Text>
+      <TextInput
+        style={styles.input}
+        value={code}
+        onChangeText={(text) => {
+          setCode(text);
+          if (error) setError(null);
+        }}
+        placeholder="ABCD-2345"
+        placeholderTextColor="#8a8d82"
+        autoCapitalize="characters"
+        autoCorrect={false}
+        accessibilityLabel="Invite code"
+      />
+      <Pressable
+        style={[
+          styles.secondaryButton,
+          (busy || !isWellFormedInviteCode(code)) && styles.buttonDisabled,
+        ]}
+        onPress={() => void onJoin()}
+        disabled={busy || !isWellFormedInviteCode(code)}
+        accessibilityRole="button"
+      >
+        <Text style={styles.secondaryButtonText}>Join group</Text>
       </Pressable>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -111,6 +168,30 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#8b1e1e',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d9d6cc',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontFamily: 'monospace',
+    letterSpacing: 1,
+    color: '#1a1c16',
+    backgroundColor: '#fff',
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#1f6b4a',
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  secondaryButtonText: {
+    color: '#1f6b4a',
+    fontSize: 16,
+    fontWeight: '600',
   },
   section: {
     marginTop: 24,

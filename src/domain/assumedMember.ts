@@ -28,3 +28,26 @@ export function bindingIsOpen(
 ): boolean {
   return !Object.values(expenses).some((e) => e.deleted_at == null);
 }
+
+/**
+ * Whether any device has already claimed this member.
+ *
+ * This is the gate on inviting someone, and it is deliberately not
+ * `bindingIsOpen`. That rule asks "may this device still change its mind?",
+ * which expenses close for good (D-020). This one asks "is this slot still
+ * free?" — a question expenses have nothing to do with, because handing a
+ * named slot to the person who belongs in it moves no existing claim and
+ * re-attributes no expense. A group three weeks and forty expenses into a
+ * trip can still invite the friend nobody has claimed yet.
+ *
+ * Device-agnostic on purpose: a slot is taken once *anyone* holds it, not
+ * once this device does.
+ */
+export function memberHasLiveBind(
+  binds: Record<string, BindEntity>,
+  memberId: string,
+): boolean {
+  return Object.values(binds).some(
+    (b) => b.member_id === memberId && b.deleted_at == null,
+  );
+}

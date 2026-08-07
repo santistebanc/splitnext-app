@@ -2,14 +2,17 @@ import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   assumedMemberIdFromBinds,
   bindingIsOpen,
+  memberHasLiveBind,
 } from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
+import { formatInviteCode } from '@/src/domain/inviteCode';
 import { getGroupStore } from '@/src/store/groupStore';
 import {
   addExpense,
   addMember,
   bindMe,
   bumpGroupName,
+  createInvite,
   openGroup,
 } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
@@ -41,6 +44,14 @@ export default function GroupHubScreen() {
   const [amount, setAmount] = useState('');
   const [what, setWhat] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * Codes minted this session, by member. Deliberately not persisted: the
+   * server keeps only a hash, so this is the single moment the plaintext
+   * exists — leaving it on disk would outlive the reason for having it.
+   */
+  const [invites, setInvites] = useState<
+    Record<string, { code: string; expiresAt: string }>
+  >({});
 
   useEffect(() => {
     if (!groupId) return;
@@ -141,6 +152,26 @@ export default function GroupHubScreen() {
     }
   };
 
+  const onInvite = async (memberId: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const invite = await createInvite(groupId, memberId);
+      if (invite) setInvites((prev) => ({ ...prev, [memberId]: invite }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** "in 7 days" — the code's life, not a timestamp nobody reads. */
+  const expiresIn = (iso: string) => {
+    const days = Math.round(
+      (new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+    );
+    if (days <= 0) return 'expired';
+    return `expires in ${days} day${days === 1 ? '' : 's'}`;
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.label}>Group id</Text>
@@ -172,17 +203,48 @@ export default function GroupHubScreen() {
               : isYou
                 ? `You (${m.display_name})`
                 : m.display_name;
+          // A slot anyone already holds cannot be handed out again; unlike
+          // This-is-me, expenses have no say in it.
+          const claimed = memberHasLiveBind(binds ?? {}, m.id);
+          const invite = invites[m.id];
           return (
-            <View key={m.id} style={styles.memberRow}>
-              <Text style={isYou ? styles.you : styles.value}>{label}</Text>
-              {canChoose && !isYou ? (
-                <Pressable
-                  style={styles.smallButton}
-                  onPress={() => void onBind(m.id)}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.smallButtonText}>This is me</Text>
-                </Pressable>
+            <View key={m.id}>
+              <View style={styles.memberRow}>
+                <Text style={isYou ? styles.you : styles.value}>{label}</Text>
+                <View style={styles.rowActions}>
+                  {canChoose && !isYou ? (
+                    <Pressable
+                      style={styles.smallButton}
+                      onPress={() => void onBind(m.id)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.smallButtonText}>This is me</Text>
+                    </Pressable>
+                  ) : null}
+                  {!claimed ? (
+                    <Pressable
+                      style={styles.smallOutlineButton}
+                      onPress={() => void onInvite(m.id)}
+                      accessibilityRole="button"
+                      disabled={busy}
+                    >
+                      <Text style={styles.smallOutlineButtonText}>
+                        {invite ? 'New code' : 'Invite'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+              {invite ? (
+                <View style={styles.inviteBox}>
+                  <Text style={styles.inviteCode} selectable>
+                    {formatInviteCode(invite.code)}
+                  </Text>
+                  <Text style={styles.inviteHint}>
+                    Give this to {m.display_name || 'them'} — they enter it
+                    under Join with code. One use, {expiresIn(invite.expiresAt)}.
+                  </Text>
+                </View>
               ) : null}
             </View>
           );
@@ -385,6 +447,42 @@ const styles = StyleSheet.create({
     color: '#f2efe8',
     fontSize: 13,
     fontWeight: '600',
+  },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  smallOutlineButton: {
+    borderWidth: 1,
+    borderColor: '#1f6b4a',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  smallOutlineButtonText: {
+    color: '#1f6b4a',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  inviteBox: {
+    backgroundColor: '#eae7dd',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 6,
+    gap: 4,
+  },
+  inviteCode: {
+    fontFamily: 'monospace',
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: 2,
+    color: '#1a1c16',
+  },
+  inviteHint: {
+    fontSize: 13,
+    color: '#1a1c16',
+    opacity: 0.75,
+    lineHeight: 18,
   },
   secondaryButton: {
     marginTop: 16,

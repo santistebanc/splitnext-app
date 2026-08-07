@@ -1,10 +1,16 @@
 import * as Crypto from 'expo-crypto';
-import { createGroupRemote } from '@/src/api/edge';
+import {
+  createGroupRemote,
+  createInviteRemote,
+  redeemInviteRemote,
+} from '@/src/api/edge';
 import { bindingIsOpen } from '@/src/domain/assumedMember';
+import { normalizeInviteCode } from '@/src/domain/inviteCode';
 import { splitEqually } from '@/src/domain/split';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   addLobbyGroupId,
+  getAccessToken,
   listLobbyGroupIds,
   saveAccessToken,
 } from '@/src/secrets/tokens';
@@ -240,6 +246,103 @@ export async function bindMe(
     },
   ]);
   await flushQueue(groupId);
+}
+
+/** What the hub shows after minting an invite. */
+export type Invite = {
+  /** Plaintext, and only ever in memory — the server keeps a hash. */
+  code: string;
+  expiresAt: string;
+};
+
+/**
+ * Mint a one-time code that binds whoever redeems it to this member.
+ *
+ * Nothing is written locally: an invite is not an entity of this group, it is
+ * a capability the server issues. That is why it does not go through the queue
+ * and why it needs the network — there is no offline version of "grant
+ * somebody else access".
+ */
+export async function createInvite(
+  groupId: string,
+  memberId: string,
+): Promise<Invite | null> {
+  const store$ = getGroupStore(groupId);
+  const accessToken = await getAccessToken(groupId);
+  if (!accessToken) {
+    store$.lastError.set(syncError('missing_token'));
+    return null;
+  }
+  const deviceUserId = await getOrCreateDeviceUserId();
+
+  try {
+    const { code, expires_at } = await createInviteRemote({
+      group_id: groupId,
+      device_user_id: deviceUserId,
+      access_token: accessToken,
+      member_id: memberId,
+    });
+    store$.lastError.set(null);
+    return { code, expiresAt: expires_at };
+  } catch (err) {
+    store$.lastError.set(
+      syncError(
+        'invite_failed',
+        err instanceof Error ? err.message : 'invite_failed',
+      ),
+    );
+    return null;
+  }
+}
+
+/**
+ * Join a group this device has never seen, using a code someone read to us.
+ *
+ * The mirror of `createGroup`: both start from a device holding nothing and
+ * end with a token in the keychain, the group in the lobby and a live wake
+ * subscription. The difference is that the bind already exists — the server
+ * wrote it, because the code named the member — so this device arrives already
+ * being someone, with no This-is-me to tap.
+ *
+ * Throws rather than recording a sync error: there is no group store to record
+ * it in until this succeeds, so the caller (the lobby) owns the message.
+ */
+export async function redeemInvite(
+  rawCode: string,
+): Promise<{ groupId: string; memberId: string }> {
+  const code = normalizeInviteCode(rawCode);
+  const deviceUserId = await getOrCreateDeviceUserId();
+
+  const { access_token, group, member_id } = await redeemInviteRemote({
+    device_user_id: deviceUserId,
+    code,
+  });
+
+  // Token before lobby: a group listed on a device that cannot authenticate
+  // for it is a hub that opens and then fails every sync.
+  await saveAccessToken(group.id, access_token);
+  await addLobbyGroupId(group.id);
+
+  const store$ = getGroupStore(group.id);
+  store$.group.set(group);
+  store$.syncStatus.set('on_server');
+  store$.lastError.set(null);
+
+  try {
+    await startWakeSubscription(group.id);
+  } catch {
+    // Same as opening any group: live updates are a bonus, not a gate.
+  }
+
+  // Pull the roster now so the hub opens with members, expenses and the bind
+  // the server just wrote, rather than empty for a beat.
+  try {
+    await syncGroup(group.id);
+  } catch {
+    // Already recorded on the store by the sync path; joining still worked.
+  }
+
+  return { groupId: group.id, memberId: member_id };
 }
 
 /** Flush outbound queue then pull remote group + roster. Serialized per group. */

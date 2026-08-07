@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assumedMemberIdFromBinds,
   bindingIsOpen,
+  memberHasLiveBind,
 } from './assumedMember';
 import type { BindEntity, ExpenseEntity } from '../types/group';
 
@@ -78,5 +79,51 @@ describe('bindingIsOpen', () => {
       f: expense({ id: 'f' }),
     };
     expect(bindingIsOpen(expenses)).toBe(false);
+  });
+});
+
+describe('memberHasLiveBind', () => {
+  it('is false for a member nobody has claimed', () => {
+    const binds = { a: bind({ id: 'a', member_id: 'm1' }) };
+    expect(memberHasLiveBind(binds, 'm2')).toBe(false);
+  });
+
+  it('is true once some device holds a live bind on them', () => {
+    const binds = { a: bind({ id: 'a', member_id: 'm1' }) };
+    expect(memberHasLiveBind(binds, 'm1')).toBe(true);
+  });
+
+  it('is true regardless of which device holds it', () => {
+    const binds = {
+      a: bind({ id: 'a', member_id: 'm1', device_user_id: 'someone-else' }),
+    };
+    expect(memberHasLiveBind(binds, 'm1')).toBe(true);
+  });
+
+  it('ignores soft-deleted binds, so a released slot is invitable again', () => {
+    const binds = {
+      a: bind({
+        id: 'a',
+        member_id: 'm1',
+        deleted_at: '2026-01-02T00:00:00.000Z',
+      }),
+    };
+    expect(memberHasLiveBind(binds, 'm1')).toBe(false);
+  });
+
+  it('one live bind among tombstones still counts as claimed', () => {
+    const binds = {
+      a: bind({
+        id: 'a',
+        member_id: 'm1',
+        deleted_at: '2026-01-02T00:00:00.000Z',
+      }),
+      b: bind({ id: 'b', member_id: 'm1', device_user_id: 'd2' }),
+    };
+    expect(memberHasLiveBind(binds, 'm1')).toBe(true);
+  });
+
+  it('is false when there are no binds at all', () => {
+    expect(memberHasLiveBind({}, 'm1')).toBe(false);
   });
 });
