@@ -2023,30 +2023,38 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 .shot a{display:block;line-height:0;background:var(--surface-2)}
 .shot img,.shot video{display:block;width:100%;height:auto;background:var(--surface-2)}
 .shot.clip{outline:none}
-/* The flow's clip sits beside its prose, phone-shaped and small: it is a
-   figure in the margin, not the subject of the card. It takes its own grid
-   column rather than floating — a float taller than the card spills over the
-   flow below it, which on a page of stacked cards reads as a broken layout. */
 /* Hidden until the steps are — a collapsed card is a summary, and a video
    playing beside two lines of prose reads as the subject rather than the
    evidence. Opening the steps is the moment a reader wants to check them. */
 .fcase > .fclip{display:none;margin:0;border:1px solid var(--line);
   background:var(--surface-2);line-height:0}
-.fcase.open:has(.fclip){display:grid;grid-template-columns:minmax(0,1fr) auto;
-  column-gap:var(--sp-3)}
-.fcase.open:has(.fclip) > *{grid-column:1}
-/* Must outrank the `> *` rule above, or the clip lands in the prose column
-   and pushes the flow's own title down the card. */
-.fcase.open > .fclip{display:block;grid-column:2;grid-row:1 / span 30;
-  align-self:start}
-/* Sized to be read, not to be hovered. An expanded card is tall enough to
-   carry it, and an earlier hover-to-zoom version covered the card's own fold
-   button — the clip must never sit on top of the control that dismisses it. */
-.fclip video{display:block;height:min(52vh,420px);width:auto;max-width:100%}
-@media (max-width:720px){
-  .fcase:has(.fclip){display:block}
-  .fcase > .fclip{margin:var(--sp-2) 0}
-  .fclip video{height:auto;width:100%;max-width:260px}
+/* Narrow first: the clip stacks above the prose, where its markup position
+   already puts it, and the steps keep the full width of the card. A
+   phone-shaped figure in a second column on a narrow page leaves the prose a
+   sliver to wrap in. Bounded by viewport height, not just width — a 260px-wide
+   phone clip sized by aspect alone runs ~560px tall and fills a small screen
+   on its own, so the entry it belongs to is nowhere in sight. max-content so
+   the frame hugs the clip instead of trailing a band of empty surface. */
+.fcase.open > .fclip{display:block;margin:var(--sp-2) 0;width:max-content;max-width:100%}
+.fclip video{display:block;height:min(38vh,300px);width:auto;max-width:100%}
+/* Wide enough for a margin figure — the page is still two columns here (see
+   the responsive block), so the card can afford one too. The clip moves out of
+   the flow into its own column: a figure in the margin, not the subject of the
+   card. A grid column rather than a float, because a float taller than the
+   card spills onto the flow below it, which on a page of stacked cards reads
+   as a broken layout. */
+@media (min-width:881px){
+  .fcase.open:has(.fclip){display:grid;grid-template-columns:minmax(0,1fr) auto;
+    column-gap:var(--sp-3)}
+  .fcase.open:has(.fclip) > *{grid-column:1}
+  /* Must outrank the `> *` rule above, or the clip lands in the prose column
+     and pushes the flow's own title down the card. */
+  .fcase.open:has(.fclip) > .fclip{grid-column:2;grid-row:1 / span 30;
+    align-self:start;margin:0}
+  /* Sized to be read, not to be hovered. An expanded card is tall enough to
+     carry it, and an earlier hover-to-zoom version covered the card's own fold
+     button — the clip must never sit on top of the control that dismisses it. */
+  .fclip video{height:min(52vh,420px)}
 }
 .shot a:hover{outline:2px solid var(--accent);outline-offset:-2px}
 .shot figcaption{font:700 .65rem var(--sans);letter-spacing:.08em;text-transform:uppercase;
