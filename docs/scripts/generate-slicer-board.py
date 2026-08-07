@@ -1121,25 +1121,34 @@ def render() -> str:
         deep = "" if depth is None else f' data-depth="{depth}"'
         fold = ""
         if kids is not None:
-            # Same rule the flow cases follow: the button carries the count, so
-            # a closed row still says how much is behind it. A leaf has no count
-            # to carry and says what is there instead — its one sentence.
-            label = f"{kids} call{'s' if kids != 1 else ''}" if kids else "what for"
+            # Shut, the row is its name and its area — everything else is what
+            # opening it is for. The chevron is the only affordance: solid when
+            # there are children under it, hollow when opening only reveals the
+            # row's own detail, so a parent still reads apart from a leaf.
             deep += f' data-kids="{kids}"'
+            label = (
+                f"Expand — {kids} call{'s' if kids != 1 else ''}"
+                if kids
+                else "Expand — what it is for"
+            )
             fold = (
-                f'<button type="button" class="fold" aria-expanded="false">'
-                f"{label}</button>"
+                f'<button type="button" class="tfold{"" if kids else " leaf"}" '
+                f'aria-expanded="false" aria-label="{esc(label)}" '
+                f'title="{esc(label)}">'
+                '<svg class="tchev" viewBox="0 0 16 16" width="11" height="11" '
+                'aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg>'
+                "</button>"
             )
         return f"""
 <div class="row{extra}" id="{esc(node_id)}" data-kind="{esc(e['kind'])}" data-search="{esc(row_search(e))}"{deep} style="--sc:{kind_slot[e['kind']]}">
   <div class="rmain">
     <div class="rhead">
-      {fold}
       {kind_icon(e['kind'])}
       <h4><a class="self" href="#{esc(node_id)}">{esc(e['name'])}</a></h4>
       {source_ref(e['where'], e['name'])}
       {tag}
       <span class="weights">{used_badge(e['id'])}{callers_badge(e['id'])}</span>
+      {fold}
     </div>
     <p class="one">{chipify_logic_ids(e['what'])}</p>
   </div>
@@ -1975,15 +1984,32 @@ h3+.rows,h3+.scroll,h3+.split,h3+.statbar,h3+.fcase,h3+p,h3+ul{margin-top:var(--
 .trow[data-depth]:not([data-depth="0"]) .rmain{
   box-shadow:inset calc(1rem + (var(--d) - 1) * .9rem + .25rem) 0 0 -.5rem var(--line-strong)}
 /* Closed is the resting state: a tree that opens 91 rows at once is a longer
-   flat list with indentation. Shut, a row is its headline; open, it is its
-   sentence and its children — each of them shut in turn. */
-.trow:not(.open) .one{display:none}
-/* The disclosure leads the row rather than trailing it. At the end it was the
-   first thing to wrap, so every collapsed child took two lines — and a control
-   you scan down a column for should sit in a column. */
-.trow .rhead .fold{margin-left:0;min-width:5.4rem;text-align:left;flex:none}
-/* the count already carries `margin-left:auto`, so anything after it hugs the
-   right edge on its own — a second auto margin would split the gap instead */
+   flat list with indentation. Shut, a row is only its name and the area it
+   runs in — the path, the two counts and the sentence are what opening it is
+   for. Four things on a closed row is a list; two is a tree you can scan. */
+.trow:not(.open) .one,
+.trow:not(.open) .rhead .ref,
+.trow:not(.open) .weights{display:none}
+/* Shut, the area tag is the last thing before the chevron, so it takes the
+   free space; open, `.weights` already owns that auto margin. One at a time,
+   or the two split the gap between them. */
+.trow:not(.open) .rarea{margin-left:auto}
+/* The whole row is the target — the chevron marks it, but a 11px triangle is
+   not the thing to ask anyone to hit. */
+.trow[data-kids] .rmain{cursor:pointer}
+.trow[data-kids]:hover .rhead .tfold{color:var(--accent);border-color:var(--accent)}
+.tfold{flex:none;margin-left:.6rem;display:inline-flex;align-items:center;
+  justify-content:center;width:1.35rem;height:1.35rem;padding:0;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--faint);
+  cursor:pointer}
+.tfold:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tchev{fill:currentColor;transition:transform .12s ease}
+.trow.open .tchev{transform:rotate(90deg)}
+/* Hollow means opening reveals only this row's own detail — there is nothing
+   under it. Without the difference a leaf and a parent look identical until
+   you click, which is the question the tree exists to answer. */
+.tfold.leaf{background:none}
+.tfold.leaf .tchev{fill:none;stroke:currentColor;stroke-width:1.4}
 .area-title #tree-all{text-transform:none;letter-spacing:0}
 .trow.stub .rmain{padding-top:.4rem;padding-bottom:.4rem;opacity:.72}
 .trow.stub .rhead h4{font-weight:400}
@@ -2412,8 +2438,12 @@ function apply(){
     el.classList.toggle('is-hidden',!vis);
     el.classList.toggle('is-context',vis&&!self[i]);
     el.classList.toggle('open',!!treeOpen[i]);
-    const btn=el.querySelector('.fold');
-    if(btn)btn.setAttribute('aria-expanded',String(!!treeOpen[i]));
+    const btn=el.querySelector('.tfold');
+    if(btn){
+      btn.setAttribute('aria-expanded',String(!!treeOpen[i]));
+      const what=btn.dataset.what||(btn.dataset.what=btn.title.replace(/^\w+ — /,''));
+      btn.title=btn.ariaLabel=(treeOpen[i]?'Collapse — ':'Expand — ')+what;
+    }
   });
   syncTreeAll();
 
@@ -2447,7 +2477,7 @@ chips.forEach(b=>b.addEventListener('click',()=>{
 const treeAll=$('#tree-all');
 // A stub has nothing behind it, so it is not a fold and must not be counted as
 // one — otherwise "Expand all" never finishes, whatever the reader opens.
-const foldable=treeNodes.map(el=>!!el.querySelector('.fold'));
+const foldable=treeNodes.map(el=>!!el.querySelector('.tfold'));
 function syncTreeAll(){
   if(!treeAll)return;
   const open=foldable.some(Boolean)&&foldable.every((f,i)=>!f||treeOpen[i]);
@@ -2455,8 +2485,17 @@ function syncTreeAll(){
   treeAll.textContent=open?'Collapse all':'Expand all';
 }
 treeNodes.forEach((el,i)=>{
-  const btn=el.querySelector('.fold');
-  if(btn)btn.addEventListener('click',()=>{treeOpen[i]=!treeOpen[i];apply();});
+  if(!foldable[i])return;
+  el.querySelector('.rmain').addEventListener('click',ev=>{
+    // The row is the target, but it still carries a permalink and a path chip.
+    // A click that lands on either of those means "go there", not "open this".
+    if(ev.target.closest('a'))return;
+    // Selecting the sentence to copy it should not shut the row underneath.
+    const sel=getSelection();
+    if(sel&&!sel.isCollapsed&&el.contains(sel.anchorNode))return;
+    treeOpen[i]=!treeOpen[i];
+    apply();
+  });
 });
 if(treeAll)treeAll.addEventListener('click',()=>{
   const open=treeAll.getAttribute('aria-pressed')!=='true';

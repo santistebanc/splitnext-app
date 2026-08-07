@@ -17,7 +17,7 @@ The map could say what each piece is and how much of the product leans on it. It
 - **The trap was real, and measuring first is what caught it.** `LOGIC.md` lists deep modules and omits private helpers, so a mapped symbol's own declaration often holds none of its real calls: `flushQueue` (`src/sync/outbound.ts:52`) only delegates to `flushQueueInner`, which holds all nine. Extent-scoped detection reported it as calling nothing and promoted it to an entry point beside the screens. Following unmapped local helpers — and stopping at any name the map claims — fixed it and dropped the bogus roots from 13 to 10 (D-035).
 - **It is a DAG, so nesting had to be decided rather than assumed.** 14 symbols have more than one caller and `getGroupStore` has 12; unfolding every occurrence is 217 nodes for 49 symbols. Each expands once at its shallowest position and stubs elsewhere, naming its home: 49 rows and 42 stubs.
 - **The entry points fell out for free.** Nothing calls the 3 screens, the 5 Edge Functions, `persistPlugin` or `publishWake` — that list is the graph's answer, not an assertion anyone maintains.
-- **It rests closed.** Ten rows, not ninety-one. An always-open tree is a longer flat list with indentation: opening a symbol shows its sentence *and* its children, each shut in turn, so the reader walks a path instead of being handed the graph (D-038).
+- **It rests closed, and a shut row is two things.** Ten rows, not ninety-one; each is a name and the area it runs in (D-038, D-039). The path, both counts and the sentence are what opening it is for, the whole row is the target, and a chevron on the right says whether opening it reveals children or just that row's own detail — solid or hollow.
 - **The derived part is gated.** `npm run test:board` runs 21 Python tests over the resolver in CI (D-037). A graph that silently under-reports still looks authoritative, which is worse than no graph.
 
 ### Before → After
@@ -25,7 +25,7 @@ The map could say what each piece is and how much of the product leans on it. It
 | Aspect | Before | After |
 | --- | --- | --- |
 | Symbols page | One view, grouped by area, ordered by flow weight | Flat (default, unchanged) and Tree, switched in the topbar |
-| Reading the tree | — | Rests closed at 10 entry points; folds carry their child count, search opens the path to its hits |
+| Reading the tree | — | Rests closed at 10 entry points, a shut row being name + area; the row is the toggle, a solid/hollow chevron marks it, and search opens the path to its hits |
 | "What calls this?" | Unanswerable without grepping | `N callers` on every row; Tree nests callees under callers |
 | Entry points | Inferred from area order | The tree's roots, derived |
 | Call graph | Nowhere | `docs/scripts/callgraph.py`, read from source at generation time |
@@ -49,9 +49,13 @@ The map could say what each piece is and how much of the product leans on it. It
 | `resolve` | entry whose `where` no longer exists | Empty edge list, not a crash. The map can name a piece the tree has already moved. |
 | `resolve` | read/write pair calling its other half (`saveAccessToken` → `getAccessToken`) | No self-edge. Two names under one id are one idea; an internal call is not a relationship between two pieces. |
 | `plan_tree` | a cycle no root can reach | Seeded as its own root into a **Not reached from any entry point** group. Zero cycles today, but a dropped symbol would be invisible and the count would silently disagree with Flat. |
+| Tree row | shut | Its name and its area, nothing else — 45px, one line. The path, both counts and the sentence are what opening it is for (D-039). |
+| Tree row | click anywhere on it | Toggles. Clicks landing on the row's permalink or its path chip still navigate, and a text selection inside the row does not shut it underneath. |
+| Chevron | row has children vs is a leaf | Solid vs hollow. Without the difference the two look identical until you click, which is the question the tree exists to answer. 26 solid, 23 hollow today. |
+| Chevron | keyboard | A real `<button>`: focusable, answers Enter, and `aria-expanded` plus its label track the state (`Collapse — 3 calls`). The row-wide handler catches its click by bubbling, so it toggles once, not twice. |
 | Tree view | at rest | Closed to its 10 entry points, not 91 rows. An always-open tree is a longer flat list with indentation — it shows structure without letting anyone use it. |
 | Tree view | opening a node | Reveals its own sentence and its children, each closed in turn. The fold carries the child count so a closed row still says how much is behind it; a leaf says `what for`, since its sentence is what is behind it. |
-| Tree fold | fold placed at the end of the row | Tried first, and wrong: at 900px it wrapped on nearly every row, so every collapsed child took two lines and the compactness the fold bought was spent on the fold. Moved to the front of the row, where the disclosure column can be scanned. |
+| Tree fold | counted fold (`11 calls`) at the end of the row, then at the front | Both tried and both replaced. At the end it wrapped at 900px, so every shut child took two lines; at the front it read as a column but still put four things on a shut row. The chevron on the right, with the row as the target, is what stuck (D-039). |
 | Tree row | narrower than 1200px | Path, area and the two counts wrap to a second line. Correct per rule 19, but the board stills are shot at 1200 so they document the layout rather than the narrow case. |
 | Expand all | reader opens every foldable row by hand | Button flips to Collapse all. Stubs are excluded from the check — they have nothing behind them, and counting them meant the toggle could never read as finished. |
 | Deep link | `#tree-L-edgeRoster`, four levels down and behind shut parents | Router opens every ancestor before scrolling. Verified: the target is visible on arrival. |
@@ -65,8 +69,8 @@ The map could say what each piece is and how much of the product leans on it. It
 
 ### Shots
 
-- `0009-symbols-tree.png` — Tree at rest: ten entry points, each closed, the fold carrying what is behind it.
-- `0009-symbols-tree-open.png` — `Group hub` opened one level: its own sentence, then its eleven children, each closed in turn, with indentation rails, area tags and the `N flows · N callers` pair.
+- `0009-symbols-tree.png` — Tree at rest: ten entry points, each a name and an area, with a solid or hollow chevron on the right.
+- `0009-symbols-tree-open.png` — `Group hub` opened one level: its path, counts and sentence appear, then its eleven children, each shut, with indentation rails and their own chevrons.
 - `0009-symbols-tree-search.png` — searching `roster` in Tree: `syncGroup → pullRoster → listRoster` as hits, with `Group hub` and `openGroup` dimmed as the ancestors holding them up.
 - `0009-symbols-flat.png` — Flat view, unchanged apart from the new caller count.
 
@@ -87,6 +91,7 @@ Captured with `node docs/scripts/capture-board.mjs --slice 0009`, written this s
 - D-036 — Tree expands each symbol once at its shallowest position, stubs elsewhere
 - D-037 — board tooling is tested by `npm run test:board`, gated in CI
 - D-038 — Tree rests closed at its entry points; opening a symbol reveals its sentence and its children
+- D-039 — a shut row is name + area, the whole row toggles, and a solid/hollow chevron marks it (narrows D-038)
 
 ### Diff pulse
 
