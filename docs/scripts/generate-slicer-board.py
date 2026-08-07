@@ -1108,18 +1108,33 @@ def render() -> str:
         ).lower()
 
     def logic_row(e: dict, node_id: str, extra: str = "", depth: int | None = None,
-                  tag: str = "") -> str:
+                  tag: str = "", kids: int | None = None) -> str:
         """One symbol, in the one shape both views use.
 
         Flat and Tree render the same row through here on purpose: two copies
         of it would drift, and then the same piece would read differently
         depending on which view you found it in.
+
+        `kids` turns the row into a fold — Tree only. Flat is a list and folding
+        a list hides the thing it exists to show.
         """
         deep = "" if depth is None else f' data-depth="{depth}"'
+        fold = ""
+        if kids is not None:
+            # Same rule the flow cases follow: the button carries the count, so
+            # a closed row still says how much is behind it. A leaf has no count
+            # to carry and says what is there instead — its one sentence.
+            label = f"{kids} call{'s' if kids != 1 else ''}" if kids else "what for"
+            deep += f' data-kids="{kids}"'
+            fold = (
+                f'<button type="button" class="fold" aria-expanded="false">'
+                f"{label}</button>"
+            )
         return f"""
 <div class="row{extra}" id="{esc(node_id)}" data-kind="{esc(e['kind'])}" data-search="{esc(row_search(e))}"{deep} style="--sc:{kind_slot[e['kind']]}">
   <div class="rmain">
     <div class="rhead">
+      {fold}
       {kind_icon(e['kind'])}
       <h4><a class="self" href="#{esc(node_id)}">{esc(e['name'])}</a></h4>
       {source_ref(e['where'], e['name'])}
@@ -1155,7 +1170,10 @@ def render() -> str:
 
     def tree_rows(eid: str, depth: int, out: list) -> None:
         e = LOGIC_BY_ID[eid]
-        out.append(logic_row(e, f"tree-{eid}", " trow", depth, area_tag(e)))
+        out.append(
+            logic_row(e, f"tree-{eid}", " trow", depth, area_tag(e),
+                      kids=len(CALLS.get(eid, ())))
+        )
         for child in CALLS.get(eid, ()):
             kid = LOGIC_BY_ID[child]
             if tree.expands_here(eid, child):
@@ -1185,7 +1203,9 @@ def render() -> str:
     tree_sections = [
         '<section class="logic-area"><h3 class="area-title">Entry points'
         f"<u>{len(tree.roots)}</u>"
-        "<em>what nothing else calls — where the world touches the app</em></h3>"
+        "<em>what nothing else calls — where the world touches the app</em>"
+        '<button type="button" class="btn" id="tree-all" aria-pressed="false">'
+        "Expand all</button></h3>"
         f'<div class="rows">{"".join(tree_body)}</div></section>'
     ]
     if tree.unreached:
@@ -1954,6 +1974,17 @@ h3+.rows,h3+.scroll,h3+.split,h3+.statbar,h3+.fcase,h3+p,h3+ul{margin-top:var(--
 .trow[data-depth="7"]{--d:7}.trow[data-depth="8"]{--d:8}.trow[data-depth="9"]{--d:9}
 .trow[data-depth]:not([data-depth="0"]) .rmain{
   box-shadow:inset calc(1rem + (var(--d) - 1) * .9rem + .25rem) 0 0 -.5rem var(--line-strong)}
+/* Closed is the resting state: a tree that opens 91 rows at once is a longer
+   flat list with indentation. Shut, a row is its headline; open, it is its
+   sentence and its children — each of them shut in turn. */
+.trow:not(.open) .one{display:none}
+/* The disclosure leads the row rather than trailing it. At the end it was the
+   first thing to wrap, so every collapsed child took two lines — and a control
+   you scan down a column for should sit in a column. */
+.trow .rhead .fold{margin-left:0;min-width:5.4rem;text-align:left;flex:none}
+/* the count already carries `margin-left:auto`, so anything after it hugs the
+   right edge on its own — a second auto margin would split the gap instead */
+.area-title #tree-all{text-transform:none;letter-spacing:0}
 .trow.stub .rmain{padding-top:.4rem;padding-bottom:.4rem;opacity:.72}
 .trow.stub .rhead h4{font-weight:400}
 .trow.stub .rhead h4 a{color:var(--muted)}
@@ -2268,6 +2299,10 @@ const rows=$$('#symbols .view-flat .row'), flows=$$('#flows .fcase');
 const areas=$$('#symbols .view-flat .logic-area');
 const treeNodes=$$('#symbols .view-tree .trow');
 const treeDepth=treeNodes.map(el=>+el.dataset.depth||0);
+// Every node starts shut. The DOM is one flat list — a node's descendants are
+// the rows after it with a greater depth — so open state lives here rather
+// than in the markup's shape.
+const treeOpen=treeNodes.map(()=>false);
 const allCases=$$('.fcase');   // Flows page + the ones inlined on Newest slice
 const newest=$('#newest');
 const chips=$$('.chip-filter'), viewBtns=$$('.view-btn');
@@ -2309,7 +2344,10 @@ function route(){
   const el=document.getElementById(h);
   // A link into Symbols has to land on the view that holds its target, or it
   // scrolls to a row the current view has hidden and the page looks broken.
-  if(el&&el.classList.contains('row'))setView(el.classList.contains('trow')?'tree':'flat');
+  if(el&&el.classList.contains('row')){
+    setView(el.classList.contains('trow')?'tree':'flat');
+    if(el.classList.contains('trow')){openTreePathTo(el);apply();}
+  }
   if(el&&el.classList.contains('page'))return show(h);
   const p=pageOf(el);
   if(p)return show(p.id,h);
@@ -2358,10 +2396,26 @@ function apply(){
       if(treeDepth[j]<d){show[j]=true;d=treeDepth[j];}
     }
   }
+  // A hit four levels down is no use behind three shut parents, so filtering
+  // opens the path to whatever it kept. Same rule the flow cases follow.
+  if(query||kind!=='all')show.forEach((v,i)=>{if(v)treeOpen[i]=true;});
+
+  // Walk once, carrying the depth at which the nearest shut ancestor cuts
+  // everything off. `show` is already closed under ancestors, so a row hidden
+  // by the filter can never strand a visible child.
+  let closedAt=Infinity;
   treeNodes.forEach((el,i)=>{
-    el.classList.toggle('is-hidden',!show[i]);
-    el.classList.toggle('is-context',show[i]&&!self[i]);
+    const d=treeDepth[i];
+    if(d<closedAt)closedAt=Infinity;
+    const vis=show[i]&&d<closedAt;
+    if(vis&&!treeOpen[i])closedAt=d+1;
+    el.classList.toggle('is-hidden',!vis);
+    el.classList.toggle('is-context',vis&&!self[i]);
+    el.classList.toggle('open',!!treeOpen[i]);
+    const btn=el.querySelector('.fold');
+    if(btn)btn.setAttribute('aria-expanded',String(!!treeOpen[i]));
   });
+  syncTreeAll();
 
   const newestHit=!newest||!newest.dataset.search||!query||
     (newest.dataset.search||'').includes(query);
@@ -2389,6 +2443,37 @@ chips.forEach(b=>b.addEventListener('click',()=>{
   kind=b.dataset.kind||'all';
   apply();
 }));
+// ---------- tree folding ----------
+const treeAll=$('#tree-all');
+// A stub has nothing behind it, so it is not a fold and must not be counted as
+// one — otherwise "Expand all" never finishes, whatever the reader opens.
+const foldable=treeNodes.map(el=>!!el.querySelector('.fold'));
+function syncTreeAll(){
+  if(!treeAll)return;
+  const open=foldable.some(Boolean)&&foldable.every((f,i)=>!f||treeOpen[i]);
+  treeAll.setAttribute('aria-pressed',String(open));
+  treeAll.textContent=open?'Collapse all':'Expand all';
+}
+treeNodes.forEach((el,i)=>{
+  const btn=el.querySelector('.fold');
+  if(btn)btn.addEventListener('click',()=>{treeOpen[i]=!treeOpen[i];apply();});
+});
+if(treeAll)treeAll.addEventListener('click',()=>{
+  const open=treeAll.getAttribute('aria-pressed')!=='true';
+  treeOpen.fill(open);
+  apply();
+});
+/** Open every ancestor of a tree row, so a link into it lands on something. */
+function openTreePathTo(el){
+  const i=treeNodes.indexOf(el);
+  if(i<0)return;
+  treeOpen[i]=true;
+  let d=treeDepth[i];
+  for(let j=i-1;j>=0&&d>0;j--){
+    if(treeDepth[j]<d){treeOpen[j]=true;d=treeDepth[j];}
+  }
+}
+
 function setView(v){
   view=v;
   $('#symbols').dataset.view=v;

@@ -14,6 +14,7 @@ Symbols lists 49 pieces of behaviour and says how many flows lean on each. It ca
 | "What calls this?" | Unanswerable without grepping the tree | Every row carries `N callers`; Tree nests callees under their callers |
 | Entry points | Implicit — a reader infers them from the area order | Explicit — Tree's roots are the 3 screens, the 5 Edge Functions, `persistPlugin` and `publishWake`, and they fall out of the graph rather than being listed |
 | Call graph | Nowhere | Derived at generation time from the source, in `docs/scripts/callgraph.py` |
+| Reading the tree | — | Rests closed at its entry points; a fold carries its child count, and opening a symbol shows its sentence and its children |
 | Board gates | `npm test` (Vitest) + `npm run typecheck` | Plus `npm run test:board` — Python unit tests over the resolver, run in CI |
 
 ## What the data actually looks like
@@ -61,6 +62,7 @@ Fixture-based — small synthetic source files under `docs/scripts/fixtures/`, n
 - **D-034** — The call graph is derived from source at generation time, never authored in `LOGIC.md`. An authored `uses` column goes stale within a slice, and the board's own rule is that weight is measured, not asserted.
 - **D-035** — Call resolution follows unmapped local helpers transitively within a file, and stops at any name `LOGIC.md` maps. The map lists deep modules, so the calls that matter usually sit one private hop below the mapped name.
 - **D-036** — Tree expands each symbol once at its shallowest position and stubs every other occurrence. Full unfolding is 4.4× the rows for the same 49 symbols, and a view of the map whose row count does not match the map is not a view of the map.
+- **D-038** — Tree rests closed at its entry points; opening a symbol reveals its sentence and its children, each closed in turn. An always-open tree is a longer flat list with indentation.
 - **D-037** — Board tooling is tested by `npm run test:board` (Python), gated in CI alongside `npm test`. The generator is Python and the suite is Vitest; porting one function to TS to reach the runner would split the tool across two languages for no gain.
 
 ## Edge paths
@@ -73,6 +75,12 @@ Fixture-based — small synthetic source files under `docs/scripts/fixtures/`, n
 | `resolve` | entry whose `where` no longer exists | Empty edge list, not a crash. The map can name a piece the tree has already moved. |
 | `resolve` | read/write pair calling its other half (`saveAccessToken` → `getAccessToken`) | No self-edge. Two names under one id are one idea; an internal call is not a relationship between two pieces. |
 | `plan_tree` | a cycle no root can reach | Seeded as its own root into a **Not reached from any entry point** group. Zero cycles today, but a dropped symbol would be invisible and the count would silently disagree with Flat. |
+| Tree view | at rest | Closed to its 10 entry points, not 91 rows. An always-open tree is a longer flat list with indentation — it shows structure without letting anyone use it. |
+| Tree view | opening a node | Reveals its own sentence and its children, each closed in turn. The fold carries the child count so a closed row still says how much is behind it; a leaf says `what for`, since its sentence is what is behind it. |
+| Tree fold | fold placed at the end of the row | Tried first, and wrong: at 900px it wrapped on nearly every row, so every collapsed child took two lines and the compactness the fold bought was spent on the fold. Moved to the front of the row, where the disclosure column can be scanned. |
+| Tree row | narrower than 1200px | Path, area and the two counts wrap to a second line. Correct per rule 19, but the board stills are shot at 1200 so they document the layout rather than the narrow case. |
+| Expand all | reader opens every foldable row by hand | Button flips to Collapse all. Stubs are excluded from the check — they have nothing behind them, and counting them meant the toggle could never read as finished. |
+| Deep link | `#tree-L-edgeRoster`, four levels down and behind shut parents | Router opens every ancestor before scrolling. Verified: the target is visible on arrival. |
 | Tree view | a symbol with 12 callers | Expands once under `Group hub`, stubs elsewhere naming their home. 49 expanded + 42 stubs, against 217 nodes if every occurrence expanded. |
 | Search in Tree | a match four levels down | Ancestors are kept and dimmed as context; hiding them would orphan the hit. Counts stay measured on the flat rows so the rail cannot double-count the same symbol. |
 | Deep link | `#L-syncGroup` arriving while Tree is the remembered view | Router reads the target's own view and switches to it. Without this the link scrolls to a row the current view has hidden and the page looks broken. |
