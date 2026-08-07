@@ -1,0 +1,60 @@
+name: pages
+
+# Publishes the slicer board to GitHub Pages on every push to main, so the
+# living map of the app is a URL rather than a local script run.
+#
+# The board is generated, not hand-written, so it is regenerated here from
+# docs/state/ instead of trusting the committed docs/slicer.html — a stale
+# commit of the board can never become the published one.
+#
+# Media paths inside the board are relative (state/shots/...), so the whole
+# docs/ directory ships as the site root, with slicer.html copied to
+# index.html so the bare Pages URL lands on the board.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push supersedes an in-flight one rather than
+# queueing behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Regenerate the board
+        run: python3 docs/scripts/generate-slicer-board.py
+
+      - name: Assemble the site
+        run: |
+          cp -r docs _site
+          cp docs/slicer.html _site/index.html
+          rm -rf _site/scripts/__pycache__
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
