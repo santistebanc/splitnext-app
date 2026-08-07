@@ -39,7 +39,7 @@ Last updated: slice 0009
 - Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Edge Functions — [slice 0007](slices/0007-allocations-balances.md)
 - Work the repo from any clone: the loop is vendored at `.claude/skills/`, `AGENTS.md` is the entry point, CI enforces the gates — [slice 0008](slices/0008-repo-home.md)
 - Read the board and use the app as URLs, both published by CI on every merge, with code chips linking to GitHub — [slice 0008](slices/0008-repo-home.md)
-- Invite someone to a named member slot with a one-time code, and join from a second device already bound as that person — slice 0009
+- Invite someone to a named member slot with a one-time code, and join from a second device already bound as that person — [slice 0009](slices/0009-member-invites.md)
 
 ## Stack
 

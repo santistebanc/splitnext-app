@@ -44,7 +44,7 @@
 
 ## Delivered
 
-- **Member invites** — delivered in slice 0009; per-member one-time codes, redeemed on a fresh device that arrives already bound. The deep-link half stays parked above.
+- **Member invites** — delivered in [slice 0009](slices/0009-member-invites.md); per-member one-time codes, redeemed on a fresh device that arrives already bound. The deep-link half stays parked above.
 
 - **Balances list (group hub home)** — delivered in [slice 0007](slices/0007-allocations-balances.md); derived Σ paid − Σ owed, most-negative first, You (Name) marked
 
