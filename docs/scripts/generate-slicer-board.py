@@ -14,6 +14,15 @@ ROOT = Path(__file__).resolve().parents[2]
 STATE = ROOT / "docs" / "state"
 OUT = ROOT / "docs" / "slicer.html"
 
+# The deployed web build, linked from the topbar. Absolute rather than relative
+# so the link works from a locally served board too — the local copy has no app
+# beside it, and a board that describes the app should be able to open it.
+LIVE_APP_URL = "https://santistebanc.github.io/splitnext-app/app/"
+
+# Where a path chip goes for a reader who is not the author: the file on GitHub.
+# A locally served board intercepts the click and opens the editor instead.
+REPO_BLOB = "https://github.com/santistebanc/splitnext-app/blob/main"
+
 
 def esc(s: str) -> str:
     return html.escape(s, quote=True)
@@ -67,6 +76,19 @@ def used_badge(ref: str) -> str:
 # path must go through the remote authority, or the editor looks for it on the
 # Windows filesystem and finds nothing.
 WSL_DISTRO = os.environ.get("WSL_DISTRO_NAME", "")
+
+
+def repo_url(rel_path: str, line: int | None = None, end: int | None = None) -> str:
+    """The file on GitHub. What a path chip points at for anyone but the author.
+
+    `main`, not a sha: the board is regenerated on every merge, so the branch
+    tip is exactly the tree the board describes — and a sha would go stale in
+    the committed copy the moment the next slice landed.
+    """
+    frag = ""
+    if line:
+        frag = f"#L{line}" + (f"-L{end}" if end and end > line else "")
+    return f"{REPO_BLOB}/{rel_path}{frag}"
 
 
 def editor_uri(
@@ -140,9 +162,11 @@ def source_ref(rel_path: str, name: str = "") -> str:
         return f'<code class="ref">{esc(rel_path)}</code>'
     label = f"{rel_path}:{line}" if line else rel_path
     return (
-        f'<a class="ref src" href="{esc(editor_uri(rel_path, line))}" '
+        f'<a class="ref src" href="{esc(repo_url(rel_path, line))}" '
         f'data-path="{esc(rel_path)}" data-line="{line or ""}" '
-        f'title="Open in Cursor">{esc(label)}</a>'
+        f'data-editor="{esc(editor_uri(rel_path, line))}" '
+        f'title="Open on GitHub — or in the editor, from a local board">'
+        f'{esc(label)}</a>'
     )
 
 
@@ -201,9 +225,9 @@ def change_ref(
 
     end_attr = f' data-end="{end}"' if end and line and end > line else ""
     return (
-        f'<a class="ref src change-loc" href="{esc(editor_uri(where, line))}" '
+        f'<a class="ref src change-loc" href="{esc(repo_url(where, line, end))}" '
         f'data-path="{esc(where)}" data-line="{line or ""}"{end_attr} '
-        f'data-mode="diff" '
+        f'data-editor="{esc(editor_uri(where, line))}" data-mode="diff" '
         f'title="{esc(tip)}">{esc(label)}</a>'
     )
 
@@ -871,8 +895,10 @@ def shots_html(shots: list[dict]) -> str:
             body = media
         else:
             body = (
-                f'<a class="shot-open" href="{esc(editor_uri(rel, None))}" '
-                f'data-path="{esc(rel)}" title="{esc(shot["file"])}">'
+                f'<a class="shot-open" href="{esc(repo_url(rel))}" '
+                f'data-path="{esc(rel)}" '
+                f'data-editor="{esc(editor_uri(rel, None))}" '
+                f'title="{esc(shot["file"])}">'
                 f'<img src="{src}" loading="lazy" '
                 f'alt="{esc(shot.get("caption") or shot["file"])}"></a>'
             )
@@ -1642,7 +1668,8 @@ def render() -> str:
             "what": e["what"],
             "used": len(USED_BY.get(e["id"], ())),
             "icon": kind_icon(e["kind"]),
-            "src": editor_uri(e["where"], symbol_line(e["where"], e["name"])),
+            "src": repo_url(e["where"], symbol_line(e["where"], e["name"])),
+            "editor": editor_uri(e["where"], symbol_line(e["where"], e["name"])),
             "line": symbol_line(e["where"], e["name"]) or "",
         }
         for area, rows in logic_areas
@@ -1756,6 +1783,10 @@ main{min-width:0;display:flex;flex-direction:column}
 .topbar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
   display:flex;align-items:center;gap:.6rem;padding:.6rem 1.6rem;flex-wrap:wrap}
 .crumb{font:.78rem var(--mono);color:var(--faint);margin-right:auto}
+/* The board describes the app; this is the app itself, one click away. */
+.livelink{font:.72rem var(--mono);text-decoration:none;color:var(--text);
+  border:1px solid var(--line);border-radius:999px;padding:.28rem .7rem;white-space:nowrap}
+.livelink:hover{border-color:var(--text)}
 .crumb b{color:var(--text);font-family:var(--sans);font-size:.86rem;font-weight:600}
 .filterbar{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap}
 .filterbar>b{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
@@ -2231,8 +2262,12 @@ function openPop(a){
   const where=$('#pop-where');
   where.textContent=d.where;
   if(d.src){
-    where.href=d.src; where.title='Open in Cursor';
+    // Same rule as a path chip: GitHub by default, editor only on a local board.
+    where.href=d.src;
+    where.title=servedLocally?'Open in Cursor':'Open on GitHub';
     where.dataset.path=d.where; where.dataset.line=d.line||'';
+    if(d.editor)where.dataset.editor=d.editor;
+    if(!servedLocally){where.target='_blank';where.rel='noopener';}
   } else {
     where.removeAttribute('href'); delete where.dataset.path;
   }
@@ -2266,9 +2301,14 @@ addEventListener('scroll',()=>{if(popAnchor)closePop();},true);
 addEventListener('resize',closePop);
 
 // ---------- open in the editor ----------
-// Served over http? Ask the helper to run `cursor -r -g`, which reuses the
-// window. On file:// fall through to the cursor:// href, which does not.
-const servedLocally=location.protocol==='http:'||location.protocol==='https:';
+// A path chip is a link to the file on GitHub, so it works for anyone reading
+// the published board. On a board served from this machine it means the other
+// thing: ask the helper to run `cursor -r -g`, which reuses the window.
+const servedLocally=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+// Published board: a chip leaves for GitHub, so send it to its own tab and
+// leave the reader's place on the board intact.
+if(!servedLocally)document.querySelectorAll('a.ref.src, a.shot-open')
+  .forEach(a=>{a.target='_blank';a.rel='noopener';});
 document.addEventListener('click',e=>{
   const a=e.target.closest && e.target.closest('a.ref.src, a.shot-open');
   if(!a||!servedLocally||!a.dataset.path)return;
@@ -2280,11 +2320,14 @@ document.addEventListener('click',e=>{
     mode:a.dataset.mode||'',
   });
   // if the helper is not there (plain static server), fall back to the scheme
+  // No helper (a plain static server on localhost)? Try the cursor:// scheme,
+  // then give up to the GitHub link the chip already carries.
+  const fallback=a.dataset.editor||a.href;
   fetch('/open?'+q).then(r=>{
     if(r.ok)return;
     a.classList.add('open-failed');
-    if(r.status===404||r.status===501)location.href=a.href;
-  }).catch(()=>{a.classList.add('open-failed');location.href=a.href;});
+    if(r.status===404||r.status===501)location.href=fallback;
+  }).catch(()=>{a.classList.add('open-failed');location.href=fallback;});
 });
 
 // ---------- keys ----------
@@ -2346,6 +2389,7 @@ apply();
   <main>
     <div class="topbar">
       <span class="crumb">slicer board / <b id="here">Overview</b></span>
+      <a class="livelink" href="{LIVE_APP_URL}" target="_blank" rel="noopener">Open the app ↗</a>
       <div class="filterbar" id="filterbar">
         <b>Kind</b>
         {''.join(area_chips)}

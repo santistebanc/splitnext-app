@@ -22,6 +22,7 @@
 
 ## Breadth
 
+- **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a Vercel or Cloudflare project would give a URL per branch — area: deploy — raised: slice 0008
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — area: invites — raised: bootstrap
 - **Activity feed** — twelve event types; client-authored; flushed last — area: activity — raised: bootstrap
 - **Member detail** — paid-for / owes-for buckets; leave group — area: membership — raised: bootstrap

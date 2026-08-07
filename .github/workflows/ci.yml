@@ -1,0 +1,29 @@
+name: ci
+
+# The two gates a slice has to pass before it can merge: the test suite and the
+# type checker. Capture runs (npm run capture) are deliberately not here — they
+# drive the real deployed Edge Functions and would make CI depend on a live
+# Supabase project.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Typecheck
+        run: npm run typecheck
