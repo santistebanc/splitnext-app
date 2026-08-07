@@ -1,7 +1,13 @@
 name: pages
 
-# Publishes the slicer board to GitHub Pages on every push to main, so the
-# living map of the app is a URL rather than a local script run.
+# Publishes two things to GitHub Pages on every push to main: the slicer board
+# at the site root, and the app itself — a static Expo web export — at /app.
+# The board describes the app; visitors should be one click from using it.
+#
+# One site rather than a second host: no extra account, no deploy token beyond
+# the two EXPO_PUBLIC_ values the client ships anyway, and the board's "Open
+# the app" link is same-origin. The trade is no per-PR preview URL; a Vercel or
+# Cloudflare project would give that if it ever earns its keep.
 #
 # The board is generated, not hand-written, so it is regenerated here from
 # docs/state/ instead of trusting the committed docs/slicer.html — a stale
@@ -36,14 +42,37 @@ jobs:
         with:
           python-version: '3.12'
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
       - name: Regenerate the board
         run: python3 docs/scripts/generate-slicer-board.py
+
+      # app.json's experiments.baseUrl pins the export to /splitnext-app/app,
+      # so the bundle's asset links resolve under the subpath.
+      - name: Export the web app
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npx expo export -p web
 
       - name: Assemble the site
         run: |
           cp -r docs _site
           cp docs/slicer.html _site/index.html
           rm -rf _site/scripts/__pycache__
+          mv dist _site/app
+          # Expo emits underscore-prefixed paths (_expo/…), which Jekyll drops.
+          touch _site/.nojekyll
+          # Pages has no rewrite rule, so a reload on /app/group/<id> — a route
+          # whose id only exists on the visitor's device — would 404. Serving
+          # the app's own shell as the 404 page lets the router take it from
+          # the URL instead.
+          cp _site/app/index.html _site/app/404.html
 
       - uses: actions/upload-pages-artifact@v3
         with:

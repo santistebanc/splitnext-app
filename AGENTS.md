@@ -42,7 +42,8 @@ The short version:
 | `npm run web` | Runs the whole app in a browser — the target headless runs and captures use. |
 | `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. |
 | `python3 docs/scripts/generate-slicer-board.py` | Regenerates `docs/slicer.html` from `docs/state/`. |
-| `python3 docs/scripts/serve-slicer-board.py` | Serves the board at http://127.0.0.1:8777/slicer.html with clickable file chips. |
+| `python3 docs/scripts/serve-slicer-board.py` | Serves the board at http://127.0.0.1:8777/slicer.html, where a path chip opens the file in the editor instead of on GitHub. |
+| `npx expo export -p web` | The static build CI publishes to `/app` on Pages. |
 
 ## Setup
 
