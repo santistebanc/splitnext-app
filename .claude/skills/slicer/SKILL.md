@@ -176,6 +176,8 @@ git checkout -b slice/0008-invites
 
 Commit freely on that branch while building.
 
+**`main` is one commit per slice, and the repo enforces it.** Squash is the only merge method (merge commits and rebase merges are off), linear history is required, a PR is required before merging, and the squashed commit takes the **PR title and PR body** — not the concatenated build commits. So the PR body is the commit message: write it as one, carrying the headline and the `D-NNN` decisions, exactly as the archive describes them.
+
 **Close the slice** — at Phase 6, after the board is regenerated and everything is green:
 
 ```
@@ -188,7 +190,9 @@ git tag -a slice-0008 -m "Slice 0008 — invites"
 git push origin slice-0008
 ```
 
-The squash commit body carries the headline and the decisions; the archive carries the detail. Each slice stays independently revertable, bisectable and addressable as `slice-NNNN` — and the tag lands on `main` **after** the merge, on the squashed commit, never on the branch.
+The archive carries the detail; the squashed commit carries the headline and the decisions, from the PR body. Each slice stays independently revertable, bisectable and addressable as `slice-NNNN` — and the tag lands on `main` **after** the merge, on the squashed commit, never on the branch.
+
+Never `--merge` or `--rebase` a slice PR, and never push to `main` directly: one slice must stay one commit, or `git log main` stops being the list of slices and `git revert <slice>` stops being a whole slice.
 
 Merging `main` deploys `docs/slicer.html` to GitHub Pages, so the board a PR produces is public the moment the slice closes.
 

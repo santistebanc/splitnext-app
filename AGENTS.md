@@ -28,7 +28,9 @@ The short version:
 
 ## Git: PR per slice
 
-`main` is protected by CI (`npm test` + `npm run typecheck`). A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` on `main`. Commit freely on the branch; `main` reads one line per slice. Merging `main` republishes the board to GitHub Pages.
+`main` is protected by CI (`npm test` + `npm run typecheck`). A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` on `main`. Commit freely on the branch; `main` reads one line per slice. Merging `main` republishes the board and the web app to GitHub Pages.
+
+**One slice is one commit on `main`, and the repo enforces it:** squash is the only enabled merge method, linear history is required, a PR is required before merging, and the squashed commit is built from the **PR title and PR body**. Write the PR body as the commit message you want — headline plus the `D-NNN` decisions. Never merge a slice PR with `--merge` or `--rebase`, and never push to `main` directly.
 
 `docs/slicer.html` is generated — never hand-edit it, and on a conflict regenerate rather than merge.
 
