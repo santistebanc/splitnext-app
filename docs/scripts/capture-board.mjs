@@ -32,9 +32,11 @@ if (!slice) {
   process.exit(1);
 }
 
-// ~900px wide, per the board's own rule for stills, at 2x so the mono type in
-// a path chip survives being read.
-const VIEWPORT = { width: 900, height: 1000, deviceScaleFactor: 2 };
+// Wider than the ~900px an app still uses: the board is a desktop document
+// with a fixed rail, and a tree row carries a fold, a name, a path, an area
+// and two counts. Below 1200 those wrap — correct behaviour, but a still that
+// freezes it mid-wrap documents the narrow case as if it were the layout.
+const VIEWPORT = { width: 1200, height: 1000, deviceScaleFactor: 2 };
 
 // The environment's Chromium may be a different build than the pinned
 // @playwright/test, so prefer the one that is actually installed.
@@ -79,6 +81,13 @@ await mkdir(SHOTS, { recursive: true });
 
 await shoot('symbols-tree', async (page) => {
   await page.click('.view-btn[data-view="tree"]');
+});
+
+// Opened one level, because a still of the resting state is ten rows and says
+// nothing about what is behind them.
+await shoot('symbols-tree-open', async (page) => {
+  await page.click('.view-btn[data-view="tree"]');
+  await page.click('#tree-L-hub .fold');
 });
 
 await shoot('symbols-tree-search', async (page) => {
