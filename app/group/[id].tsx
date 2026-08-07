@@ -3,6 +3,7 @@ import {
   assumedMemberIdFromBinds,
   bindingIsOpen,
 } from '@/src/domain/assumedMember';
+import { computeBalances } from '@/src/domain/balances';
 import { getGroupStore } from '@/src/store/groupStore';
 import {
   addExpense,
@@ -73,8 +74,22 @@ export default function GroupHubScreen() {
     [expenses],
   );
 
+  const balances = useMemo(
+    () => computeBalances(members ?? {}, expenses ?? {}),
+    [members, expenses],
+  );
+
   const nameOf = (memberId: string) =>
     (members ?? {})[memberId]?.display_name || '(unnamed)';
+
+  /** Money as text plus the tone it should be read in. */
+  const money = (cents: number, signed = false) => {
+    const sign = !signed || cents === 0 ? '' : cents > 0 ? '+' : '−';
+    return {
+      text: `${sign}${(Math.abs(cents) / 100).toFixed(2)} ${group.currency_label}`,
+      style: !signed || cents === 0 ? styles.value : cents > 0 ? styles.owed : styles.owes,
+    };
+  };
 
   /** "12,34" and "12.34" both mean 1234 cents; anything else is not money. */
   const parseCents = (text: string): number | null => {
@@ -191,6 +206,27 @@ export default function GroupHubScreen() {
         <Text style={styles.buttonText}>Add member</Text>
       </Pressable>
 
+      <Text style={styles.label}>Balances</Text>
+      {expenseList.length === 0 ? (
+        <Text style={styles.hint}>
+          Nothing spent yet — everyone is square.
+        </Text>
+      ) : (
+        balances.map((b) => {
+          const isYou = b.member_id === assumedMemberId;
+          return (
+            <View key={b.member_id} style={styles.memberRow}>
+              <Text style={isYou ? styles.you : styles.value}>
+                {isYou ? `You (${b.display_name})` : b.display_name}
+              </Text>
+              <Text style={money(b.net_cents, true).style}>
+                {money(b.net_cents, true).text}
+              </Text>
+            </View>
+          );
+        })
+      )}
+
       <Text style={styles.label}>Expenses</Text>
       {expenseList.length === 0 ? (
         <Text style={styles.hint}>
@@ -203,10 +239,11 @@ export default function GroupHubScreen() {
           <View key={e.id} style={styles.memberRow}>
             <Text style={styles.value}>
               {e.description || '(no description)'} · {nameOf(e.payer_member_id)}
+              {e.allocations?.length
+                ? ` · split ${e.allocations.length} ways`
+                : ''}
             </Text>
-            <Text style={styles.you}>
-              {(e.amount_cents / 100).toFixed(2)} {group.currency_label}
-            </Text>
+            <Text style={styles.you}>{money(e.amount_cents).text}</Text>
           </View>
         ))
       )}
@@ -295,6 +332,16 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#8b1e1e',
+  },
+  owes: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#8b1e1e',
+  },
+  owed: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1f6b4a',
   },
   memberRow: {
     flexDirection: 'row',

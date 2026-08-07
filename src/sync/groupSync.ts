@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
 import { bindingIsOpen } from '@/src/domain/assumedMember';
+import { splitEqually } from '@/src/domain/split';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   addLobbyGroupId,
@@ -154,11 +155,19 @@ export async function addExpense(
   }
 
   const store$ = getGroupStore(groupId);
-  const payer = (store$.members.get() ?? {})[payerMemberId];
+  const members = store$.members.get() ?? {};
+  const payer = members[payerMemberId];
   if (!payer || payer.deleted_at != null) {
     store$.lastError.set(syncError('member_missing'));
     return '';
   }
+
+  // Split across whoever is in the group right now, and freeze it into the
+  // expense. A member added later joins the next expense, not this one.
+  const participants = Object.values(members)
+    .filter((m) => m.deleted_at == null)
+    .map((m) => m.id);
+  const allocations = splitEqually(amountCents, participants);
 
   const expense: ExpenseEntity = {
     id: Crypto.randomUUID(),
@@ -166,6 +175,7 @@ export async function addExpense(
     payer_member_id: payerMemberId,
     amount_cents: amountCents,
     description: description.trim(),
+    allocations,
     version: 1,
     updated_at: new Date().toISOString(),
     deleted_at: null,

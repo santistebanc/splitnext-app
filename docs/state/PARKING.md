@@ -2,9 +2,9 @@
 
 ## Foundation-risk
 
+- **Deploy drift between local and remote** — the remote was missing the whole `expenses` table and carried a stale `fetch-entity`, three slices after 0005 said both shipped. Nothing checks that what is committed is what is deployed; `supabase db dump` needs Docker, which this machine does not have — area: deploy — raised: slice 0007
 - **Contract test against a local Supabase stack** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real `merge` / `fetch-entity` / `list-roster` at close when their shapes change — area: sync — raised: slice 0004
-- **Browser-driven flow tests** — the web target runs the whole app headless (Playwright drove create → add member → bind → add expense against the real Edge Functions), so end-to-end tests are possible for the first time; nothing is committed yet, and web does not exercise the SQLite persist adapter — area: testing — raised: slice 0006
-- **Symbol-level change attribution on the board** — the working-tree delta maps changed *files* to symbols, so a shared file drags its neighbours in; needs diff-hunk ranges to fix — area: tooling — raised: slice 0004
+- **Browser-driven flow tests** — `npm run capture` (slice 0007) commits the Playwright driver and asserts a clean console plus balances surviving a reload, but it is a capture run, not a test suite: it is not in `npm test`, has no failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007*
 - **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002 + roster list in 0003; full protocol still open*
 - **Realtime JWT signing secret** — leave `anon_channel` fallback; mint short-lived JWT for private channel auth (D-006) — area: sync — raised: slice 0001
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
@@ -15,8 +15,7 @@
 - **Reopen the binding choice after an expense exists** — "in the future it will be possible to change in other way" — the first expense closes it for good today (D-020); reopening has to decide what happens to expenses already attributed to the old member — area: membership — raised: slice 0005
 
 - **Member rename / soft-delete** — rename any assumed member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap
-- **Expense editor + invariants** — contributions/allocations, Hamilton rounding, defaults (payer = assumed member, equal shares) — area: ledger — raised: bootstrap
-- **Balances list (group hub home)** — derived Σ contributions − Σ allocations; sort most-negative first; "You (Name)" — area: ledger — raised: bootstrap
+- **Expense editor + invariants** — edit an existing expense; participant picker; uneven / share-based splits with real largest-remainder ranking; defaults (payer = assumed member, equal shares). Slice 0007 shipped the equal-split half only, at record time, with no way to change it after — area: ledger — raised: bootstrap
 - **Member invites** — HTTPS deep link join; mint access token; preselect / picker / add-new — area: invites — raised: bootstrap
 - **Settle-up suggestions** — minimise transfer count via group-net flows; prefill settlement expense — area: ledger — raised: bootstrap
 - **Leave group** — unbind + revoke this device’s access token; member history remains — area: membership — raised: bootstrap
@@ -42,6 +41,10 @@
 - **Handoff checklist** — "Final spec section outline and the acceptance checklist proving the design is implementable" — area: meta — raised: bootstrap
 
 ## Delivered
+
+- **Balances list (group hub home)** — delivered in [slice 0007](slices/0007-allocations-balances.md); derived Σ paid − Σ owed, most-negative first, You (Name) marked
+
+- **Symbol-level change attribution on the board** — delivered in slice 0007; the delta now maps diff *hunks* onto the symbol whose declaration they fall under, bounded by the next declaration in the source. 15 reported symbols became 6, all six real
 
 - **Assumed member gates mutations** — delivered in [slice 0005](slices/0005-expense-spine.md); the expense form only appears once this device is bound
 

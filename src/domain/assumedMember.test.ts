@@ -13,6 +13,7 @@ function expense(
     payer_member_id: 'm1',
     amount_cents: 100,
     description: '',
+    allocations: [],
     version: 1,
     updated_at: '2026-01-01T00:00:00.000Z',
     deleted_at: null,

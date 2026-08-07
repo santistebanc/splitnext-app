@@ -23,6 +23,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — The person taps a group in the lobby, or the hub screen mounts.  
 **Outcome** — The screen shows the latest group and roster, anything pending has been pushed, and live updates are running.
 
+0. `L-getGroupStore` opens the group's store, loading whatever was saved on this device and running `L-normalizeTimestamps` over it, so a reopened group is the same shape as a freshly synced one before anything reads it.
 1. `L-hub` calls `L-openGroup` for that group.
 2. `L-wakeSub` subscribes for live updates, as in Create group step 6. A failure here is swallowed: browsing must still work.
 3. `L-syncGroup` runs a full round trip — see Sync one group.
@@ -69,8 +70,20 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-hub` parses the typed amount into whole cents and calls `L-addExpense` with the assumed member as payer.
 2. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
-3. The expense is written into the store at version 1 and queued — the list updates before any network call.
-4. `L-flushQueue` pushes it. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
+3. `L-splitEqually` divides the cost across everyone in the group at this moment, and `L-addExpense` refuses to store a split that does not add up to the total. The split is frozen into the expense: a member added later joins the next expense, not this one.
+4. The expense is written into the store at version 1, split and all, and queued — the list updates before any network call.
+5. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
+6. `L-balances` refolds and the hub's balances move — the payer up by what they paid, everyone down by their share.
+
+## F-balances — See who owes what
+
+**Trigger** — The hub is on screen and the group has at least one expense.  
+**Outcome** — Every member's net position, most-negative first, with this device's own member marked.
+
+1. `L-hub` reads the group's members and expenses straight from the store, so the list is as fresh as the last sync and needs no network of its own.
+2. `L-balances` credits each payer the full amount and debits each member their share. Because a split always sums to its expense, the nets cancel out across the group.
+3. `L-assumedMember` marks which row is yours; the hub colours a negative red and a positive green.
+4. Anything arriving later — a wake, a roster pull — lands in the store and the list refolds on its own.
 
 ## F-bind — This is me
 

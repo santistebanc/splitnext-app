@@ -30,14 +30,29 @@ export type BindEntity = {
   deleted_at: string | null;
 };
 
+/** One member's share of one expense. Integer cents, like all money here. */
+export type Allocation = {
+  member_id: string;
+  amount_cents: number;
+};
+
 export type ExpenseEntity = {
   id: string;
   group_id: string;
-  /** The member who paid. Who owes is not modelled yet — allocations come next. */
+  /** The member who paid. */
   payer_member_id: string;
   /** Integer cents. Money is never a float, anywhere. */
   amount_cents: number;
   description: string;
+  /**
+   * Who owes, and how much. Carried inside the expense rather than as child
+   * rows so one version number covers the whole split: a merge can never
+   * accept a new amount while rejecting one of its shares. Optional because
+   * expenses recorded before splits existed — persisted locally, or pulled
+   * from a row written before the migration — carry no split at all; every
+   * expense written from here on has one.
+   */
+  allocations?: Allocation[];
   version: number;
   updated_at: string;
   deleted_at: string | null;

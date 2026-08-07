@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0006
+Last updated: slice 0007
 
 ## Direction
 
@@ -33,6 +33,10 @@ Last updated: slice 0006
 - Record an expense against the member who paid — integer cents, listed on the hub, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md)
 - Choose which member you are, and change that choice, until the group's first expense fixes it — [slice 0005](slices/0005-expense-spine.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
+- Split every expense equally across the members live at record time, frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md)
+- See each member's net position on the hub — paid minus owed, most-negative first, You (Name) marked — [slice 0007](slices/0007-allocations-balances.md)
+- Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
+- Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Edge Functions — [slice 0007](slices/0007-allocations-balances.md)
 
 ## Stack
 
@@ -40,7 +44,7 @@ Last updated: slice 0006
 - UI state — Legend State v3 (`useValue`, per-group observable) — UI source of truth
 - Local durability — `expo-sqlite` kv-store via `observablePersistSqlite` + `configureObservableSync` — write-through persist; web swaps the plugin for `localStorage` (`persistPlugin.web.ts`) because expo-sqlite's web path is wasm over OPFS, which headless Chromium cannot run
 - Secrets — `expo-secure-store` behind `src/secrets/secureStorage.ts` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary). Web has no keychain and falls back to `localStorage`
-- Server DB — Supabase Postgres — `groups`, `access_tokens`, `members`, `binds`; deny-all RLS
+- Server DB — Supabase Postgres — `groups`, `access_tokens`, `members`, `binds`, `expenses` (with `allocations jsonb`); deny-all RLS
 - Server API — Edge Functions `create-group`, `merge`, `fetch-entity`, `list-roster`, `rt-jwt` — capability hash-check then service role
 - Wake channel — Realtime broadcast on `group:{id}`; payload is tip only; `rt-jwt` gates subscribe (anon_channel fallback — D-006)
 - Hosting — remote `splitnext-v3` — D-001
@@ -53,7 +57,9 @@ Last updated: slice 0006
 
 **Bind** — `id`, `group_id`, `device_user_id`, `member_id`, `version`, `updated_at`, `deleted_at`. Active bind = assumed member. Unique: one active bind per device per group — re-choosing re-points that bind at a higher version rather than adding a second.
 
-**Expense** — `id`, `group_id`, `payer_member_id`, `amount_cents`, `description`, `version`, `updated_at`, `deleted_at`. Integer cents only. Who *owes* is not modelled yet; allocations come with balances.
+**Expense** — `id`, `group_id`, `payer_member_id`, `amount_cents`, `description`, `allocations`, `version`, `updated_at`, `deleted_at`. Integer cents only. `allocations` is `[{ member_id, amount_cents }]` carried *inside* the expense (jsonb server-side), so one version number covers the whole split and a merge can never take a new amount while rejecting a share. Optional on the type: expenses recorded before slice 0007 carry none, and balances treat that as "payer credited, nobody debited".
+
+**Balance** (derived, never stored) — per live member, Σ paid − Σ owed across live expenses, sorted most-negative first.
 
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
@@ -64,7 +70,7 @@ Last updated: slice 0006
 | Route | What it does | Shipped in |
 | --- | --- | --- |
 | `/` | Lobby: create group, list local group ids; root AppState sync | slice 0001 / 0002 |
-| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), You (Name); expenses list + add; bump sync proof; open → syncGroup | slice 0001–0005 |
+| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), You (Name); balances (net per member, signed); expenses list + add, each row saying how many ways it split; bump sync proof; open → syncGroup | slice 0001–0007 |
 
 ## Seams
 
@@ -75,3 +81,7 @@ Last updated: slice 0006
 - `syncError` / `coerceSyncError` — `src/sync/syncErrors.ts` — vitest
 - `getSecret` / `setSecret` — `src/secrets/secureStorage.ts` — the platform split for secrets; a fake here replaces the keychain
 - `persistPlugin` — `src/store/persistPlugin.ts` — the platform split for durability
+- `splitEqually` — `src/domain/split.ts` — vitest
+- `computeBalances` — `src/domain/balances.ts` — vitest
+- `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
+- `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload

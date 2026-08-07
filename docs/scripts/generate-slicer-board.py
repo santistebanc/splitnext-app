@@ -69,8 +69,15 @@ def used_badge(ref: str) -> str:
 WSL_DISTRO = os.environ.get("WSL_DISTRO_NAME", "")
 
 
-def editor_uri(rel_path: str, line: int | None) -> str:
+def editor_uri(
+    rel_path: str, line: int | None, end: int | None = None
+) -> str:
     abs_path = str((ROOT / rel_path).resolve())
+    # Colon line only — never a `#L…` fragment. Cursor's CLI treats a URI-with-
+    # fragment as a literal path and opens a phantom `file.ts#L41-L48` buffer.
+    # `end` is accepted for call-site symmetry with change chips; it is not
+    # encoded here because `-g` cannot select a span.
+    del end  # unused; range is label-only
     target = f"{abs_path}:{line}" if line else abs_path
     if WSL_DISTRO:
         return f"cursor://vscode-remote/wsl+{WSL_DISTRO}{target}"
@@ -100,6 +107,31 @@ def symbol_line(rel_path: str, name: str) -> int | None:
     return None
 
 
+DECL_RE = re.compile(
+    r"^(export\s+)?(default\s+)?(async\s+)?"
+    r"(function|const|let|var|class|type|interface|enum)\b"
+)
+
+
+def symbol_extent(rel_path: str, start: int) -> int:
+    """Last line a symbol declared at `start` can be said to own.
+
+    Everything up to the next top-level declaration — any declaration, not
+    just the ones the map lists. Used to decide whether a diff hunk landed on
+    this piece or merely on its neighbour in the same file.
+    """
+    path = ROOT / rel_path
+    if path.is_dir():
+        path = path / "index.ts"
+    if not path.is_file():
+        return start
+    body = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    for i in range(start, len(body)):  # start is 1-based, so this is start+1 on
+        if DECL_RE.match(body[i]):
+            return i  # the line before the next declaration, 1-based
+    return len(body)
+
+
 def source_ref(rel_path: str, name: str = "") -> str:
     """The path chip, as a link into the editor."""
     line = symbol_line(rel_path, name) if name else None
@@ -111,6 +143,68 @@ def source_ref(rel_path: str, name: str = "") -> str:
         f'<a class="ref src" href="{esc(editor_uri(rel_path, line))}" '
         f'data-path="{esc(rel_path)}" data-line="{line or ""}" '
         f'title="Open in Cursor">{esc(label)}</a>'
+    )
+
+
+def symbol_change_ranges(
+    entry: dict, hunks_by_path: dict[str, list[tuple[int, int]]]
+) -> list[tuple[int, int]]:
+    """Diff hunks that fall inside this symbol's declaration extent."""
+    where = entry["where"]
+    file_hunks = hunks_by_path.get(where) or []
+    if not file_hunks:
+        return []
+    mine = symbol_line(where, entry["name"])
+    if not mine:
+        return list(file_hunks)
+    end_of = symbol_extent(where, mine)
+    return [(s, e) for s, e in file_hunks if s <= end_of and e >= mine]
+
+
+def _range_label(start: int, end: int) -> str:
+    return f"{start}" if start == end else f"{start}–{end}"
+
+
+def change_ref(
+    entry: dict, hunks_by_path: dict[str, list[tuple[int, int]]]
+) -> str:
+    """Chip linking to the lines this slice actually edited on this piece."""
+    where = entry["where"]
+    path = ROOT / where
+    if path.is_dir():
+        path = path / "index.ts"
+    if not path.exists():
+        return ""
+
+    ranges = symbol_change_ranges(entry, hunks_by_path)
+    short = where.rsplit("/", 1)[-1]
+    end: int | None = None
+    if ranges:
+        # Prefer the largest hunk as the jump — a one-line import change is
+        # real, but landing there hides the meat of the edit.
+        primary = max(ranges, key=lambda r: (r[1] - r[0], -r[0]))
+        line, end = primary
+        bits = [_range_label(s, e) for s, e in ranges]
+        primary_bit = _range_label(*primary)
+        if len(bits) == 1:
+            label = f"{short}:{primary_bit}"
+        elif len(bits) <= 3:
+            label = f"{short}:{', '.join(bits)}"
+        else:
+            label = f"{short}:{primary_bit} +{len(bits) - 1}"
+        tip = f"Diff changed lines ({', '.join(bits)})"
+    else:
+        # No line data left — land on the declaration so the link still works.
+        line = symbol_line(where, entry["name"])
+        label = f"{short}:{line}" if line else short
+        tip = "Diff against HEAD"
+
+    end_attr = f' data-end="{end}"' if end and line and end > line else ""
+    return (
+        f'<a class="ref src change-loc" href="{esc(editor_uri(where, line))}" '
+        f'data-path="{esc(where)}" data-line="{line or ""}"{end_attr} '
+        f'data-mode="diff" '
+        f'title="{esc(tip)}">{esc(label)}</a>'
     )
 
 
@@ -369,8 +463,40 @@ def git_state() -> dict | None:
         if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
             churn[parts[2]] = (int(parts[0]), int(parts[1]))
 
+    # Which *lines* changed, not just which files. Without this the board can
+    # only say "something in this file moved", so every symbol sharing a file
+    # with the real edit gets reported as touched — nine wrong rows for six
+    # right ones, on a page whose whole job is saying what this slice changed.
+    hunks: dict[str, list[tuple[int, int]]] = {}
+    current: str | None = None
+    for line in raw("diff", "-U0", "HEAD").splitlines():
+        if line.startswith("+++ b/"):
+            current = line[6:].strip()
+            hunks.setdefault(current, [])
+        elif line.startswith("@@") and current:
+            m = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))?", line)
+            if not m:
+                continue
+            start = int(m.group(1))
+            count = int(m.group(2)) if m.group(2) is not None else 1
+            # A pure deletion reports zero new lines; it still happened *at*
+            # that point, so give it the line it collapsed to.
+            hunks[current].append((start, start + max(count, 1) - 1))
+
+    # Untracked files never appear in `diff HEAD`, so treat the whole file as
+    # the change — otherwise the board can say *what* changed but not *where*.
+    for c in changes:
+        if c["state"] != "new" or c["path"] in hunks:
+            continue
+        path = ROOT / c["path"]
+        if not path.is_file():
+            continue
+        n = len(path.read_text(encoding="utf-8", errors="ignore").splitlines()) or 1
+        hunks[c["path"]] = [(1, n)]
+
     return {
         "churn": churn,
+        "hunks": hunks,
         "branch": run("rev-parse", "--abbrev-ref", "HEAD"),
         "last_commit": run("log", "-1", "--pretty=%h %s"),
         "changes": sorted(changes, key=lambda c: (c["state"] != "new", c["path"])),
@@ -478,7 +604,10 @@ def parse_report(text: str) -> dict | None:
         if not ln.strip().startswith("-"):
             continue
         body = re.sub(r"^-\s*", "", ln).strip()
-        m = re.match(r"`?([\w.\-]+\.(?:png|jpg|jpeg|webp|gif))`?\s*(?:—|--|-)?\s*(.*)", body)
+        m = re.match(
+            r"`?([\w.\-]+\.(?:png|jpg|jpeg|webp|gif|webm|mp4))`?\s*(?:—|--|-)?\s*(.*)",
+            body,
+        )
         if m:
             shots.append({"file": m.group(1), "caption": m.group(2).strip()})
 
@@ -700,11 +829,22 @@ def delta_block(bullets: list[str]) -> str:
     return f'<div class="rows">{rows}</div>' if rows else '<p class="empty">Nothing.</p>'
 
 
-def shots_html(shots: list[dict]) -> str:
-    """Screenshots from the demo gate — the only non-prose record of the app.
+STILL_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+CLIP_SUFFIXES = {".webm", ".mp4"}
+SHOT_SUFFIXES = STILL_SUFFIXES | CLIP_SUFFIXES
 
-    Referenced by relative path, never inlined: a data URI would add a few
-    hundred KB per slice to a file that is regenerated and diffed constantly.
+
+def shots_html(shots: list[dict]) -> str:
+    """Captures from the demo gate — the only non-prose record of the app.
+
+    Two kinds, and the difference matters. A still proves a surface: layout,
+    hierarchy, what the thing looks like standing still. A clip proves a
+    *flow* — that the taps happen in an order that works, that state lands
+    where the prose claims. Most slices change a flow, so most slices are
+    better served by the clip; the still is what a static surface deserves.
+
+    Referenced by relative path, never inlined: a data URI would add hundreds
+    of KB per slice to a file that is regenerated and diffed constantly.
     """
     cards = []
     for shot in shots:
@@ -716,14 +856,51 @@ def shots_html(shots: list[dict]) -> str:
             if shot.get("caption")
             else ""
         )
-        cards.append(
-            f'<figure class="shot"><a class="shot-open" href="{esc(editor_uri(rel, None))}" '
-            f'data-path="{esc(rel)}" title="{esc(shot["file"])}">'
-            f'<img src="state/shots/{esc(shot["file"])}" loading="lazy" '
-            f'alt="{esc(shot.get("caption") or shot["file"])}"></a>{cap}</figure>'
-        )
+        src = f"state/shots/{esc(shot['file'])}"
+        is_clip = Path(shot["file"]).suffix.lower() in CLIP_SUFFIXES
+        if is_clip:
+            # Plays itself, on a loop: a capture nobody presses play on is a
+            # capture nobody watches. Muted and playsinline so it can never
+            # surprise anyone with sound, controls so it can be stopped.
+            media = (
+                f'<video src="{src}" autoplay muted loop playsinline '
+                f'controls preload="metadata"></video>'
+            )
+            # No link wrapper: clicking a video has to mean play, not "open
+            # the file in the editor".
+            body = media
+        else:
+            body = (
+                f'<a class="shot-open" href="{esc(editor_uri(rel, None))}" '
+                f'data-path="{esc(rel)}" title="{esc(shot["file"])}">'
+                f'<img src="{src}" loading="lazy" '
+                f'alt="{esc(shot.get("caption") or shot["file"])}"></a>'
+            )
+        kind = " clip" if is_clip else ""
+        cards.append(f'<figure class="shot{kind}">{body}{cap}</figure>')
     # No shots is not an error state — the absence speaks for itself.
     return f'<div class="shots">{"".join(cards)}</div>' if cards else ""
+
+
+def flow_clip_html(flow_id: str) -> str:
+    """The flow's own clip, if one has been recorded.
+
+    A flow entry is otherwise trigger, steps and outcome — all prose, all
+    claims. The clip is the only part of the entry that can be checked by
+    looking. Named by flow id rather than by slice, because it documents the
+    system as it stands: when the flow changes, the file is overwritten.
+
+    Autoplaying and looping, with no controls: these are a few seconds each
+    and sit beside the steps they illustrate, so they should read like a
+    diagram that moves rather than something to operate.
+    """
+    rel = f"docs/state/shots/flows/{flow_id}.webm"
+    if not (ROOT / rel).exists():
+        return ""
+    return (
+        f'<figure class="fclip"><video src="state/shots/flows/{esc(flow_id)}.webm" '
+        f'autoplay muted loop playsinline preload="metadata"></video></figure>'
+    )
 
 
 def shots_on_disk(number: str) -> list[dict]:
@@ -736,7 +913,7 @@ def shots_on_disk(number: str) -> list[dict]:
     return [
         {"file": p.name, "caption": ""}
         for p in sorted(folder.glob(f"{number}-*"))
-        if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+        if p.suffix.lower() in SHOT_SUFFIXES
     ]
 
 
@@ -961,6 +1138,7 @@ def render() -> str:
     {fold}
   </div>
   {f'<p class="fmarks">{len(marks or ())} of {len(f["steps"])} steps {esc(mark_word)}</p>' if marks else (f'<p class="fmarks quiet">Changed — the archive does not say which step</p>' if mark_word else "")}
+  {flow_clip_html(f['id'])}
   <div class="fmeta">
     <span class="lbl">Starts when</span><span>{rich(f['trigger'])}</span>
     <span class="lbl">Ends with</span><span>{rich(f['outcome'])}</span>
@@ -1006,13 +1184,77 @@ def render() -> str:
                 return state
         return None
 
+    # A changed file is not a changed symbol. Map each diff hunk onto the
+    # symbol whose declaration it falls under, so a file holding ten pieces
+    # reports the one that actually moved.
+    #
+    # Ownership runs declaration-to-next-declaration: crude next to a real
+    # parser, but it fails in the safe direction — a hunk above the first
+    # declaration (imports, types) belongs to no symbol and is reported as
+    # nothing rather than blamed on the piece below it. Entries whose "name"
+    # is not a code symbol (a route file, a function directory) stand for the
+    # whole file, so any change in it is theirs.
+    hunks_by_path = (git or {}).get("hunks", {})
+
+    def hunk_touches(entry: dict) -> bool:
+        where = entry["where"]
+        file_hunks = hunks_by_path.get(where)
+        if not file_hunks:
+            # No line data (a new or untracked file, a directory entry): fall
+            # back to the file-level answer rather than dropping the row.
+            return True
+
+        mine = symbol_line(where, entry["name"])
+        if not mine:
+            return True
+
+        # Bounded by the next declaration in the *source*, not the next one
+        # the map happens to know about. A file usually holds more exports
+        # than LOGIC.md lists, and stretching a symbol's ownership down to
+        # the next mapped piece hands it every unmapped edit in between.
+        end_of = symbol_extent(where, mine)
+        return any(start <= end_of and end >= mine for start, end in file_hunks)
+
     touched = [
         (e, path_state(e["where"]))
         for _, rws in logic_areas
         for e in rws
-        if path_state(e["where"])
+        if path_state(e["where"]) and hunk_touches(e)
     ]
     touched_ids = {e["id"] for e, _ in touched}
+
+    # The explanation of a change is authored, not counted: NEXT.md already
+    # says what each piece is becoming. Match the symbol against its
+    # Before → After row, plan step, seam, or edge-path row and quote that.
+    def why_touched(e: dict) -> str:
+        names = [n.strip() for n in e["name"].split("/")] + [
+            e["where"].rsplit("/", 1)[-1],
+            e["where"],
+        ]
+
+        def mentions(text: str) -> bool:
+            # an id is an exact join; prose matching is the fallback, and it
+            # is why NEXT.md should cite ids the way FLOWS.md does
+            if e["id"] in re.findall(r"\bL-[\w]+", text):
+                return True
+            low = text.lower()
+            return any(n and n.lower() in low for n in names)
+
+        for row in nxt["now_after"]:
+            if mentions(row["aspect"]) or mentions(row["after"]):
+                return (
+                    f"{strip_md(row['before'])} → <b>{strip_md(row['after'])}</b>"
+                )
+        for step in nxt["plan"]:
+            if mentions(step):
+                return strip_md(step)
+        for seam in nxt["seams"]:
+            if mentions(seam["seam"]):
+                return f"under test — {strip_md(seam['behavior'])}"
+        for edge in nxt["edge_paths"]:
+            if mentions(edge["surface"]) or mentions(edge["what"]):
+                return strip_md(edge["what"])
+        return ""
 
     def touched_symbol_rows() -> str:
         if not touched:
@@ -1021,50 +1263,23 @@ def render() -> str:
         tone = {"new": "ok", "changed": "warn", "gone": "open"}
         churn = (git or {}).get("churn", {})
 
-        # The explanation of a change is authored, not counted: NEXT.md already
-        # says what each piece is becoming. Match the symbol against its
-        # Before → After row or its plan step and quote that.
-        def why(e: dict) -> str:
-            names = [n.strip() for n in e["name"].split("/")] + [
-                e["where"].rsplit("/", 1)[-1],
-                e["where"],
-            ]
-
-            def mentions(text: str) -> bool:
-                # an id is an exact join; prose matching is the fallback, and it
-                # is why NEXT.md should cite ids the way FLOWS.md does
-                if e["id"] in re.findall(r"\bL-[\w]+", text):
-                    return True
-                low = text.lower()
-                return any(n and n.lower() in low for n in names)
-
-            for row in nxt["now_after"]:
-                if mentions(row["aspect"]):
-                    return (
-                        f"{strip_md(row['before'])} → <b>{strip_md(row['after'])}</b>"
-                    )
-            for step in nxt["plan"]:
-                if mentions(step):
-                    return strip_md(step)
-            for seam in nxt["seams"]:
-                if mentions(seam["seam"]):
-                    return f"under test — {strip_md(seam['behavior'])}"
-            return ""
-
         def churn_note(e: dict, st: str) -> str:
+            loc = change_ref(e, hunks_by_path)
+            loc_html = f" {loc}" if loc else ""
             if st == "new":
-                text = why(e) or "New file this slice"
-                return f'<p class="dnote fresh">{text}</p>'
-            text = why(e)
+                text = why_touched(e) or "New file this slice"
+                return f'<p class="dnote fresh">{text}{loc_html}</p>'
+            text = why_touched(e)
             if text:
-                return f'<p class="dnote change">{text}</p>'
-            # the map is file-level, so a shared file drags its neighbours in;
-            # say that plainly rather than implying this symbol was the target
+                return f'<p class="dnote change">{text}{loc_html}</p>'
+            # The row is here because a hunk landed on *this* piece, so the
+            # change is real — what is missing is the reason, and that is a
+            # gap in NEXT.md rather than a caveat about the mapping.
             n = churn.get(e["where"])
-            hint = f"+{n[0]} −{n[1]}" if n else "edited"
+            hint = f"+{n[0]} −{n[1]} in its file" if n else "edited"
             return (
-                f'<p class="dnote change">Its file changed ({esc(hint)}), but '
-                f"nothing in <code>NEXT.md</code> names this piece</p>"
+                f'<p class="dnote change">Changed ({esc(hint)}), but nothing in '
+                f"<code>NEXT.md</code> says why{loc_html}</p>"
             )
 
         rows = "".join(
@@ -1080,6 +1295,9 @@ def render() -> str:
         return f'<div class="rows">{rows}</div>'
 
     def touched_flow_cases() -> str:
+        # Same authored reasons the symbol rows use — never "moving X", which
+        # only named the piece without saying what changed about it.
+        by_id = {e["id"]: e for e, _ in touched}
         out = []
         for f in flows:
             marks = {
@@ -1089,21 +1307,39 @@ def render() -> str:
             }
             if not marks:
                 continue
-            # name the pieces that moved, in the order the flow runs them —
-            # "3 of 6 steps touched" says how much, not what
             step_notes = {}
             for n, step in enumerate(f["steps"], 1):
-                here = [
-                    label_for(ref)
+                refs = [
+                    ref
                     for ref in dict.fromkeys(re.findall(r"\b(L-[\w]+)\b", step))
                     if ref in touched_ids
                 ]
-                if here:
-                    step_notes[n] = "moving " + esc(
-                        ", ".join(here[:-1]) + " and " + here[-1]
-                        if len(here) > 1
-                        else here[0]
+                if not refs:
+                    continue
+                # Keep one note per reason, but attach every symbol's change
+                # link — two pieces can share a why and still need two jumps.
+                by_reason: dict[str, list[dict]] = {}
+                order: list[str] = []
+                for ref in refs:
+                    entry = by_id.get(ref)
+                    reason = why_touched(entry) if entry else ""
+                    if not reason:
+                        reason = (
+                            f"edited {esc(label_for(ref))}, but nothing in "
+                            f"<code>NEXT.md</code> says why"
+                        )
+                    if reason not in by_reason:
+                        by_reason[reason] = []
+                        order.append(reason)
+                    if entry:
+                        by_reason[reason].append(entry)
+                parts = []
+                for reason in order:
+                    locs = " ".join(
+                        change_ref(e, hunks_by_path) for e in by_reason[reason]
                     )
+                    parts.append(f"{reason} {locs}".strip() if locs else reason)
+                step_notes[n] = " · ".join(parts)
 
             out.append(
                 flow_case(
@@ -1311,7 +1547,7 @@ def render() -> str:
   {touched_symbol_rows()}
 
   <h3 id="p-flows">Flows running through them</h3>
-  <p class="why">Steps naming a touched symbol are marked — this is what may have moved.</p>
+  <p class="why">Steps naming a touched symbol are marked; each tag quotes what <code>NEXT.md</code> says that piece is becoming, and links the changed lines.</p>
   {touched_flow_cases()}
 
   <h3 id="p-delta">Before → After</h3>
@@ -1608,6 +1844,7 @@ a.self{color:inherit;text-decoration:none}
 .dnote.fresh{color:var(--ok)}
 .dnote.change code{background:var(--warn-soft);border:1px solid transparent;color:var(--warn)}
 .dnote b{font-weight:700;color:var(--text)}
+.dnote .change-loc,.stag .change-loc{margin-left:.35rem;vertical-align:baseline}
 /* a flow's name is prose, not a symbol — it keeps the sans it wears on Flows */
 .row-flow .rhead h4{font-family:var(--sans);font-weight:600}
 a.self:hover{color:var(--accent);text-decoration:underline}
@@ -1753,7 +1990,33 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
   gap:var(--sp-2);margin:var(--sp-3) 0}
 .shot{margin:0;border:1px solid var(--line);background:var(--surface)}
 .shot a{display:block;line-height:0;background:var(--surface-2)}
-.shot img{display:block;width:100%;height:auto}
+.shot img,.shot video{display:block;width:100%;height:auto;background:var(--surface-2)}
+.shot.clip{outline:none}
+/* The flow's clip sits beside its prose, phone-shaped and small: it is a
+   figure in the margin, not the subject of the card. It takes its own grid
+   column rather than floating — a float taller than the card spills over the
+   flow below it, which on a page of stacked cards reads as a broken layout. */
+/* Hidden until the steps are — a collapsed card is a summary, and a video
+   playing beside two lines of prose reads as the subject rather than the
+   evidence. Opening the steps is the moment a reader wants to check them. */
+.fcase > .fclip{display:none;margin:0;border:1px solid var(--line);
+  background:var(--surface-2);line-height:0}
+.fcase.open:has(.fclip){display:grid;grid-template-columns:minmax(0,1fr) auto;
+  column-gap:var(--sp-3)}
+.fcase.open:has(.fclip) > *{grid-column:1}
+/* Must outrank the `> *` rule above, or the clip lands in the prose column
+   and pushes the flow's own title down the card. */
+.fcase.open > .fclip{display:block;grid-column:2;grid-row:1 / span 30;
+  align-self:start}
+/* Sized to be read, not to be hovered. An expanded card is tall enough to
+   carry it, and an earlier hover-to-zoom version covered the card's own fold
+   button — the clip must never sit on top of the control that dismisses it. */
+.fclip video{display:block;height:min(52vh,420px);width:auto;max-width:100%}
+@media (max-width:720px){
+  .fcase:has(.fclip){display:block}
+  .fcase > .fclip{margin:var(--sp-2) 0}
+  .fclip video{height:auto;width:100%;max-width:260px}
+}
 .shot a:hover{outline:2px solid var(--accent);outline-offset:-2px}
 .shot figcaption{font:700 .65rem var(--sans);letter-spacing:.08em;text-transform:uppercase;
   color:var(--faint);padding:.45rem .6rem;border-top:1px solid var(--line);line-height:1.4}
@@ -1918,11 +2181,24 @@ function setFold(f,open){
   btn.setAttribute('aria-expanded',String(open));
   list.hidden=!open;
   f.classList.toggle('open',open);
+  // The clip rides with the steps: it illustrates them, so it appears when
+  // they do. Autoplay only fires on load, so opening has to start it — and
+  // closing stops it, or a collapsed page keeps decoding video nobody sees.
+  const clip=f.querySelector('.fclip video');
+  if(clip){
+    if(open){clip.currentTime=0;clip.play().catch(()=>{});}
+    else clip.pause();
+  }
 }
 allCases.forEach(f=>{
   const btn=f.querySelector('.fold');
   if(btn)btn.addEventListener('click',()=>
     setFold(f,btn.getAttribute('aria-expanded')!=='true'));
+  // `autoplay` fires even while the clip is hidden, so a page of collapsed
+  // flows would decode every video at once for nobody. Cards that render
+  // open — a slice's own flows — keep playing.
+  const clip=f.querySelector('.fclip video');
+  if(clip&&!f.classList.contains('open'))clip.pause();
 });
 
 const foldAll=$('#fold-all');
@@ -1997,7 +2273,12 @@ document.addEventListener('click',e=>{
   const a=e.target.closest && e.target.closest('a.ref.src, a.shot-open');
   if(!a||!servedLocally||!a.dataset.path)return;
   e.preventDefault();
-  const q=new URLSearchParams({path:a.dataset.path,line:a.dataset.line||''});
+  const q=new URLSearchParams({
+    path:a.dataset.path,
+    line:a.dataset.line||'',
+    end:a.dataset.end||'',
+    mode:a.dataset.mode||'',
+  });
   // if the helper is not there (plain static server), fall back to the scheme
   fetch('/open?'+q).then(r=>{
     if(r.ok)return;
