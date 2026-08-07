@@ -152,15 +152,32 @@ h3+.rows,h3+.scroll,h3+.split,h3+.statbar,h3+.fcase,h3+p,h3+ul{margin-top:var(--
 .trow[data-depth]:not([data-depth="0"]) .rmain{
   box-shadow:inset calc(1rem + (var(--d) - 1) * .9rem + .25rem) 0 0 -.5rem var(--line-strong)}
 /* Closed is the resting state: a tree that opens 91 rows at once is a longer
-   flat list with indentation. Shut, a row is its headline; open, it is its
-   sentence and its children — each of them shut in turn. */
-.trow:not(.open) .one{display:none}
-/* The disclosure leads the row rather than trailing it. At the end it was the
-   first thing to wrap, so every collapsed child took two lines — and a control
-   you scan down a column for should sit in a column. */
-.trow .rhead .fold{margin-left:0;min-width:5.4rem;text-align:left;flex:none}
-/* the count already carries `margin-left:auto`, so anything after it hugs the
-   right edge on its own — a second auto margin would split the gap instead */
+   flat list with indentation. Shut, a row is only its name and the area it
+   runs in — the path, the two counts and the sentence are what opening it is
+   for. Four things on a closed row is a list; two is a tree you can scan. */
+.trow:not(.open) .one,
+.trow:not(.open) .rhead .ref,
+.trow:not(.open) .weights{display:none}
+/* Shut, the area tag is the last thing before the chevron, so it takes the
+   free space; open, `.weights` already owns that auto margin. One at a time,
+   or the two split the gap between them. */
+.trow:not(.open) .rarea{margin-left:auto}
+/* The whole row is the target — the chevron marks it, but a 11px triangle is
+   not the thing to ask anyone to hit. */
+.trow[data-kids] .rmain{cursor:pointer}
+.trow[data-kids]:hover .rhead .tfold{color:var(--accent);border-color:var(--accent)}
+.tfold{flex:none;margin-left:.6rem;display:inline-flex;align-items:center;
+  justify-content:center;width:1.35rem;height:1.35rem;padding:0;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--faint);
+  cursor:pointer}
+.tfold:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tchev{fill:currentColor;transition:transform .12s ease}
+.trow.open .tchev{transform:rotate(90deg)}
+/* Hollow means opening reveals only this row's own detail — there is nothing
+   under it. Without the difference a leaf and a parent look identical until
+   you click, which is the question the tree exists to answer. */
+.tfold.leaf{background:none}
+.tfold.leaf .tchev{fill:none;stroke:currentColor;stroke-width:1.4}
 .area-title #tree-all{text-transform:none;letter-spacing:0}
 .trow.stub .rmain{padding-top:.4rem;padding-bottom:.4rem;opacity:.72}
 .trow.stub .rhead h4{font-weight:400}
@@ -561,12 +578,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-hub" data-kind="Screen" data-search="l-hub group hub app/group/[id].tsx one group&#x27;s screen: shows its name, member list and everyone&#x27;s balance, lets you add a member or an expense, claim a member as yourself, rename the group, and surfaces the last sync error. ui screen" style="--sc:var(--s5)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#L-hub">Group hub</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/group/[id].tsx" data-path="app/group/[id].tsx" data-line="" data-editor="cursor://file/home/user/splitnext-app/app/group/[id].tsx" title="Open on GitHub — or in the editor, from a local board">app/group/[id].tsx</a>
       
       <span class="weights"><span class="used" title="Named by 6 flows">6 flows</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">One group&#x27;s screen: shows its name, member list and everyone&#x27;s balance, lets you add a member or an expense, claim a member as yourself, rename the group, and surfaces the last sync error.</p>
   </div>
@@ -574,12 +591,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-lobby" data-kind="Screen" data-search="l-lobby lobby screen app/index.tsx the first screen: lists every group this device knows, offers create group, and opens one into the hub. ui screen" style="--sc:var(--s5)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#L-lobby">Lobby screen</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/index.tsx" data-path="app/index.tsx" data-line="" data-editor="cursor://file/home/user/splitnext-app/app/index.tsx" title="Open on GitHub — or in the editor, from a local board">app/index.tsx</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">The first screen: lists every group this device knows, offers Create group, and opens one into the hub.</p>
   </div>
@@ -587,12 +604,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-rootLayout" data-kind="Screen" data-search="l-rootlayout root layout app/_layout.tsx the app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app. ui screen" style="--sc:var(--s5)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#L-rootLayout">Root layout</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/_layout.tsx" data-path="app/_layout.tsx" data-line="" data-editor="cursor://file/home/user/splitnext-app/app/_layout.tsx" title="Open on GitHub — or in the editor, from a local board">app/_layout.tsx</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app.</p>
   </div>
@@ -600,12 +617,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-flushQueue" data-kind="Job" data-search="l-flushqueue flushqueue src/sync/outbound.ts sends everything pending for a group in dependency order, keeps whatever the server did not accept, and records a typed error when it fails. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-flushQueue">flushQueue</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/outbound.ts#L52" data-path="src/sync/outbound.ts" data-line="52" data-editor="cursor://file/home/user/splitnext-app/src/sync/outbound.ts:52" title="Open on GitHub — or in the editor, from a local board">src/sync/outbound.ts:52</a>
       
       <span class="weights"><span class="used" title="Named by 5 flows">5 flows</span><span class="callers" title="Called by 4 symbols on the map">4 callers</span></span>
+      
     </div>
     <p class="one">Sends everything pending for a group in dependency order, keeps whatever the server did not accept, and records a typed error when it fails.</p>
   </div>
@@ -613,12 +630,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-wakeSub" data-kind="Network" data-search="l-wakesub startwakesubscription src/sync/wake.ts listens on the group&#x27;s realtime channel; a wake says only what changed, and this fetches that one entity. one subscription per group. device network" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-wakeSub">startWakeSubscription</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/wake.ts#L17" data-path="src/sync/wake.ts" data-line="17" data-editor="cursor://file/home/user/splitnext-app/src/sync/wake.ts:17" title="Open on GitHub — or in the editor, from a local board">src/sync/wake.ts:17</a>
       
       <span class="weights"><span class="used" title="Named by 4 flows">4 flows</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      
     </div>
     <p class="one">Listens on the group&#x27;s Realtime channel; a wake says only what changed, and this fetches that one entity. One subscription per group.</p>
   </div>
@@ -626,12 +643,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-applyRemoteFetch" data-kind="Job" data-search="l-applyremotefetch applyremotefetch src/sync/inbound.ts fetches one entity from the server and commits it, clearing or setting the group&#x27;s error. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-applyRemoteFetch">applyRemoteFetch</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L39" data-path="src/sync/inbound.ts" data-line="39" data-editor="cursor://file/home/user/splitnext-app/src/sync/inbound.ts:39" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:39</a>
       
       <span class="weights"><span class="used" title="Named by 3 flows">3 flows</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      
     </div>
     <p class="one">Fetches one entity from the server and commits it, clearing or setting the group&#x27;s error.</p>
   </div>
@@ -639,12 +656,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-sortByFlushOrder" data-kind="Pure" data-search="l-sortbyflushorder sortbyflushorder src/domain/version.ts orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-sortByFlushOrder">sortByFlushOrder</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/version.ts#L28" data-path="src/domain/version.ts" data-line="28" data-editor="cursor://file/home/user/splitnext-app/src/domain/version.ts:28" title="Open on GitHub — or in the editor, from a local board">src/domain/version.ts:28</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it.</p>
   </div>
@@ -652,12 +669,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-assumedMember" data-kind="Pure" data-search="l-assumedmember assumedmemberidfrombinds src/domain/assumedmember.ts answers &quot;which member am i in this group?&quot; by finding this device&#x27;s live bind. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-assumedMember">assumedMemberIdFromBinds</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/assumedMember.ts#L4" data-path="src/domain/assumedMember.ts" data-line="4" data-editor="cursor://file/home/user/splitnext-app/src/domain/assumedMember.ts:4" title="Open on GitHub — or in the editor, from a local board">src/domain/assumedMember.ts:4</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Answers &quot;which member am I in this group?&quot; by finding this device&#x27;s live bind.</p>
   </div>
@@ -665,12 +682,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-balances" data-kind="Pure" data-search="l-balances computebalances src/domain/balances.ts works out what each member is up or down overall — what they paid minus what they owe — most-negative first. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-balances">computeBalances</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/balances.ts#L25" data-path="src/domain/balances.ts" data-line="25" data-editor="cursor://file/home/user/splitnext-app/src/domain/balances.ts:25" title="Open on GitHub — or in the editor, from a local board">src/domain/balances.ts:25</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Works out what each member is up or down overall — what they paid minus what they owe — most-negative first.</p>
   </div>
@@ -678,12 +695,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-getGroupStore" data-kind="State" data-search="l-getgroupstore getgroupstore src/store/groupstore.ts hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by `l-normalizetimestamps`. device state" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-getGroupStore">getGroupStore</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/groupStore.ts#L9" data-path="src/store/groupStore.ts" data-line="9" data-editor="cursor://file/home/user/splitnext-app/src/store/groupStore.ts:9" title="Open on GitHub — or in the editor, from a local board">src/store/groupStore.ts:9</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 12 symbols on the map">12 callers</span></span>
+      
     </div>
     <p class="one">Hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by <a class="chip chip-l" style="--sc:var(--s2)" href="#L-normalizeTimestamps" title="L-normalizeTimestamps · Pure"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>normalizePersistedTimestamps</a>.</p>
   </div>
@@ -691,12 +708,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-deviceUser" data-kind="State" data-search="l-deviceuser getorcreatedeviceuserid src/device/deviceuser.ts the identity of this install: one id, generated once and kept in the secret store, since there are no accounts. device state" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-deviceUser">getOrCreateDeviceUserId</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/device/deviceUser.ts#L7" data-path="src/device/deviceUser.ts" data-line="7" data-editor="cursor://file/home/user/splitnext-app/src/device/deviceUser.ts:7" title="Open on GitHub — or in the editor, from a local board">src/device/deviceUser.ts:7</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 7 symbols on the map">7 callers</span></span>
+      
     </div>
     <p class="one">The identity of this install: one id, generated once and kept in the secret store, since there are no accounts.</p>
   </div>
@@ -704,12 +721,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-accessToken" data-kind="State" data-search="l-accesstoken getaccesstoken / saveaccesstoken src/secrets/tokens.ts keeps each group&#x27;s capability token in the secret store — holding it is what proves access to that group. device state" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-accessToken">getAccessToken / saveAccessToken</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/tokens.ts#L15" data-path="src/secrets/tokens.ts" data-line="15" data-editor="cursor://file/home/user/splitnext-app/src/secrets/tokens.ts:15" title="Open on GitHub — or in the editor, from a local board">src/secrets/tokens.ts:15</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 5 symbols on the map">5 callers</span></span>
+      
     </div>
     <p class="one">Keeps each group&#x27;s capability token in the secret store — holding it is what proves access to that group.</p>
   </div>
@@ -717,12 +734,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-lobbyIds" data-kind="State" data-search="l-lobbyids listlobbygroupids / addlobbygroupid src/secrets/tokens.ts the device&#x27;s list of known group ids, which is what the lobby and the catch-up sync iterate over. temporary home. device state" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-lobbyIds">listLobbyGroupIds / addLobbyGroupId</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/tokens.ts#L21" data-path="src/secrets/tokens.ts" data-line="21" data-editor="cursor://file/home/user/splitnext-app/src/secrets/tokens.ts:21" title="Open on GitHub — or in the editor, from a local board">src/secrets/tokens.ts:21</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 3 symbols on the map">3 callers</span></span>
+      
     </div>
     <p class="one">The device&#x27;s list of known group ids, which is what the lobby and the catch-up sync iterate over. Temporary home.</p>
   </div>
@@ -730,12 +747,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-shouldAcceptVersion" data-kind="Pure" data-search="l-shouldacceptversion shouldacceptversion src/domain/version.ts decides who wins when two copies of an entity disagree: the incoming one, but only if its version number is strictly higher. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-shouldAcceptVersion">shouldAcceptVersion</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/version.ts#L2" data-path="src/domain/version.ts" data-line="2" data-editor="cursor://file/home/user/splitnext-app/src/domain/version.ts:2" title="Open on GitHub — or in the editor, from a local board">src/domain/version.ts:2</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Decides who wins when two copies of an entity disagree: the incoming one, but only if its version number is strictly higher.</p>
   </div>
@@ -743,12 +760,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-bindingOpen" data-kind="Pure" data-search="l-bindingopen bindingisopen src/domain/assumedmember.ts answers &quot;can this device still say which member it is?&quot; — yes until the group&#x27;s first live expense, which is what shows or hides the this is me button. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-bindingOpen">bindingIsOpen</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/assumedMember.ts#L26" data-path="src/domain/assumedMember.ts" data-line="26" data-editor="cursor://file/home/user/splitnext-app/src/domain/assumedMember.ts:26" title="Open on GitHub — or in the editor, from a local board">src/domain/assumedMember.ts:26</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      
     </div>
     <p class="one">Answers &quot;can this device still say which member it is?&quot; — yes until the group&#x27;s first live expense, which is what shows or hides the This is me button.</p>
   </div>
@@ -756,12 +773,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-splitEqually" data-kind="Pure" data-search="l-splitequally splitequally src/domain/split.ts divides a cost equally, to the cent, across the members given. leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-splitEqually">splitEqually</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/split.ts#L14" data-path="src/domain/split.ts" data-line="14" data-editor="cursor://file/home/user/splitnext-app/src/domain/split.ts:14" title="Open on GitHub — or in the editor, from a local board">src/domain/split.ts:14</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly.</p>
   </div>
@@ -769,12 +786,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-createGroup" data-kind="Job" data-search="l-creategroup creategroup src/sync/groupsync.ts creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-createGroup">createGroup</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L31" data-path="src/sync/groupSync.ts" data-line="31" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:31" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:31</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes.</p>
   </div>
@@ -782,12 +799,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-openGroup" data-kind="Job" data-search="l-opengroup opengroup src/sync/groupsync.ts opens a group for viewing — subscribes for wakes, then runs a full sync. realtime being down does not block opening. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-openGroup">openGroup</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L269" data-path="src/sync/groupSync.ts" data-line="269" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:269" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:269</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Opens a group for viewing — subscribes for wakes, then runs a full sync. Realtime being down does not block opening.</p>
   </div>
@@ -795,12 +812,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-syncGroup" data-kind="Job" data-search="l-syncgroup syncgroup src/sync/groupsync.ts one full round trip for a group: push everything pending, pull the group back, then pull its roster. runs alone per group so nothing races. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-syncGroup">syncGroup</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L246" data-path="src/sync/groupSync.ts" data-line="246" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:246" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:246</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      
     </div>
     <p class="one">One full round trip for a group: push everything pending, pull the group back, then pull its roster. Runs alone per group so nothing races.</p>
   </div>
@@ -808,12 +825,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-syncAllLobby" data-kind="Job" data-search="l-syncalllobby syncalllobbygroups src/sync/groupsync.ts syncs every group this device knows at once, isolating failures so one bad group cannot block the rest. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-syncAllLobby">syncAllLobbyGroups</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L256" data-path="src/sync/groupSync.ts" data-line="256" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:256" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:256</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest.</p>
   </div>
@@ -821,12 +838,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-bumpName" data-kind="Job" data-search="l-bumpname bumpgroupname src/sync/groupsync.ts renames a group: the new name shows immediately, then goes to the server as the next version. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-bumpName">bumpGroupName</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L85" data-path="src/sync/groupSync.ts" data-line="85" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:85" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:85</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Renames a group: the new name shows immediately, then goes to the server as the next version.</p>
   </div>
@@ -834,12 +851,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-addMember" data-kind="Job" data-search="l-addmember addmember src/sync/groupsync.ts adds a person to the group locally, then sends them to the server. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-addMember">addMember</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L110" data-path="src/sync/groupSync.ts" data-line="110" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:110" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:110</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Adds a person to the group locally, then sends them to the server.</p>
   </div>
@@ -847,12 +864,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-addExpense" data-kind="Job" data-search="l-addexpense addexpense src/sync/groupsync.ts records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-addExpense">addExpense</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L146" data-path="src/sync/groupSync.ts" data-line="146" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:146" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:146</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it.</p>
   </div>
@@ -860,12 +877,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-bindMe" data-kind="Job" data-search="l-bindme bindme src/sync/groupsync.ts claims a member as this device&#x27;s own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. refuses once the group has an expense, or if the member is gone. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-bindMe">bindMe</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L197" data-path="src/sync/groupSync.ts" data-line="197" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:197" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:197</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Claims a member as this device&#x27;s own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. Refuses once the group has an expense, or if the member is gone.</p>
   </div>
@@ -873,12 +890,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-runExclusive" data-kind="Job" data-search="l-runexclusive runexclusive src/sync/exclusive.ts queues async work per group so a push and a pull can never overlap on the same group. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-runExclusive">runExclusive</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/exclusive.ts#L4" data-path="src/sync/exclusive.ts" data-line="4" data-editor="cursor://file/home/user/splitnext-app/src/sync/exclusive.ts:4" title="Open on GitHub — or in the editor, from a local board">src/sync/exclusive.ts:4</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      
     </div>
     <p class="one">Queues async work per group so a push and a pull can never overlap on the same group.</p>
   </div>
@@ -886,12 +903,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-shouldFlush" data-kind="Pure" data-search="l-shouldflush shouldattemptflush src/sync/queuepolicy.ts says whether a push is worth making at all — an empty queue is a no-op, not a request. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-shouldFlush">shouldAttemptFlush</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/queuePolicy.ts#L2" data-path="src/sync/queuePolicy.ts" data-line="2" data-editor="cursor://file/home/user/splitnext-app/src/sync/queuePolicy.ts:2" title="Open on GitHub — or in the editor, from a local board">src/sync/queuePolicy.ts:2</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Says whether a push is worth making at all — an empty queue is a no-op, not a request.</p>
   </div>
@@ -899,12 +916,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-queuePolicy" data-kind="Pure" data-search="l-queuepolicy queueaftermergeresults src/sync/queuepolicy.ts decides what stays pending after a push: drop only the exact versions the server accepted, so nothing newer is lost. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-queuePolicy">queueAfterMergeResults</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/queuePolicy.ts#L23" data-path="src/sync/queuePolicy.ts" data-line="23" data-editor="cursor://file/home/user/splitnext-app/src/sync/queuePolicy.ts:23" title="Open on GitHub — or in the editor, from a local board">src/sync/queuePolicy.ts:23</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Decides what stays pending after a push: drop only the exact versions the server accepted, so nothing newer is lost.</p>
   </div>
@@ -912,12 +929,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-applyRemoteEntity" data-kind="Pure" data-search="l-applyremoteentity applyremoteentity src/sync/inboundapply.ts works out the next local state for one incoming entity, or says no change if the local copy is already as new. pure, so it is unit-tested. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-applyRemoteEntity">applyRemoteEntity</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inboundApply.ts#L18" data-path="src/sync/inboundApply.ts" data-line="18" data-editor="cursor://file/home/user/splitnext-app/src/sync/inboundApply.ts:18" title="Open on GitHub — or in the editor, from a local board">src/sync/inboundApply.ts:18</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Works out the next local state for one incoming entity, or says no change if the local copy is already as new. Pure, so it is unit-tested.</p>
   </div>
@@ -925,12 +942,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-commitRemote" data-kind="State" data-search="l-commitremote commitremoteentity src/sync/inbound.ts writes the accepted result of that decision into the store. device state" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-commitRemote">commitRemoteEntity</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L19" data-path="src/sync/inbound.ts" data-line="19" data-editor="cursor://file/home/user/splitnext-app/src/sync/inbound.ts:19" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:19</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      
     </div>
     <p class="one">Writes the accepted result of that decision into the store.</p>
   </div>
@@ -938,12 +955,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-pullRoster" data-kind="Job" data-search="l-pullroster pullroster src/sync/inbound.ts fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-pullRoster">pullRoster</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L72" data-path="src/sync/inbound.ts" data-line="72" data-editor="cursor://file/home/user/splitnext-app/src/sync/inbound.ts:72" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:72</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call.</p>
   </div>
@@ -951,12 +968,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-foreground" data-kind="Job" data-search="l-foreground uselobbyforegroundsync src/sync/appforegroundsync.ts runs the lobby-wide catch-up on mount and every time the app returns to the foreground. device job" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-foreground">useLobbyForegroundSync</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/appForegroundSync.ts#L6" data-path="src/sync/appForegroundSync.ts" data-line="6" data-editor="cursor://file/home/user/splitnext-app/src/sync/appForegroundSync.ts:6" title="Open on GitHub — or in the editor, from a local board">src/sync/appForegroundSync.ts:6</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Runs the lobby-wide catch-up on mount and every time the app returns to the foreground.</p>
   </div>
@@ -964,12 +981,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-syncError" data-kind="Pure" data-search="l-syncerror syncerror / coercesyncerror src/sync/syncerrors.ts gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-syncError">syncError / coerceSyncError</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/syncErrors.ts#L5" data-path="src/sync/syncErrors.ts" data-line="5" data-editor="cursor://file/home/user/splitnext-app/src/sync/syncErrors.ts:5" title="Open on GitHub — or in the editor, from a local board">src/sync/syncErrors.ts:5</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 7 symbols on the map">7 callers</span></span>
+      
     </div>
     <p class="one">Gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape.</p>
   </div>
@@ -977,12 +994,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-initLocalGroup" data-kind="State" data-search="l-initlocalgroup initlocalgroup src/store/groupstore.ts seeds a freshly created group into its store as local-only, before the server knows about it. device state" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-initLocalGroup">initLocalGroup</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/groupStore.ts#L53" data-path="src/store/groupStore.ts" data-line="53" data-editor="cursor://file/home/user/splitnext-app/src/store/groupStore.ts:53" title="Open on GitHub — or in the editor, from a local board">src/store/groupStore.ts:53</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Seeds a freshly created group into its store as local-only, before the server knows about it.</p>
   </div>
@@ -990,12 +1007,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-normalizeTimestamps" data-kind="Pure" data-search="l-normalizetimestamps normalizepersistedtimestamps src/store/timestamps.ts undoes the `date` objects that reloading a saved store invents in place of our timestamp strings, so a reopened group holds exactly what a freshly synced one does. device pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-normalizeTimestamps">normalizePersistedTimestamps</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/timestamps.ts#L19" data-path="src/store/timestamps.ts" data-line="19" data-editor="cursor://file/home/user/splitnext-app/src/store/timestamps.ts:19" title="Open on GitHub — or in the editor, from a local board">src/store/timestamps.ts:19</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Undoes the <code>Date</code> objects that reloading a saved store invents in place of our timestamp strings, so a reopened group holds exactly what a freshly synced one does.</p>
   </div>
@@ -1003,12 +1020,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-secureStorage" data-kind="State" data-search="l-securestorage getsecret / setsecret src/secrets/securestorage.ts the one door to the device&#x27;s secrets. native goes to the os keychain; the web build swaps in `localstorage`, which is why nothing wider than a per-group token belongs here. device state" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-secureStorage">getSecret / setSecret</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/secureStorage.ts#L11" data-path="src/secrets/secureStorage.ts" data-line="11" data-editor="cursor://file/home/user/splitnext-app/src/secrets/secureStorage.ts:11" title="Open on GitHub — or in the editor, from a local board">src/secrets/secureStorage.ts:11</a>
       
       <span class="weights"><span class="used none" title="No flow names this symbol">—</span><span class="callers" title="Called by 3 symbols on the map">3 callers</span></span>
+      
     </div>
     <p class="one">The one door to the device&#x27;s secrets. Native goes to the OS keychain; the web build swaps in <code>localStorage</code>, which is why nothing wider than a per-group token belongs here.</p>
   </div>
@@ -1016,12 +1033,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-persistPlugin" data-kind="State" data-search="l-persistplugin persistplugin src/store/persistplugin.ts where a store survives a restart: sqlite on a device, `localstorage` on web, so the browser target needs no wasm. device state" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-persistPlugin">persistPlugin</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/persistPlugin.ts#L10" data-path="src/store/persistPlugin.ts" data-line="10" data-editor="cursor://file/home/user/splitnext-app/src/store/persistPlugin.ts:10" title="Open on GitHub — or in the editor, from a local board">src/store/persistPlugin.ts:10</a>
       
       <span class="weights"><span class="used none" title="No flow names this symbol">—</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">Where a store survives a restart: SQLite on a device, <code>localStorage</code> on web, so the browser target needs no wasm.</p>
   </div>
@@ -1029,12 +1046,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-edgeCreate" data-kind="Network" data-search="l-edgecreate creategroupremote src/api/edge.ts asks the server to register a new group and hand back its access token. edge network" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeCreate">createGroupRemote</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L52" data-path="src/api/edge.ts" data-line="52" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:52" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:52</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Asks the server to register a new group and hand back its access token.</p>
   </div>
@@ -1042,12 +1059,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-edgeMerge" data-kind="Network" data-search="l-edgemerge mergeentities src/api/edge.ts pushes a batch of pending changes and reports per item whether the server accepted them. edge network" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeMerge">mergeEntities</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L62" data-path="src/api/edge.ts" data-line="62" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:62" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:62</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Pushes a batch of pending changes and reports per item whether the server accepted them.</p>
   </div>
@@ -1055,12 +1072,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-edgeFetch" data-kind="Network" data-search="l-edgefetch fetchentity src/api/edge.ts asks for one entity by type and id — the call a wake triggers. edge network" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeFetch">fetchEntity</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L91" data-path="src/api/edge.ts" data-line="91" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:91" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:91</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Asks for one entity by type and id — the call a wake triggers.</p>
   </div>
@@ -1068,12 +1085,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-edgeRoster" data-kind="Network" data-search="l-edgeroster listroster src/api/edge.ts asks for a group&#x27;s whole roster — members, binds and expenses — in one request. edge network" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeRoster">listRoster</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L112" data-path="src/api/edge.ts" data-line="112" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:112" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:112</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Asks for a group&#x27;s whole roster — members, binds and expenses — in one request.</p>
   </div>
@@ -1081,12 +1098,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-edgeRtJwt" data-kind="Network" data-search="l-edgertjwt mintrealtimeauth src/api/edge.ts trades the group&#x27;s access token for permission to listen on its realtime channel. edge network" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeRtJwt">mintRealtimeAuth</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L131" data-path="src/api/edge.ts" data-line="131" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:131" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:131</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">Trades the group&#x27;s access token for permission to listen on its Realtime channel.</p>
   </div>
@@ -1094,12 +1111,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-efMerge" data-kind="Endpoint" data-search="l-efmerge merge / mergeone supabase/functions/merge the write path: applies each pushed item if its version wins, reports accepted or rejected per item, and wakes the group&#x27;s other devices. server endpoint" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efMerge">merge / mergeOne</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/merge" data-path="supabase/functions/merge" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/merge" title="Open on GitHub — or in the editor, from a local board">supabase/functions/merge</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">The write path: applies each pushed item if its version wins, reports accepted or rejected per item, and wakes the group&#x27;s other devices.</p>
   </div>
@@ -1107,12 +1124,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-efWake" data-kind="Network" data-search="l-efwake publishwake supabase/functions/_shared/wake.ts tells the group&#x27;s other devices that something changed, naming only what — never the data itself. a failed wake never undoes the write. server network" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-efWake">publishWake</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/wake.ts#L11" data-path="supabase/functions/_shared/wake.ts" data-line="11" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/_shared/wake.ts:11" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/wake.ts:11</a>
       
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">Tells the group&#x27;s other devices that something changed, naming only what — never the data itself. A failed wake never undoes the write.</p>
   </div>
@@ -1120,12 +1137,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-efCreate" data-kind="Endpoint" data-search="l-efcreate create-group supabase/functions/create-group creates the group row and issues an access token, storing only its hash. server endpoint" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efCreate">create-group</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/create-group" data-path="supabase/functions/create-group" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/create-group" title="Open on GitHub — or in the editor, from a local board">supabase/functions/create-group</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">Creates the group row and issues an access token, storing only its hash.</p>
   </div>
@@ -1133,12 +1150,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-efFetch" data-kind="Endpoint" data-search="l-effetch fetch-entity supabase/functions/fetch-entity returns one entity to a caller whose token proves access to that group. server endpoint" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efFetch">fetch-entity</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/fetch-entity" data-path="supabase/functions/fetch-entity" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/fetch-entity" title="Open on GitHub — or in the editor, from a local board">supabase/functions/fetch-entity</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">Returns one entity to a caller whose token proves access to that group.</p>
   </div>
@@ -1146,12 +1163,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-efRoster" data-kind="Endpoint" data-search="l-efroster list-roster supabase/functions/list-roster returns every member, bind and expense of a group in one response. server endpoint" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efRoster">list-roster</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/list-roster" data-path="supabase/functions/list-roster" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/list-roster" title="Open on GitHub — or in the editor, from a local board">supabase/functions/list-roster</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">Returns every member, bind and expense of a group in one response.</p>
   </div>
@@ -1159,12 +1176,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-efRtJwt" data-kind="Endpoint" data-search="l-efrtjwt rt-jwt supabase/functions/rt-jwt issues a short-lived realtime token, falling back to a shared anonymous channel when it cannot. server endpoint" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efRtJwt">rt-jwt</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/rt-jwt" data-path="supabase/functions/rt-jwt" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/rt-jwt" title="Open on GitHub — or in the editor, from a local board">supabase/functions/rt-jwt</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      
     </div>
     <p class="one">Issues a short-lived Realtime token, falling back to a shared anonymous channel when it cannot.</p>
   </div>
@@ -1172,12 +1189,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-efAccess" data-kind="Endpoint" data-search="l-efaccess resolveaccesstoken supabase/functions/_shared/access.ts the door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device. server endpoint" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efAccess">resolveAccessToken</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/access.ts#L11" data-path="supabase/functions/_shared/access.ts" data-line="11" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/_shared/access.ts:11" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/access.ts:11</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 3 symbols on the map">3 callers</span></span>
+      
     </div>
     <p class="one">The door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device.</p>
   </div>
@@ -1185,12 +1202,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row" id="L-efShouldAccept" data-kind="Pure" data-search="l-efshouldaccept shouldaccept supabase/functions/_shared/entities.ts the server&#x27;s copy of the version rule, deliberately identical to the client&#x27;s so both sides agree on who wins. server pure" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-efShouldAccept">shouldAccept</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/entities.ts#L8" data-path="supabase/functions/_shared/entities.ts" data-line="8" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/_shared/entities.ts:8" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/entities.ts:8</a>
       
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      
     </div>
     <p class="one">The server&#x27;s copy of the version rule, deliberately identical to the client&#x27;s so both sides agree on who wins.</p>
   </div>
@@ -1199,12 +1216,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-lobby" data-kind="Screen" data-search="l-lobby lobby screen app/index.tsx the first screen: lists every group this device knows, offers create group, and opens one into the hub. ui screen" data-depth="0" data-kids="2" style="--sc:var(--s5)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">2 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#tree-L-lobby">Lobby screen</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/index.tsx" data-path="app/index.tsx" data-line="" data-editor="cursor://file/home/user/splitnext-app/app/index.tsx" title="Open on GitHub — or in the editor, from a local board">app/index.tsx</a>
       <span class="rarea" style="--sc:var(--s1)">UI</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 2 calls" title="Expand — 2 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">The first screen: lists every group this device knows, offers Create group, and opens one into the hub.</p>
   </div>
@@ -1212,12 +1229,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-lobbyIds" data-kind="State" data-search="l-lobbyids listlobbygroupids / addlobbygroupid src/secrets/tokens.ts the device&#x27;s list of known group ids, which is what the lobby and the catch-up sync iterate over. temporary home. device state" data-depth="1" data-kids="1" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#tree-L-lobbyIds">listLobbyGroupIds / addLobbyGroupId</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/tokens.ts#L21" data-path="src/secrets/tokens.ts" data-line="21" data-editor="cursor://file/home/user/splitnext-app/src/secrets/tokens.ts:21" title="Open on GitHub — or in the editor, from a local board">src/secrets/tokens.ts:21</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 3 symbols on the map">3 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">The device&#x27;s list of known group ids, which is what the lobby and the catch-up sync iterate over. Temporary home.</p>
   </div>
@@ -1225,12 +1242,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-secureStorage" data-kind="State" data-search="l-securestorage getsecret / setsecret src/secrets/securestorage.ts the one door to the device&#x27;s secrets. native goes to the os keychain; the web build swaps in `localstorage`, which is why nothing wider than a per-group token belongs here. device state" data-depth="2" data-kids="0" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#tree-L-secureStorage">getSecret / setSecret</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/secureStorage.ts#L11" data-path="src/secrets/secureStorage.ts" data-line="11" data-editor="cursor://file/home/user/splitnext-app/src/secrets/secureStorage.ts:11" title="Open on GitHub — or in the editor, from a local board">src/secrets/secureStorage.ts:11</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used none" title="No flow names this symbol">—</span><span class="callers" title="Called by 3 symbols on the map">3 callers</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">The one door to the device&#x27;s secrets. Native goes to the OS keychain; the web build swaps in <code>localStorage</code>, which is why nothing wider than a per-group token belongs here.</p>
   </div>
@@ -1238,12 +1255,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-createGroup" data-kind="Job" data-search="l-creategroup creategroup src/sync/groupsync.ts creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes. device job" data-depth="1" data-kids="8" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">8 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-createGroup">createGroup</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L31" data-path="src/sync/groupSync.ts" data-line="31" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:31" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:31</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 8 calls" title="Expand — 8 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes.</p>
   </div>
@@ -1251,12 +1268,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-initLocalGroup" data-kind="State" data-search="l-initlocalgroup initlocalgroup src/store/groupstore.ts seeds a freshly created group into its store as local-only, before the server knows about it. device state" data-depth="2" data-kids="0" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#tree-L-initLocalGroup">initLocalGroup</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/groupStore.ts#L53" data-path="src/store/groupStore.ts" data-line="53" data-editor="cursor://file/home/user/splitnext-app/src/store/groupStore.ts:53" title="Open on GitHub — or in the editor, from a local board">src/store/groupStore.ts:53</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Seeds a freshly created group into its store as local-only, before the server knows about it.</p>
   </div>
@@ -1264,12 +1281,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-edgeCreate" data-kind="Network" data-search="l-edgecreate creategroupremote src/api/edge.ts asks the server to register a new group and hand back its access token. edge network" data-depth="2" data-kids="0" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#tree-L-edgeCreate">createGroupRemote</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L52" data-path="src/api/edge.ts" data-line="52" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:52" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:52</a>
       <span class="rarea" style="--sc:var(--s3)">Edge</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Asks the server to register a new group and hand back its access token.</p>
   </div>
@@ -1277,12 +1294,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-accessToken" data-kind="State" data-search="l-accesstoken getaccesstoken / saveaccesstoken src/secrets/tokens.ts keeps each group&#x27;s capability token in the secret store — holding it is what proves access to that group. device state" data-depth="2" data-kids="1" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#tree-L-accessToken">getAccessToken / saveAccessToken</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/tokens.ts#L15" data-path="src/secrets/tokens.ts" data-line="15" data-editor="cursor://file/home/user/splitnext-app/src/secrets/tokens.ts:15" title="Open on GitHub — or in the editor, from a local board">src/secrets/tokens.ts:15</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 5 symbols on the map">5 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Keeps each group&#x27;s capability token in the secret store — holding it is what proves access to that group.</p>
   </div>
@@ -1290,12 +1307,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-wakeSub" data-kind="Network" data-search="l-wakesub startwakesubscription src/sync/wake.ts listens on the group&#x27;s realtime channel; a wake says only what changed, and this fetches that one entity. one subscription per group. device network" data-depth="2" data-kids="4" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">4 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#tree-L-wakeSub">startWakeSubscription</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/wake.ts#L17" data-path="src/sync/wake.ts" data-line="17" data-editor="cursor://file/home/user/splitnext-app/src/sync/wake.ts:17" title="Open on GitHub — or in the editor, from a local board">src/sync/wake.ts:17</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 4 flows">4 flows</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 4 calls" title="Expand — 4 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Listens on the group&#x27;s Realtime channel; a wake says only what changed, and this fetches that one entity. One subscription per group.</p>
   </div>
@@ -1303,12 +1320,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-edgeRtJwt" data-kind="Network" data-search="l-edgertjwt mintrealtimeauth src/api/edge.ts trades the group&#x27;s access token for permission to listen on its realtime channel. edge network" data-depth="3" data-kids="0" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#tree-L-edgeRtJwt">mintRealtimeAuth</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L131" data-path="src/api/edge.ts" data-line="131" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:131" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:131</a>
       <span class="rarea" style="--sc:var(--s3)">Edge</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Trades the group&#x27;s access token for permission to listen on its Realtime channel.</p>
   </div>
@@ -1316,12 +1333,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-applyRemoteFetch" data-kind="Job" data-search="l-applyremotefetch applyremotefetch src/sync/inbound.ts fetches one entity from the server and commits it, clearing or setting the group&#x27;s error. device job" data-depth="3" data-kids="6" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">6 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-applyRemoteFetch">applyRemoteFetch</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L39" data-path="src/sync/inbound.ts" data-line="39" data-editor="cursor://file/home/user/splitnext-app/src/sync/inbound.ts:39" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:39</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 3 flows">3 flows</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 6 calls" title="Expand — 6 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Fetches one entity from the server and commits it, clearing or setting the group&#x27;s error.</p>
   </div>
@@ -1329,12 +1346,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-edgeFetch" data-kind="Network" data-search="l-edgefetch fetchentity src/api/edge.ts asks for one entity by type and id — the call a wake triggers. edge network" data-depth="4" data-kids="0" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#tree-L-edgeFetch">fetchEntity</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L91" data-path="src/api/edge.ts" data-line="91" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:91" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:91</a>
       <span class="rarea" style="--sc:var(--s3)">Edge</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Asks for one entity by type and id — the call a wake triggers.</p>
   </div>
@@ -1342,12 +1359,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-commitRemote" data-kind="State" data-search="l-commitremote commitremoteentity src/sync/inbound.ts writes the accepted result of that decision into the store. device state" data-depth="4" data-kids="2" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">2 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#tree-L-commitRemote">commitRemoteEntity</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L19" data-path="src/sync/inbound.ts" data-line="19" data-editor="cursor://file/home/user/splitnext-app/src/sync/inbound.ts:19" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:19</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 2 calls" title="Expand — 2 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Writes the accepted result of that decision into the store.</p>
   </div>
@@ -1355,12 +1372,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-applyRemoteEntity" data-kind="Pure" data-search="l-applyremoteentity applyremoteentity src/sync/inboundapply.ts works out the next local state for one incoming entity, or says no change if the local copy is already as new. pure, so it is unit-tested. device pure" data-depth="5" data-kids="1" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-applyRemoteEntity">applyRemoteEntity</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inboundApply.ts#L18" data-path="src/sync/inboundApply.ts" data-line="18" data-editor="cursor://file/home/user/splitnext-app/src/sync/inboundApply.ts:18" title="Open on GitHub — or in the editor, from a local board">src/sync/inboundApply.ts:18</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Works out the next local state for one incoming entity, or says no change if the local copy is already as new. Pure, so it is unit-tested.</p>
   </div>
@@ -1368,12 +1385,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-shouldAcceptVersion" data-kind="Pure" data-search="l-shouldacceptversion shouldacceptversion src/domain/version.ts decides who wins when two copies of an entity disagree: the incoming one, but only if its version number is strictly higher. device pure" data-depth="6" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-shouldAcceptVersion">shouldAcceptVersion</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/version.ts#L2" data-path="src/domain/version.ts" data-line="2" data-editor="cursor://file/home/user/splitnext-app/src/domain/version.ts:2" title="Open on GitHub — or in the editor, from a local board">src/domain/version.ts:2</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Decides who wins when two copies of an entity disagree: the incoming one, but only if its version number is strictly higher.</p>
   </div>
@@ -1381,12 +1398,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-hub" data-kind="Screen" data-search="l-hub group hub app/group/[id].tsx one group&#x27;s screen: shows its name, member list and everyone&#x27;s balance, lets you add a member or an expense, claim a member as yourself, rename the group, and surfaces the last sync error. ui screen" data-depth="0" data-kids="11" style="--sc:var(--s5)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">11 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#tree-L-hub">Group hub</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/group/[id].tsx" data-path="app/group/[id].tsx" data-line="" data-editor="cursor://file/home/user/splitnext-app/app/group/[id].tsx" title="Open on GitHub — or in the editor, from a local board">app/group/[id].tsx</a>
       <span class="rarea" style="--sc:var(--s1)">UI</span>
       <span class="weights"><span class="used" title="Named by 6 flows">6 flows</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 11 calls" title="Expand — 11 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">One group&#x27;s screen: shows its name, member list and everyone&#x27;s balance, lets you add a member or an expense, claim a member as yourself, rename the group, and surfaces the last sync error.</p>
   </div>
@@ -1394,12 +1411,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-getGroupStore" data-kind="State" data-search="l-getgroupstore getgroupstore src/store/groupstore.ts hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by `l-normalizetimestamps`. device state" data-depth="1" data-kids="1" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#tree-L-getGroupStore">getGroupStore</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/groupStore.ts#L9" data-path="src/store/groupStore.ts" data-line="9" data-editor="cursor://file/home/user/splitnext-app/src/store/groupStore.ts:9" title="Open on GitHub — or in the editor, from a local board">src/store/groupStore.ts:9</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 12 symbols on the map">12 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by <a class="chip chip-l" style="--sc:var(--s2)" href="#L-normalizeTimestamps" title="L-normalizeTimestamps · Pure"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>normalizePersistedTimestamps</a>.</p>
   </div>
@@ -1407,12 +1424,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-normalizeTimestamps" data-kind="Pure" data-search="l-normalizetimestamps normalizepersistedtimestamps src/store/timestamps.ts undoes the `date` objects that reloading a saved store invents in place of our timestamp strings, so a reopened group holds exactly what a freshly synced one does. device pure" data-depth="2" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-normalizeTimestamps">normalizePersistedTimestamps</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/timestamps.ts#L19" data-path="src/store/timestamps.ts" data-line="19" data-editor="cursor://file/home/user/splitnext-app/src/store/timestamps.ts:19" title="Open on GitHub — or in the editor, from a local board">src/store/timestamps.ts:19</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Undoes the <code>Date</code> objects that reloading a saved store invents in place of our timestamp strings, so a reopened group holds exactly what a freshly synced one does.</p>
   </div>
@@ -1420,12 +1437,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-syncError" data-kind="Pure" data-search="l-syncerror syncerror / coercesyncerror src/sync/syncerrors.ts gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape. device pure" data-depth="1" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-syncError">syncError / coerceSyncError</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/syncErrors.ts#L5" data-path="src/sync/syncErrors.ts" data-line="5" data-editor="cursor://file/home/user/splitnext-app/src/sync/syncErrors.ts:5" title="Open on GitHub — or in the editor, from a local board">src/sync/syncErrors.ts:5</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 7 symbols on the map">7 callers</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape.</p>
   </div>
@@ -1433,12 +1450,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-openGroup" data-kind="Job" data-search="l-opengroup opengroup src/sync/groupsync.ts opens a group for viewing — subscribes for wakes, then runs a full sync. realtime being down does not block opening. device job" data-depth="1" data-kids="3" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">3 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-openGroup">openGroup</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L269" data-path="src/sync/groupSync.ts" data-line="269" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:269" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:269</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 3 calls" title="Expand — 3 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Opens a group for viewing — subscribes for wakes, then runs a full sync. Realtime being down does not block opening.</p>
   </div>
@@ -1446,12 +1463,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-syncGroup" data-kind="Job" data-search="l-syncgroup syncgroup src/sync/groupsync.ts one full round trip for a group: push everything pending, pull the group back, then pull its roster. runs alone per group so nothing races. device job" data-depth="2" data-kids="4" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">4 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-syncGroup">syncGroup</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L246" data-path="src/sync/groupSync.ts" data-line="246" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:246" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:246</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 4 calls" title="Expand — 4 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">One full round trip for a group: push everything pending, pull the group back, then pull its roster. Runs alone per group so nothing races.</p>
   </div>
@@ -1459,12 +1476,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-runExclusive" data-kind="Job" data-search="l-runexclusive runexclusive src/sync/exclusive.ts queues async work per group so a push and a pull can never overlap on the same group. device job" data-depth="3" data-kids="0" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-runExclusive">runExclusive</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/exclusive.ts#L4" data-path="src/sync/exclusive.ts" data-line="4" data-editor="cursor://file/home/user/splitnext-app/src/sync/exclusive.ts:4" title="Open on GitHub — or in the editor, from a local board">src/sync/exclusive.ts:4</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Queues async work per group so a push and a pull can never overlap on the same group.</p>
   </div>
@@ -1472,12 +1489,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-pullRoster" data-kind="Job" data-search="l-pullroster pullroster src/sync/inbound.ts fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call. device job" data-depth="3" data-kids="6" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">6 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-pullRoster">pullRoster</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L72" data-path="src/sync/inbound.ts" data-line="72" data-editor="cursor://file/home/user/splitnext-app/src/sync/inbound.ts:72" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:72</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 6 calls" title="Expand — 6 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call.</p>
   </div>
@@ -1485,12 +1502,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-edgeRoster" data-kind="Network" data-search="l-edgeroster listroster src/api/edge.ts asks for a group&#x27;s whole roster — members, binds and expenses — in one request. edge network" data-depth="4" data-kids="0" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#tree-L-edgeRoster">listRoster</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L112" data-path="src/api/edge.ts" data-line="112" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:112" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:112</a>
       <span class="rarea" style="--sc:var(--s3)">Edge</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Asks for a group&#x27;s whole roster — members, binds and expenses — in one request.</p>
   </div>
@@ -1498,12 +1515,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-deviceUser" data-kind="State" data-search="l-deviceuser getorcreatedeviceuserid src/device/deviceuser.ts the identity of this install: one id, generated once and kept in the secret store, since there are no accounts. device state" data-depth="1" data-kids="1" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#tree-L-deviceUser">getOrCreateDeviceUserId</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/device/deviceUser.ts#L7" data-path="src/device/deviceUser.ts" data-line="7" data-editor="cursor://file/home/user/splitnext-app/src/device/deviceUser.ts:7" title="Open on GitHub — or in the editor, from a local board">src/device/deviceUser.ts:7</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 7 symbols on the map">7 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">The identity of this install: one id, generated once and kept in the secret store, since there are no accounts.</p>
   </div>
@@ -1511,12 +1528,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-assumedMember" data-kind="Pure" data-search="l-assumedmember assumedmemberidfrombinds src/domain/assumedmember.ts answers &quot;which member am i in this group?&quot; by finding this device&#x27;s live bind. device pure" data-depth="1" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-assumedMember">assumedMemberIdFromBinds</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/assumedMember.ts#L4" data-path="src/domain/assumedMember.ts" data-line="4" data-editor="cursor://file/home/user/splitnext-app/src/domain/assumedMember.ts:4" title="Open on GitHub — or in the editor, from a local board">src/domain/assumedMember.ts:4</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Answers &quot;which member am I in this group?&quot; by finding this device&#x27;s live bind.</p>
   </div>
@@ -1524,12 +1541,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-bindingOpen" data-kind="Pure" data-search="l-bindingopen bindingisopen src/domain/assumedmember.ts answers &quot;can this device still say which member it is?&quot; — yes until the group&#x27;s first live expense, which is what shows or hides the this is me button. device pure" data-depth="1" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-bindingOpen">bindingIsOpen</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/assumedMember.ts#L26" data-path="src/domain/assumedMember.ts" data-line="26" data-editor="cursor://file/home/user/splitnext-app/src/domain/assumedMember.ts:26" title="Open on GitHub — or in the editor, from a local board">src/domain/assumedMember.ts:26</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 2 symbols on the map">2 callers</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Answers &quot;can this device still say which member it is?&quot; — yes until the group&#x27;s first live expense, which is what shows or hides the This is me button.</p>
   </div>
@@ -1537,12 +1554,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-balances" data-kind="Pure" data-search="l-balances computebalances src/domain/balances.ts works out what each member is up or down overall — what they paid minus what they owe — most-negative first. device pure" data-depth="1" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-balances">computeBalances</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/balances.ts#L25" data-path="src/domain/balances.ts" data-line="25" data-editor="cursor://file/home/user/splitnext-app/src/domain/balances.ts:25" title="Open on GitHub — or in the editor, from a local board">src/domain/balances.ts:25</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Works out what each member is up or down overall — what they paid minus what they owe — most-negative first.</p>
   </div>
@@ -1550,12 +1567,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-addExpense" data-kind="Job" data-search="l-addexpense addexpense src/sync/groupsync.ts records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it. device job" data-depth="1" data-kids="4" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">4 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-addExpense">addExpense</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L146" data-path="src/sync/groupSync.ts" data-line="146" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:146" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:146</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 4 calls" title="Expand — 4 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it.</p>
   </div>
@@ -1563,12 +1580,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-splitEqually" data-kind="Pure" data-search="l-splitequally splitequally src/domain/split.ts divides a cost equally, to the cent, across the members given. leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. device pure" data-depth="2" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-splitEqually">splitEqually</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/split.ts#L14" data-path="src/domain/split.ts" data-line="14" data-editor="cursor://file/home/user/splitnext-app/src/domain/split.ts:14" title="Open on GitHub — or in the editor, from a local board">src/domain/split.ts:14</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly.</p>
   </div>
@@ -1576,12 +1593,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-flushQueue" data-kind="Job" data-search="l-flushqueue flushqueue src/sync/outbound.ts sends everything pending for a group in dependency order, keeps whatever the server did not accept, and records a typed error when it fails. device job" data-depth="2" data-kids="9" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">9 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-flushQueue">flushQueue</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/outbound.ts#L52" data-path="src/sync/outbound.ts" data-line="52" data-editor="cursor://file/home/user/splitnext-app/src/sync/outbound.ts:52" title="Open on GitHub — or in the editor, from a local board">src/sync/outbound.ts:52</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 5 flows">5 flows</span><span class="callers" title="Called by 4 symbols on the map">4 callers</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 9 calls" title="Expand — 9 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Sends everything pending for a group in dependency order, keeps whatever the server did not accept, and records a typed error when it fails.</p>
   </div>
@@ -1589,12 +1606,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-sortByFlushOrder" data-kind="Pure" data-search="l-sortbyflushorder sortbyflushorder src/domain/version.ts orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it. device pure" data-depth="3" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-sortByFlushOrder">sortByFlushOrder</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/version.ts#L28" data-path="src/domain/version.ts" data-line="28" data-editor="cursor://file/home/user/splitnext-app/src/domain/version.ts:28" title="Open on GitHub — or in the editor, from a local board">src/domain/version.ts:28</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it.</p>
   </div>
@@ -1602,12 +1619,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-shouldFlush" data-kind="Pure" data-search="l-shouldflush shouldattemptflush src/sync/queuepolicy.ts says whether a push is worth making at all — an empty queue is a no-op, not a request. device pure" data-depth="3" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-shouldFlush">shouldAttemptFlush</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/queuePolicy.ts#L2" data-path="src/sync/queuePolicy.ts" data-line="2" data-editor="cursor://file/home/user/splitnext-app/src/sync/queuePolicy.ts:2" title="Open on GitHub — or in the editor, from a local board">src/sync/queuePolicy.ts:2</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Says whether a push is worth making at all — an empty queue is a no-op, not a request.</p>
   </div>
@@ -1615,12 +1632,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-edgeMerge" data-kind="Network" data-search="l-edgemerge mergeentities src/api/edge.ts pushes a batch of pending changes and reports per item whether the server accepted them. edge network" data-depth="3" data-kids="0" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#tree-L-edgeMerge">mergeEntities</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L62" data-path="src/api/edge.ts" data-line="62" data-editor="cursor://file/home/user/splitnext-app/src/api/edge.ts:62" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:62</a>
       <span class="rarea" style="--sc:var(--s3)">Edge</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Pushes a batch of pending changes and reports per item whether the server accepted them.</p>
   </div>
@@ -1628,12 +1645,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-queuePolicy" data-kind="Pure" data-search="l-queuepolicy queueaftermergeresults src/sync/queuepolicy.ts decides what stays pending after a push: drop only the exact versions the server accepted, so nothing newer is lost. device pure" data-depth="3" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-queuePolicy">queueAfterMergeResults</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/queuePolicy.ts#L23" data-path="src/sync/queuePolicy.ts" data-line="23" data-editor="cursor://file/home/user/splitnext-app/src/sync/queuePolicy.ts:23" title="Open on GitHub — or in the editor, from a local board">src/sync/queuePolicy.ts:23</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Decides what stays pending after a push: drop only the exact versions the server accepted, so nothing newer is lost.</p>
   </div>
@@ -1641,12 +1658,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-bumpName" data-kind="Job" data-search="l-bumpname bumpgroupname src/sync/groupsync.ts renames a group: the new name shows immediately, then goes to the server as the next version. device job" data-depth="1" data-kids="2" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">2 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-bumpName">bumpGroupName</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L85" data-path="src/sync/groupSync.ts" data-line="85" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:85" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:85</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 2 calls" title="Expand — 2 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Renames a group: the new name shows immediately, then goes to the server as the next version.</p>
   </div>
@@ -1654,12 +1671,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-addMember" data-kind="Job" data-search="l-addmember addmember src/sync/groupsync.ts adds a person to the group locally, then sends them to the server. device job" data-depth="1" data-kids="2" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">2 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-addMember">addMember</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L110" data-path="src/sync/groupSync.ts" data-line="110" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:110" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:110</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 2 calls" title="Expand — 2 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Adds a person to the group locally, then sends them to the server.</p>
   </div>
@@ -1667,12 +1684,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-bindMe" data-kind="Job" data-search="l-bindme bindme src/sync/groupsync.ts claims a member as this device&#x27;s own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. refuses once the group has an expense, or if the member is gone. device job" data-depth="1" data-kids="5" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">5 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-bindMe">bindMe</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L197" data-path="src/sync/groupSync.ts" data-line="197" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:197" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:197</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 5 calls" title="Expand — 5 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Claims a member as this device&#x27;s own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. Refuses once the group has an expense, or if the member is gone.</p>
   </div>
@@ -1680,12 +1697,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-rootLayout" data-kind="Screen" data-search="l-rootlayout root layout app/_layout.tsx the app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app. ui screen" data-depth="0" data-kids="1" style="--sc:var(--s5)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#tree-L-rootLayout">Root layout</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/_layout.tsx" data-path="app/_layout.tsx" data-line="" data-editor="cursor://file/home/user/splitnext-app/app/_layout.tsx" title="Open on GitHub — or in the editor, from a local board">app/_layout.tsx</a>
       <span class="rarea" style="--sc:var(--s1)">UI</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app.</p>
   </div>
@@ -1693,12 +1710,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-foreground" data-kind="Job" data-search="l-foreground uselobbyforegroundsync src/sync/appforegroundsync.ts runs the lobby-wide catch-up on mount and every time the app returns to the foreground. device job" data-depth="1" data-kids="1" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-foreground">useLobbyForegroundSync</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/appForegroundSync.ts#L6" data-path="src/sync/appForegroundSync.ts" data-line="6" data-editor="cursor://file/home/user/splitnext-app/src/sync/appForegroundSync.ts:6" title="Open on GitHub — or in the editor, from a local board">src/sync/appForegroundSync.ts:6</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Runs the lobby-wide catch-up on mount and every time the app returns to the foreground.</p>
   </div>
@@ -1706,12 +1723,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-syncAllLobby" data-kind="Job" data-search="l-syncalllobby syncalllobbygroups src/sync/groupsync.ts syncs every group this device knows at once, isolating failures so one bad group cannot block the rest. device job" data-depth="2" data-kids="2" style="--sc:var(--s1)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">2 calls</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#tree-L-syncAllLobby">syncAllLobbyGroups</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L256" data-path="src/sync/groupSync.ts" data-line="256" data-editor="cursor://file/home/user/splitnext-app/src/sync/groupSync.ts:256" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:256</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 2 calls" title="Expand — 2 calls"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest.</p>
   </div>
@@ -1719,12 +1736,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-persistPlugin" data-kind="State" data-search="l-persistplugin persistplugin src/store/persistplugin.ts where a store survives a restart: sqlite on a device, `localstorage` on web, so the browser target needs no wasm. device state" data-depth="0" data-kids="0" style="--sc:var(--s4)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#tree-L-persistPlugin">persistPlugin</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/persistPlugin.ts#L10" data-path="src/store/persistPlugin.ts" data-line="10" data-editor="cursor://file/home/user/splitnext-app/src/store/persistPlugin.ts:10" title="Open on GitHub — or in the editor, from a local board">src/store/persistPlugin.ts:10</a>
       <span class="rarea" style="--sc:var(--s2)">Device</span>
       <span class="weights"><span class="used none" title="No flow names this symbol">—</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Where a store survives a restart: SQLite on a device, <code>localStorage</code> on web, so the browser target needs no wasm.</p>
   </div>
@@ -1732,12 +1749,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-efCreate" data-kind="Endpoint" data-search="l-efcreate create-group supabase/functions/create-group creates the group row and issues an access token, storing only its hash. server endpoint" data-depth="0" data-kids="0" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#tree-L-efCreate">create-group</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/create-group" data-path="supabase/functions/create-group" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/create-group" title="Open on GitHub — or in the editor, from a local board">supabase/functions/create-group</a>
       <span class="rarea" style="--sc:var(--s4)">Server</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Creates the group row and issues an access token, storing only its hash.</p>
   </div>
@@ -1745,12 +1762,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-efMerge" data-kind="Endpoint" data-search="l-efmerge merge / mergeone supabase/functions/merge the write path: applies each pushed item if its version wins, reports accepted or rejected per item, and wakes the group&#x27;s other devices. server endpoint" data-depth="0" data-kids="1" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#tree-L-efMerge">merge / mergeOne</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/merge" data-path="supabase/functions/merge" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/merge" title="Open on GitHub — or in the editor, from a local board">supabase/functions/merge</a>
       <span class="rarea" style="--sc:var(--s4)">Server</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">The write path: applies each pushed item if its version wins, reports accepted or rejected per item, and wakes the group&#x27;s other devices.</p>
   </div>
@@ -1758,12 +1775,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-efShouldAccept" data-kind="Pure" data-search="l-efshouldaccept shouldaccept supabase/functions/_shared/entities.ts the server&#x27;s copy of the version rule, deliberately identical to the client&#x27;s so both sides agree on who wins. server pure" data-depth="1" data-kids="0" style="--sc:var(--s2)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#tree-L-efShouldAccept">shouldAccept</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/entities.ts#L8" data-path="supabase/functions/_shared/entities.ts" data-line="8" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/_shared/entities.ts:8" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/entities.ts:8</a>
       <span class="rarea" style="--sc:var(--s4)">Server</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 1 symbol on the map">1 caller</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">The server&#x27;s copy of the version rule, deliberately identical to the client&#x27;s so both sides agree on who wins.</p>
   </div>
@@ -1771,12 +1788,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-efFetch" data-kind="Endpoint" data-search="l-effetch fetch-entity supabase/functions/fetch-entity returns one entity to a caller whose token proves access to that group. server endpoint" data-depth="0" data-kids="1" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#tree-L-efFetch">fetch-entity</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/fetch-entity" data-path="supabase/functions/fetch-entity" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/fetch-entity" title="Open on GitHub — or in the editor, from a local board">supabase/functions/fetch-entity</a>
       <span class="rarea" style="--sc:var(--s4)">Server</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Returns one entity to a caller whose token proves access to that group.</p>
   </div>
@@ -1784,12 +1801,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-efAccess" data-kind="Endpoint" data-search="l-efaccess resolveaccesstoken supabase/functions/_shared/access.ts the door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device. server endpoint" data-depth="1" data-kids="0" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#tree-L-efAccess">resolveAccessToken</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/access.ts#L11" data-path="supabase/functions/_shared/access.ts" data-line="11" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/_shared/access.ts:11" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/access.ts:11</a>
       <span class="rarea" style="--sc:var(--s4)">Server</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers" title="Called by 3 symbols on the map">3 callers</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">The door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device.</p>
   </div>
@@ -1797,12 +1814,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-efRoster" data-kind="Endpoint" data-search="l-efroster list-roster supabase/functions/list-roster returns every member, bind and expense of a group in one response. server endpoint" data-depth="0" data-kids="1" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#tree-L-efRoster">list-roster</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/list-roster" data-path="supabase/functions/list-roster" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/list-roster" title="Open on GitHub — or in the editor, from a local board">supabase/functions/list-roster</a>
       <span class="rarea" style="--sc:var(--s4)">Server</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Returns every member, bind and expense of a group in one response.</p>
   </div>
@@ -1810,12 +1827,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-efRtJwt" data-kind="Endpoint" data-search="l-efrtjwt rt-jwt supabase/functions/rt-jwt issues a short-lived realtime token, falling back to a shared anonymous channel when it cannot. server endpoint" data-depth="0" data-kids="1" style="--sc:var(--s6)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">1 call</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#tree-L-efRtJwt">rt-jwt</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/rt-jwt" data-path="supabase/functions/rt-jwt" data-line="" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/rt-jwt" title="Open on GitHub — or in the editor, from a local board">supabase/functions/rt-jwt</a>
       <span class="rarea" style="--sc:var(--s4)">Server</span>
       <span class="weights"><span class="used" title="Named by 1 flow">1 flow</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold" aria-expanded="false" aria-label="Expand — 1 call" title="Expand — 1 call"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Issues a short-lived Realtime token, falling back to a shared anonymous channel when it cannot.</p>
   </div>
@@ -1823,12 +1840,12 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 <div class="row trow" id="tree-L-efWake" data-kind="Network" data-search="l-efwake publishwake supabase/functions/_shared/wake.ts tells the group&#x27;s other devices that something changed, naming only what — never the data itself. a failed wake never undoes the write. server network" data-depth="0" data-kids="0" style="--sc:var(--s3)">
   <div class="rmain">
     <div class="rhead">
-      <button type="button" class="fold" aria-expanded="false">what for</button>
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#tree-L-efWake">publishWake</a></h4>
       <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/wake.ts#L11" data-path="supabase/functions/_shared/wake.ts" data-line="11" data-editor="cursor://file/home/user/splitnext-app/supabase/functions/_shared/wake.ts:11" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/wake.ts:11</a>
       <span class="rarea" style="--sc:var(--s4)">Server</span>
       <span class="weights"><span class="used" title="Named by 2 flows">2 flows</span><span class="callers none" title="No symbol on the map calls this">—</span></span>
+      <button type="button" class="tfold leaf" aria-expanded="false" aria-label="Expand — what it is for" title="Expand — what it is for"><svg class="tchev" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M5.5 2.5l6 5.5-6 5.5z"/></svg></button>
     </div>
     <p class="one">Tells the group&#x27;s other devices that something changed, naming only what — never the data itself. A failed wake never undoes the write.</p>
   </div>
@@ -2018,19 +2035,19 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 </section>
       </section>
 
-      <section class="page" id="newest" data-title="Newest slice" tabindex="-1" data-search="slice 0009 — symbol tree the map could say what each piece is and how much of the product leans on it. it can now say what leans on *what* — and its roots turn out to be the app&#x27;s entry points, which nobody had to write down. two views, one set of rows. 49 symbols in flat, 49 expanded in tree. the count is the invariant: a view of the map whose row count does not match the map is not a view of the map (d-036). measured, not authored. a `uses` column in `logic.md` would be stale within a slice, so the graph is derived from the source every time the board is generated (d-034) — the same rule that already made flow weight a count rather than a ranking. the trap was real, and measuring first is what caught it. `logic.md` lists deep modules and omits private helpers, so a mapped symbol&#x27;s own declaration often holds none of its real calls: `flushqueue` (`src/sync/outbound.ts:52`) only delegates to `flushqueueinner`, which holds all nine. extent-scoped detection reported it as calling nothing and promoted it to an entry point beside the screens. following unmapped local helpers — and stopping at any name the map claims — fixed it and dropped the bogus roots from 13 to 10 (d-035). it is a dag, so nesting had to be decided rather than assumed. 14 symbols have more than one caller and `getgroupstore` has 12; unfolding every occurrence is 217 nodes for 49 symbols. each expands once at its shallowest position and stubs elsewhere, naming its home: 49 rows and 42 stubs. the entry points fell out for free. nothing calls the 3 screens, the 5 edge functions, `persistplugin` or `publishwake` — that list is the graph&#x27;s answer, not an assertion anyone maintains. it rests closed. ten rows, not ninety-one. an always-open tree is a longer flat list with indentation: opening a symbol shows its sentence *and* its children, each shut in turn, so the reader walks a path instead of being handed the graph (d-038). the derived part is gated. `npm run test:board` runs 21 python tests over the resolver in ci (d-037). a graph that silently under-reports still looks authoritative, which is worse than no graph. unchanged. this slice ships no app behaviour: `logic.md` and `flows.md` describe the same app after it as before. unchanged."><section class="closed">
+      <section class="page" id="newest" data-title="Newest slice" tabindex="-1" data-search="slice 0009 — symbol tree the map could say what each piece is and how much of the product leans on it. it can now say what leans on *what* — and its roots turn out to be the app&#x27;s entry points, which nobody had to write down. two views, one set of rows. 49 symbols in flat, 49 expanded in tree. the count is the invariant: a view of the map whose row count does not match the map is not a view of the map (d-036). measured, not authored. a `uses` column in `logic.md` would be stale within a slice, so the graph is derived from the source every time the board is generated (d-034) — the same rule that already made flow weight a count rather than a ranking. the trap was real, and measuring first is what caught it. `logic.md` lists deep modules and omits private helpers, so a mapped symbol&#x27;s own declaration often holds none of its real calls: `flushqueue` (`src/sync/outbound.ts:52`) only delegates to `flushqueueinner`, which holds all nine. extent-scoped detection reported it as calling nothing and promoted it to an entry point beside the screens. following unmapped local helpers — and stopping at any name the map claims — fixed it and dropped the bogus roots from 13 to 10 (d-035). it is a dag, so nesting had to be decided rather than assumed. 14 symbols have more than one caller and `getgroupstore` has 12; unfolding every occurrence is 217 nodes for 49 symbols. each expands once at its shallowest position and stubs elsewhere, naming its home: 49 rows and 42 stubs. the entry points fell out for free. nothing calls the 3 screens, the 5 edge functions, `persistplugin` or `publishwake` — that list is the graph&#x27;s answer, not an assertion anyone maintains. it rests closed, and a shut row is two things. ten rows, not ninety-one; each is a name and the area it runs in (d-038, d-039). the path, both counts and the sentence are what opening it is for, the whole row is the target, and a chevron on the right says whether opening it reveals children or just that row&#x27;s own detail — solid or hollow. the derived part is gated. `npm run test:board` runs 21 python tests over the resolver in ci (d-037). a graph that silently under-reports still looks authoritative, which is worse than no graph. unchanged. this slice ships no app behaviour: `logic.md` and `flows.md` describe the same app after it as before. unchanged."><section class="closed">
   <h4 class="closed-title">Slice 0009 — symbol tree</h4>
   <p class="lede">The map could say what each piece is and how much of the product leans on it. It can now say what leans on *what* — and its roots turn out to be the app&#x27;s entry points, which nobody had to write down.</p>
   <p class="why">Tier — breadth · Closed — 2026-08-07 · Tag — `slice-0009` · archive <code class="ref">0009-symbol-tree.md</code></p>
-  <h3 id="n-shots">What it looked like</h3><div class="shots"><figure class="shot"><a class="shot-open" href="https://github.com/santistebanc/splitnext-app/blob/main/docs/state/shots/0009-symbols-tree.png" data-path="docs/state/shots/0009-symbols-tree.png" data-editor="cursor://file/home/user/splitnext-app/docs/state/shots/0009-symbols-tree.png" title="0009-symbols-tree.png"><img src="state/shots/0009-symbols-tree.png" loading="lazy" alt="Tree at rest: ten entry points, each closed, the fold carrying what is behind it."></a><figcaption>Tree at rest: ten entry points, each closed, the fold carrying what is behind it.</figcaption></figure><figure class="shot"><a class="shot-open" href="https://github.com/santistebanc/splitnext-app/blob/main/docs/state/shots/0009-symbols-tree-open.png" data-path="docs/state/shots/0009-symbols-tree-open.png" data-editor="cursor://file/home/user/splitnext-app/docs/state/shots/0009-symbols-tree-open.png" title="0009-symbols-tree-open.png"><img src="state/shots/0009-symbols-tree-open.png" loading="lazy" alt="`Group hub` opened one level: its own sentence, then its eleven children, each closed in turn, with indentation rails, area tags and the `N flows · N callers` pair."></a><figcaption>`Group hub` opened one level: its own sentence, then its eleven children, each closed in turn, with indentation rails, area tags and the `N flows · N callers` pair.</figcaption></figure><figure class="shot"><a class="shot-open" href="https://github.com/santistebanc/splitnext-app/blob/main/docs/state/shots/0009-symbols-tree-search.png" data-path="docs/state/shots/0009-symbols-tree-search.png" data-editor="cursor://file/home/user/splitnext-app/docs/state/shots/0009-symbols-tree-search.png" title="0009-symbols-tree-search.png"><img src="state/shots/0009-symbols-tree-search.png" loading="lazy" alt="searching `roster` in Tree: `syncGroup → pullRoster → listRoster` as hits, with `Group hub` and `openGroup` dimmed as the ancestors holding them up."></a><figcaption>searching `roster` in Tree: `syncGroup → pullRoster → listRoster` as hits, with `Group hub` and `openGroup` dimmed as the ancestors holding them up.</figcaption></figure><figure class="shot"><a class="shot-open" href="https://github.com/santistebanc/splitnext-app/blob/main/docs/state/shots/0009-symbols-flat.png" data-path="docs/state/shots/0009-symbols-flat.png" data-editor="cursor://file/home/user/splitnext-app/docs/state/shots/0009-symbols-flat.png" title="0009-symbols-flat.png"><img src="state/shots/0009-symbols-flat.png" loading="lazy" alt="Flat view, unchanged apart from the new caller count."></a><figcaption>Flat view, unchanged apart from the new caller count.</figcaption></figure></div>
+  <h3 id="n-shots">What it looked like</h3><div class="shots"><figure class="shot"><a class="shot-open" href="https://github.com/santistebanc/splitnext-app/blob/main/docs/state/shots/0009-symbols-tree.png" data-path="docs/state/shots/0009-symbols-tree.png" data-editor="cursor://file/home/user/splitnext-app/docs/state/shots/0009-symbols-tree.png" title="0009-symbols-tree.png"><img src="state/shots/0009-symbols-tree.png" loading="lazy" alt="Tree at rest: ten entry points, each a name and an area, with a solid or hollow chevron on the right."></a><figcaption>Tree at rest: ten entry points, each a name and an area, with a solid or hollow chevron on the right.</figcaption></figure><figure class="shot"><a class="shot-open" href="https://github.com/santistebanc/splitnext-app/blob/main/docs/state/shots/0009-symbols-tree-open.png" data-path="docs/state/shots/0009-symbols-tree-open.png" data-editor="cursor://file/home/user/splitnext-app/docs/state/shots/0009-symbols-tree-open.png" title="0009-symbols-tree-open.png"><img src="state/shots/0009-symbols-tree-open.png" loading="lazy" alt="`Group hub` opened one level: its path, counts and sentence appear, then its eleven children, each shut, with indentation rails and their own chevrons."></a><figcaption>`Group hub` opened one level: its path, counts and sentence appear, then its eleven children, each shut, with indentation rails and their own chevrons.</figcaption></figure><figure class="shot"><a class="shot-open" href="https://github.com/santistebanc/splitnext-app/blob/main/docs/state/shots/0009-symbols-tree-search.png" data-path="docs/state/shots/0009-symbols-tree-search.png" data-editor="cursor://file/home/user/splitnext-app/docs/state/shots/0009-symbols-tree-search.png" title="0009-symbols-tree-search.png"><img src="state/shots/0009-symbols-tree-search.png" loading="lazy" alt="searching `roster` in Tree: `syncGroup → pullRoster → listRoster` as hits, with `Group hub` and `openGroup` dimmed as the ancestors holding them up."></a><figcaption>searching `roster` in Tree: `syncGroup → pullRoster → listRoster` as hits, with `Group hub` and `openGroup` dimmed as the ancestors holding them up.</figcaption></figure><figure class="shot"><a class="shot-open" href="https://github.com/santistebanc/splitnext-app/blob/main/docs/state/shots/0009-symbols-flat.png" data-path="docs/state/shots/0009-symbols-flat.png" data-editor="cursor://file/home/user/splitnext-app/docs/state/shots/0009-symbols-flat.png" title="0009-symbols-flat.png"><img src="state/shots/0009-symbols-flat.png" loading="lazy" alt="Flat view, unchanged apart from the new caller count."></a><figcaption>Flat view, unchanged apart from the new caller count.</figcaption></figure></div>
 
   <h3 id="n-highlights">Highlights</h3>
-  <ul class="bullets"><li>Two views, one set of rows. 49 symbols in Flat, 49 expanded in Tree. The count is the invariant: a view of the map whose row count does not match the map is not a view of the map (D-036).</li><li>Measured, not authored. A <code>uses</code> column in <code>LOGIC.md</code> would be stale within a slice, so the graph is derived from the source every time the board is generated (D-034) — the same rule that already made flow weight a count rather than a ranking.</li><li>The trap was real, and measuring first is what caught it. <code>LOGIC.md</code> lists deep modules and omits private helpers, so a mapped symbol&#x27;s own declaration often holds none of its real calls: <code>flushQueue</code> (<code>src/sync/outbound.ts:52</code>) only delegates to <code>flushQueueInner</code>, which holds all nine. Extent-scoped detection reported it as calling nothing and promoted it to an entry point beside the screens. Following unmapped local helpers — and stopping at any name the map claims — fixed it and dropped the bogus roots from 13 to 10 (D-035).</li><li>It is a DAG, so nesting had to be decided rather than assumed. 14 symbols have more than one caller and <code>getGroupStore</code> has 12; unfolding every occurrence is 217 nodes for 49 symbols. Each expands once at its shallowest position and stubs elsewhere, naming its home: 49 rows and 42 stubs.</li><li>The entry points fell out for free. Nothing calls the 3 screens, the 5 Edge Functions, <code>persistPlugin</code> or <code>publishWake</code> — that list is the graph&#x27;s answer, not an assertion anyone maintains.</li><li>It rests closed. Ten rows, not ninety-one. An always-open tree is a longer flat list with indentation: opening a symbol shows its sentence *and* its children, each shut in turn, so the reader walks a path instead of being handed the graph (D-038).</li><li>The derived part is gated. <code>npm run test:board</code> runs 21 Python tests over the resolver in CI (D-037). A graph that silently under-reports still looks authoritative, which is worse than no graph.</li></ul>
+  <ul class="bullets"><li>Two views, one set of rows. 49 symbols in Flat, 49 expanded in Tree. The count is the invariant: a view of the map whose row count does not match the map is not a view of the map (D-036).</li><li>Measured, not authored. A <code>uses</code> column in <code>LOGIC.md</code> would be stale within a slice, so the graph is derived from the source every time the board is generated (D-034) — the same rule that already made flow weight a count rather than a ranking.</li><li>The trap was real, and measuring first is what caught it. <code>LOGIC.md</code> lists deep modules and omits private helpers, so a mapped symbol&#x27;s own declaration often holds none of its real calls: <code>flushQueue</code> (<code>src/sync/outbound.ts:52</code>) only delegates to <code>flushQueueInner</code>, which holds all nine. Extent-scoped detection reported it as calling nothing and promoted it to an entry point beside the screens. Following unmapped local helpers — and stopping at any name the map claims — fixed it and dropped the bogus roots from 13 to 10 (D-035).</li><li>It is a DAG, so nesting had to be decided rather than assumed. 14 symbols have more than one caller and <code>getGroupStore</code> has 12; unfolding every occurrence is 217 nodes for 49 symbols. Each expands once at its shallowest position and stubs elsewhere, naming its home: 49 rows and 42 stubs.</li><li>The entry points fell out for free. Nothing calls the 3 screens, the 5 Edge Functions, <code>persistPlugin</code> or <code>publishWake</code> — that list is the graph&#x27;s answer, not an assertion anyone maintains.</li><li>It rests closed, and a shut row is two things. Ten rows, not ninety-one; each is a name and the area it runs in (D-038, D-039). The path, both counts and the sentence are what opening it is for, the whole row is the target, and a chevron on the right says whether opening it reveals children or just that row&#x27;s own detail — solid or hollow.</li><li>The derived part is gated. <code>npm run test:board</code> runs 21 Python tests over the resolver in CI (D-037). A graph that silently under-reports still looks authoritative, which is worse than no graph.</li></ul>
 
   <h3 id="n-delta">Before → After</h3>
   <div class="scroll"><table class="delta-table">
     <thead><tr><th>Aspect</th><th>Before</th><th>After</th></tr></thead>
-    <tbody><tr><th>Symbols page</th><td class='before'>One view, grouped by area, ordered by flow weight</td><td class='after'>Flat (default, unchanged) and Tree, switched in the topbar</td></tr><tr><th>Reading the tree</th><td class='before'>—</td><td class='after'>Rests closed at 10 entry points; folds carry their child count, search opens the path to its hits</td></tr><tr><th>&quot;What calls this?&quot;</th><td class='before'>Unanswerable without grepping</td><td class='after'><code>N callers</code> on every row; Tree nests callees under callers</td></tr><tr><th>Entry points</th><td class='before'>Inferred from area order</td><td class='after'>The tree&#x27;s roots, derived</td></tr><tr><th>Call graph</th><td class='before'>Nowhere</td><td class='after'><code>docs/scripts/callgraph.py</code>, read from source at generation time</td></tr><tr><th>Board gates</th><td class='before'><code>npm test</code> + <code>npm run typecheck</code></td><td class='after'>Plus <code>npm run test:board</code></td></tr></tbody>
+    <tbody><tr><th>Symbols page</th><td class='before'>One view, grouped by area, ordered by flow weight</td><td class='after'>Flat (default, unchanged) and Tree, switched in the topbar</td></tr><tr><th>Reading the tree</th><td class='before'>—</td><td class='after'>Rests closed at 10 entry points, a shut row being name + area; the row is the toggle, a solid/hollow chevron marks it, and search opens the path to its hits</td></tr><tr><th>&quot;What calls this?&quot;</th><td class='before'>Unanswerable without grepping</td><td class='after'><code>N callers</code> on every row; Tree nests callees under callers</td></tr><tr><th>Entry points</th><td class='before'>Inferred from area order</td><td class='after'>The tree&#x27;s roots, derived</td></tr><tr><th>Call graph</th><td class='before'>Nowhere</td><td class='after'><code>docs/scripts/callgraph.py</code>, read from source at generation time</td></tr><tr><th>Board gates</th><td class='before'><code>npm test</code> + <code>npm run typecheck</code></td><td class='after'>Plus <code>npm run test:board</code></td></tr></tbody>
   </table></div>
 
   <h3 id="n-symbols">Symbols that slice touched</h3>
@@ -2039,13 +2056,13 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
   <h3 id="n-flows">Flows that slice touched</h3>
   <div class="rows"><div class="row"><div class="rmain"><div class="rhead"><h4>Unchanged.</h4><span class="pill warn">Changed</span></div><p class='one'><em>no longer in the map</em></p></div></div></div>
 
-  <h3 id="n-edge">Edge paths checked</h3><div class="rows edgerows"><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">mapped symbol whose real calls sit under a private helper</span><span class="edge-b">The case the slice turns on. Extent-scoped detection reports <code>flushQueue</code> as calling nothing; the walk follows unmapped local declarations and finds all nine. Bogus roots went from 13 to 10.</span></div><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">a mapped name reached through another mapped name</span><span class="edge-b">Not traversed. A mapped symbol is an edge, not a corridor — without this every root inherits every leaf and a deep module stops being a boundary.</span></div><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">a name mentioned but never called (<code>import { target }</code>)</span><span class="edge-b">No edge. The call pattern needs the paren, and a negative lookbehind drops <code>function target(</code> / <code>const target = (</code> so a file&#x27;s own declarations cannot read as calls to themselves.</span></div><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">entry whose <code>where</code> no longer exists</span><span class="edge-b">Empty edge list, not a crash. The map can name a piece the tree has already moved.</span></div><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">read/write pair calling its other half (<code>saveAccessToken</code> → <code>getAccessToken</code>)</span><span class="edge-b">No self-edge. Two names under one id are one idea; an internal call is not a relationship between two pieces.</span></div><div class="edge"><span class="edge-s"><code>plan_tree</code></span><span class="edge-w">a cycle no root can reach</span><span class="edge-b">Seeded as its own root into a <strong>Not reached from any entry point</strong> group. Zero cycles today, but a dropped symbol would be invisible and the count would silently disagree with Flat.</span></div><div class="edge"><span class="edge-s">Tree view</span><span class="edge-w">at rest</span><span class="edge-b">Closed to its 10 entry points, not 91 rows. An always-open tree is a longer flat list with indentation — it shows structure without letting anyone use it.</span></div><div class="edge"><span class="edge-s">Tree view</span><span class="edge-w">opening a node</span><span class="edge-b">Reveals its own sentence and its children, each closed in turn. The fold carries the child count so a closed row still says how much is behind it; a leaf says <code>what for</code>, since its sentence is what is behind it.</span></div><div class="edge"><span class="edge-s">Tree fold</span><span class="edge-w">fold placed at the end of the row</span><span class="edge-b">Tried first, and wrong: at 900px it wrapped on nearly every row, so every collapsed child took two lines and the compactness the fold bought was spent on the fold. Moved to the front of the row, where the disclosure column can be scanned.</span></div><div class="edge"><span class="edge-s">Tree row</span><span class="edge-w">narrower than 1200px</span><span class="edge-b">Path, area and the two counts wrap to a second line. Correct per rule 19, but the board stills are shot at 1200 so they document the layout rather than the narrow case.</span></div><div class="edge"><span class="edge-s">Expand all</span><span class="edge-w">reader opens every foldable row by hand</span><span class="edge-b">Button flips to Collapse all. Stubs are excluded from the check — they have nothing behind them, and counting them meant the toggle could never read as finished.</span></div><div class="edge"><span class="edge-s">Deep link</span><span class="edge-w"><code>#tree-L-edgeRoster</code>, four levels down and behind shut parents</span><span class="edge-b">Router opens every ancestor before scrolling. Verified: the target is visible on arrival.</span></div><div class="edge"><span class="edge-s">Tree view</span><span class="edge-w">a symbol with 12 callers</span><span class="edge-b">Expands once under <code>Group hub</code>, stubs elsewhere naming their home. 49 expanded + 42 stubs, against 217 if every occurrence expanded.</span></div><div class="edge"><span class="edge-s">Search in Tree</span><span class="edge-w">a match four levels down</span><span class="edge-b">Ancestors kept and dimmed as context; hiding them would orphan the hit. Counts stay measured on the flat rows so the rail cannot double-count a symbol.</span></div><div class="edge"><span class="edge-s">Deep link</span><span class="edge-w"><code>#L-syncGroup</code> arriving while Tree is the remembered view</span><span class="edge-b">Router reads the target&#x27;s own view and switches to it. Without this the link scrolls to a row the current view has hidden and the page looks broken.</span></div><div class="edge"><span class="edge-s">View toggle</span><span class="edge-w">reload, or a link from Flows</span><span class="edge-b">View persists in <code>localStorage</code>, so returning to Symbols lands where you left it.</span></div><div class="edge"><span class="edge-s"><code>capture-board.mjs</code></span><span class="edge-w">second still in the same browser context</span><span class="edge-b">Caught in the build: the remembered view leaked between shots and the third still waited on a hidden row. Each still now gets its own context — a capture whose result depends on the order it ran in is not evidence.</span></div><div class="edge"><span class="edge-s">Board, 900px</span><span class="edge-w">both counts on one row</span><span class="edge-b">The pair is one block (<code>.weights</code>) and wraps as a unit. Left to wrap freely it split into a lone em dash above a lone caller count.</span></div><div class="edge"><span class="edge-s">Board, local server</span><span class="edge-w">browser&#x27;s own <code>/favicon.ico</code> probe</span><span class="edge-b">404s — the dev server serves the board and nothing else. Pre-existing, not the page&#x27;s error; the capture script filters it rather than pretending the console is clean.</span></div></div>
+  <h3 id="n-edge">Edge paths checked</h3><div class="rows edgerows"><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">mapped symbol whose real calls sit under a private helper</span><span class="edge-b">The case the slice turns on. Extent-scoped detection reports <code>flushQueue</code> as calling nothing; the walk follows unmapped local declarations and finds all nine. Bogus roots went from 13 to 10.</span></div><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">a mapped name reached through another mapped name</span><span class="edge-b">Not traversed. A mapped symbol is an edge, not a corridor — without this every root inherits every leaf and a deep module stops being a boundary.</span></div><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">a name mentioned but never called (<code>import { target }</code>)</span><span class="edge-b">No edge. The call pattern needs the paren, and a negative lookbehind drops <code>function target(</code> / <code>const target = (</code> so a file&#x27;s own declarations cannot read as calls to themselves.</span></div><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">entry whose <code>where</code> no longer exists</span><span class="edge-b">Empty edge list, not a crash. The map can name a piece the tree has already moved.</span></div><div class="edge"><span class="edge-s"><code>resolve</code></span><span class="edge-w">read/write pair calling its other half (<code>saveAccessToken</code> → <code>getAccessToken</code>)</span><span class="edge-b">No self-edge. Two names under one id are one idea; an internal call is not a relationship between two pieces.</span></div><div class="edge"><span class="edge-s"><code>plan_tree</code></span><span class="edge-w">a cycle no root can reach</span><span class="edge-b">Seeded as its own root into a <strong>Not reached from any entry point</strong> group. Zero cycles today, but a dropped symbol would be invisible and the count would silently disagree with Flat.</span></div><div class="edge"><span class="edge-s">Tree row</span><span class="edge-w">shut</span><span class="edge-b">Its name and its area, nothing else — 45px, one line. The path, both counts and the sentence are what opening it is for (D-039).</span></div><div class="edge"><span class="edge-s">Tree row</span><span class="edge-w">click anywhere on it</span><span class="edge-b">Toggles. Clicks landing on the row&#x27;s permalink or its path chip still navigate, and a text selection inside the row does not shut it underneath.</span></div><div class="edge"><span class="edge-s">Chevron</span><span class="edge-w">row has children vs is a leaf</span><span class="edge-b">Solid vs hollow. Without the difference the two look identical until you click, which is the question the tree exists to answer. 26 solid, 23 hollow today.</span></div><div class="edge"><span class="edge-s">Chevron</span><span class="edge-w">keyboard</span><span class="edge-b">A real <code>&lt;button&gt;</code>: focusable, answers Enter, and <code>aria-expanded</code> plus its label track the state (<code>Collapse — 3 calls</code>). The row-wide handler catches its click by bubbling, so it toggles once, not twice.</span></div><div class="edge"><span class="edge-s">Tree view</span><span class="edge-w">at rest</span><span class="edge-b">Closed to its 10 entry points, not 91 rows. An always-open tree is a longer flat list with indentation — it shows structure without letting anyone use it.</span></div><div class="edge"><span class="edge-s">Tree view</span><span class="edge-w">opening a node</span><span class="edge-b">Reveals its own sentence and its children, each closed in turn. The fold carries the child count so a closed row still says how much is behind it; a leaf says <code>what for</code>, since its sentence is what is behind it.</span></div><div class="edge"><span class="edge-s">Tree fold</span><span class="edge-w">counted fold (<code>11 calls</code>) at the end of the row, then at the front</span><span class="edge-b">Both tried and both replaced. At the end it wrapped at 900px, so every shut child took two lines; at the front it read as a column but still put four things on a shut row. The chevron on the right, with the row as the target, is what stuck (D-039).</span></div><div class="edge"><span class="edge-s">Tree row</span><span class="edge-w">narrower than 1200px</span><span class="edge-b">Path, area and the two counts wrap to a second line. Correct per rule 19, but the board stills are shot at 1200 so they document the layout rather than the narrow case.</span></div><div class="edge"><span class="edge-s">Expand all</span><span class="edge-w">reader opens every foldable row by hand</span><span class="edge-b">Button flips to Collapse all. Stubs are excluded from the check — they have nothing behind them, and counting them meant the toggle could never read as finished.</span></div><div class="edge"><span class="edge-s">Deep link</span><span class="edge-w"><code>#tree-L-edgeRoster</code>, four levels down and behind shut parents</span><span class="edge-b">Router opens every ancestor before scrolling. Verified: the target is visible on arrival.</span></div><div class="edge"><span class="edge-s">Tree view</span><span class="edge-w">a symbol with 12 callers</span><span class="edge-b">Expands once under <code>Group hub</code>, stubs elsewhere naming their home. 49 expanded + 42 stubs, against 217 if every occurrence expanded.</span></div><div class="edge"><span class="edge-s">Search in Tree</span><span class="edge-w">a match four levels down</span><span class="edge-b">Ancestors kept and dimmed as context; hiding them would orphan the hit. Counts stay measured on the flat rows so the rail cannot double-count a symbol.</span></div><div class="edge"><span class="edge-s">Deep link</span><span class="edge-w"><code>#L-syncGroup</code> arriving while Tree is the remembered view</span><span class="edge-b">Router reads the target&#x27;s own view and switches to it. Without this the link scrolls to a row the current view has hidden and the page looks broken.</span></div><div class="edge"><span class="edge-s">View toggle</span><span class="edge-w">reload, or a link from Flows</span><span class="edge-b">View persists in <code>localStorage</code>, so returning to Symbols lands where you left it.</span></div><div class="edge"><span class="edge-s"><code>capture-board.mjs</code></span><span class="edge-w">second still in the same browser context</span><span class="edge-b">Caught in the build: the remembered view leaked between shots and the third still waited on a hidden row. Each still now gets its own context — a capture whose result depends on the order it ran in is not evidence.</span></div><div class="edge"><span class="edge-s">Board, 900px</span><span class="edge-w">both counts on one row</span><span class="edge-b">The pair is one block (<code>.weights</code>) and wraps as a unit. Left to wrap freely it split into a lone em dash above a lone caller count.</span></div><div class="edge"><span class="edge-s">Board, local server</span><span class="edge-w">browser&#x27;s own <code>/favicon.ico</code> probe</span><span class="edge-b">404s — the dev server serves the board and nothing else. Pre-existing, not the page&#x27;s error; the capture script filters it rather than pretending the console is clean.</span></div></div>
 
   <h3 id="n-surfaces">Surfaces touched</h3>
   <div class="rows swrows"><div class='sw2'><b>Board tooling</b><span><code>docs/scripts/callgraph.py</code> (new), <code>docs/scripts/callgraph_test.py</code> (new), <code>docs/scripts/generate-slicer-board.py</code>, <code>docs/scripts/capture-board.mjs</code> (new)</span></div><div class='sw2'><b>CI</b><span><code>.github/workflows/ci.yml</code> (board tooling tests)</span></div><div class='sw2'><b>Scripts</b><span><code>package.json</code> (<code>test:board</code>)</span></div><div class='sw2'><b>Process</b><span><code>.claude/skills/slicer/references/board.md</code> (rule 20)</span></div><div class='sw2'><b>State</b><span><code>OVERVIEW.md</code>, <code>DECISIONS.md</code>, <code>PARKING.md</code>, <code>NEXT.md</code>, <code>shots/0009-*.png</code></span></div></div>
 
   <h3 id="n-decisions">Decisions</h3>
-  <div><span class="chip chip-dec" title="D-034">the Symbols call graph is derived from source, never authored in `LOGIC.md`</span><span class="chip chip-dec" title="D-035">resolution follows unmapped local helpers, and stops at any name the map claims</span><span class="chip chip-dec" title="D-036">Tree expands each symbol once at its shallowest position, stubs elsewhere</span><span class="chip chip-dec" title="D-037">board tooling is tested by `npm run test:board`, gated in CI</span><span class="chip chip-dec" title="D-038">Tree rests closed at its entry points; opening a symbol reveals its sentence and its children</span></div>
+  <div><span class="chip chip-dec" title="D-034">the Symbols call graph is derived from source, never authored in `LOGIC.md`</span><span class="chip chip-dec" title="D-035">resolution follows unmapped local helpers, and stops at any name the map claims</span><span class="chip chip-dec" title="D-036">Tree expands each symbol once at its shallowest position, stubs elsewhere</span><span class="chip chip-dec" title="D-037">board tooling is tested by `npm run test:board`, gated in CI</span><span class="chip chip-dec" title="D-038">Tree rests closed at its entry points; opening a symbol reveals its sentence and its children</span><span class="chip chip-dec" title="D-039">a shut row is name + area, the whole row toggles, and a solid/hollow chevron marks it (narrows D-038)</span></div>
 
   <h3 id="n-diff">Diff pulse</h3>
   <p class="mono diff">+831 / −23 · 13 files` — excluding the generated `docs/slicer.html</p></section></section>
@@ -2214,8 +2231,12 @@ function apply(){
     el.classList.toggle('is-hidden',!vis);
     el.classList.toggle('is-context',vis&&!self[i]);
     el.classList.toggle('open',!!treeOpen[i]);
-    const btn=el.querySelector('.fold');
-    if(btn)btn.setAttribute('aria-expanded',String(!!treeOpen[i]));
+    const btn=el.querySelector('.tfold');
+    if(btn){
+      btn.setAttribute('aria-expanded',String(!!treeOpen[i]));
+      const what=btn.dataset.what||(btn.dataset.what=btn.title.replace(/^\w+ — /,''));
+      btn.title=btn.ariaLabel=(treeOpen[i]?'Collapse — ':'Expand — ')+what;
+    }
   });
   syncTreeAll();
 
@@ -2249,7 +2270,7 @@ chips.forEach(b=>b.addEventListener('click',()=>{
 const treeAll=$('#tree-all');
 // A stub has nothing behind it, so it is not a fold and must not be counted as
 // one — otherwise "Expand all" never finishes, whatever the reader opens.
-const foldable=treeNodes.map(el=>!!el.querySelector('.fold'));
+const foldable=treeNodes.map(el=>!!el.querySelector('.tfold'));
 function syncTreeAll(){
   if(!treeAll)return;
   const open=foldable.some(Boolean)&&foldable.every((f,i)=>!f||treeOpen[i]);
@@ -2257,8 +2278,17 @@ function syncTreeAll(){
   treeAll.textContent=open?'Collapse all':'Expand all';
 }
 treeNodes.forEach((el,i)=>{
-  const btn=el.querySelector('.fold');
-  if(btn)btn.addEventListener('click',()=>{treeOpen[i]=!treeOpen[i];apply();});
+  if(!foldable[i])return;
+  el.querySelector('.rmain').addEventListener('click',ev=>{
+    // The row is the target, but it still carries a permalink and a path chip.
+    // A click that lands on either of those means "go there", not "open this".
+    if(ev.target.closest('a'))return;
+    // Selecting the sentence to copy it should not shut the row underneath.
+    const sel=getSelection();
+    if(sel&&!sel.isCollapsed&&el.contains(sel.anchorNode))return;
+    treeOpen[i]=!treeOpen[i];
+    apply();
+  });
 });
 if(treeAll)treeAll.addEventListener('click',()=>{
   const open=treeAll.getAttribute('aria-pressed')!=='true';

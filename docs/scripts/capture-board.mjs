@@ -87,7 +87,7 @@ await shoot('symbols-tree', async (page) => {
 // nothing about what is behind them.
 await shoot('symbols-tree-open', async (page) => {
   await page.click('.view-btn[data-view="tree"]');
-  await page.click('#tree-L-hub .fold');
+  await page.click('#tree-L-hub .tfold');
 });
 
 await shoot('symbols-tree-search', async (page) => {
