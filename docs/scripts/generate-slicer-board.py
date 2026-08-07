@@ -1668,7 +1668,8 @@ def render() -> str:
             "what": e["what"],
             "used": len(USED_BY.get(e["id"], ())),
             "icon": kind_icon(e["kind"]),
-            "src": editor_uri(e["where"], symbol_line(e["where"], e["name"])),
+            "src": repo_url(e["where"], symbol_line(e["where"], e["name"])),
+            "editor": editor_uri(e["where"], symbol_line(e["where"], e["name"])),
             "line": symbol_line(e["where"], e["name"]) or "",
         }
         for area, rows in logic_areas
@@ -2261,8 +2262,12 @@ function openPop(a){
   const where=$('#pop-where');
   where.textContent=d.where;
   if(d.src){
-    where.href=d.src; where.title='Open in Cursor';
+    // Same rule as a path chip: GitHub by default, editor only on a local board.
+    where.href=d.src;
+    where.title=servedLocally?'Open in Cursor':'Open on GitHub';
     where.dataset.path=d.where; where.dataset.line=d.line||'';
+    if(d.editor)where.dataset.editor=d.editor;
+    if(!servedLocally){where.target='_blank';where.rel='noopener';}
   } else {
     where.removeAttribute('href'); delete where.dataset.path;
   }
