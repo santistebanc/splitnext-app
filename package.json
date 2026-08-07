@@ -38,6 +38,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "vitest run",
+    "test:board": "python3 -m unittest discover -s docs/scripts -p '*_test.py' -t docs/scripts",
     "typecheck": "tsc --noEmit",
     "capture": "node docs/scripts/capture-flows.mjs"
   },

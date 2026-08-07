@@ -8,7 +8,12 @@ import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from callgraph import plan_tree, resolve  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE = ROOT / "docs" / "state"
@@ -30,6 +35,13 @@ def esc(s: str) -> str:
 
 def read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
+
+
+def read_source(p: Path) -> str | None:
+    """A source file, or None — the reader `callgraph.resolve` runs on."""
+    if not p.is_file():
+        return None
+    return p.read_text(encoding="utf-8", errors="ignore")
 
 
 # Kinds are the browsing axis: what a piece *is*, declared in LOGIC.md's Kind
@@ -730,6 +742,30 @@ AREA_OF: dict[str, str] = {}
 AREA_SLOT: dict[str, str] = {}
 KIND_SLOT: dict[str, str] = {}
 USED_BY: dict[str, set] = {}
+# id → the ids it calls, and how many call it. Measured from the source by
+# callgraph.py, never authored (D-034).
+CALLS: dict[str, list] = {}
+CALLERS: dict[str, int] = {}
+
+
+def callers_badge(ref: str) -> str:
+    """How many pieces lean on this one — the other half of its weight.
+
+    Flow weight says how much of the product turns on a symbol; this says how
+    much of the code does. A piece can carry one and not the other, which is
+    the pair worth reading together.
+    """
+    n = CALLERS.get(ref, 0)
+    if not n:
+        return (
+            '<span class="callers none" title="No symbol on the map calls this">'
+            "—</span>"
+        )
+    plural = "s" if n != 1 else ""
+    return (
+        f'<span class="callers" title="Called by {n} symbol{plural} on the map">'
+        f"{n} caller{plural}</span>"
+    )
 
 
 def short_area(area: str) -> str:
@@ -1005,6 +1041,16 @@ def render() -> str:
         for ref in set(re.findall(r"\b(L-[\w]+)\b", text)):
             USED_BY.setdefault(ref, set()).add(f["id"])
 
+    # …and what leans on it in the code, which no flow can tell you. Read from
+    # the source at generation time so the graph cannot drift from the tree.
+    CALLS.clear()
+    CALLERS.clear()
+    CALLS.update(resolve(all_logic, lambda rel: read_source(ROOT / rel)))
+    for callees in CALLS.values():
+        for callee in callees:
+            CALLERS[callee] = CALLERS.get(callee, 0) + 1
+    tree = plan_tree(all_logic, CALLS)
+
     LOGIC_BY_ID.clear()
     LOGIC_BY_ID.update(
         {e["id"]: {**e, "area": area} for area, rows in logic_areas for e in rows}
@@ -1055,32 +1101,102 @@ def render() -> str:
     # is a path, and a path reads better than a leaderboard for four buckets
     areas_present = [a for a, rows in logic_areas if rows]
 
-    logic_sections = []
-    for area in areas_present:
-        entries = sorted(dict(logic_areas)[area], key=lambda e: -weight(e["id"]))
-        cards = []
-        for e in entries:
-            search = " ".join(
-                [e["id"], e["name"], e["where"], e["what"], area, e["kind"]]
-            ).lower()
-            cards.append(
-                f"""
-<div class="row" id="{esc(e['id'])}" data-kind="{esc(e['kind'])}" data-search="{esc(search)}" style="--sc:{kind_slot[e['kind']]}">
+    def row_search(e: dict) -> str:
+        return " ".join(
+            [e["id"], e["name"], e["where"], e["what"], AREA_OF.get(e["id"], ""),
+             e["kind"]]
+        ).lower()
+
+    def logic_row(e: dict, node_id: str, extra: str = "", depth: int | None = None,
+                  tag: str = "") -> str:
+        """One symbol, in the one shape both views use.
+
+        Flat and Tree render the same row through here on purpose: two copies
+        of it would drift, and then the same piece would read differently
+        depending on which view you found it in.
+        """
+        deep = "" if depth is None else f' data-depth="{depth}"'
+        return f"""
+<div class="row{extra}" id="{esc(node_id)}" data-kind="{esc(e['kind'])}" data-search="{esc(row_search(e))}"{deep} style="--sc:{kind_slot[e['kind']]}">
   <div class="rmain">
     <div class="rhead">
       {kind_icon(e['kind'])}
-      <h4><a class="self" href="#{esc(e['id'])}">{esc(e['name'])}</a></h4>
+      <h4><a class="self" href="#{esc(node_id)}">{esc(e['name'])}</a></h4>
       {source_ref(e['where'], e['name'])}
-      {used_badge(e['id'])}
+      {tag}
+      <span class="weights">{used_badge(e['id'])}{callers_badge(e['id'])}</span>
     </div>
     <p class="one">{chipify_logic_ids(e['what'])}</p>
   </div>
 </div>"""
-            )
+
+    logic_sections = []
+    for area in areas_present:
+        entries = sorted(dict(logic_areas)[area], key=lambda e: -weight(e["id"]))
+        cards = [logic_row(e, e["id"]) for e in entries]
         logic_sections.append(
             f'<section class="logic-area" data-area-section="{esc(area)}" style="--sc:{slot[area]}">'
             f'<h3 class="area-title">{esc(area)}<u>{len(entries)}</u></h3>'
             f'<div class="rows">{"".join(cards)}</div></section>'
+        )
+
+    # --- the same 49 symbols, nested under what calls them ---
+    # A tree cuts across areas by nature — Screen → Job → Pure → Network — so
+    # the area divider does not survive here; it rides on the row as a tag, the
+    # way Flows marks the stretch it is in.
+    def area_tag(e: dict) -> str:
+        area = AREA_OF.get(e["id"], "")
+        return (
+            f'<span class="rarea" style="--sc:{slot.get(area, "var(--faint)")}">'
+            f"{esc(short_area(area))}</span>"
+            if area
+            else ""
+        )
+
+    def tree_rows(eid: str, depth: int, out: list) -> None:
+        e = LOGIC_BY_ID[eid]
+        out.append(logic_row(e, f"tree-{eid}", " trow", depth, area_tag(e)))
+        for child in CALLS.get(eid, ()):
+            kid = LOGIC_BY_ID[child]
+            if tree.expands_here(eid, child):
+                tree_rows(child, depth + 1, out)
+                continue
+            # Expanded elsewhere: a stub, pointing at the one copy that owns
+            # its children. Nesting it again would be the same subtree twice.
+            home = tree.home.get(child)
+            where = LABELS.get(home, "") if home else ""
+            note = (
+                f'<span class="stub-home">also under {esc(where)}</span>'
+                if where
+                else '<span class="stub-home">an entry point</span>'
+            )
+            out.append(
+                f'<div class="row trow stub" data-kind="{esc(kid["kind"])}"'
+                f' data-search="{esc(row_search(kid))}" data-depth="{depth + 1}"'
+                f' style="--sc:{kind_slot[kid["kind"]]}">'
+                f'<div class="rmain"><div class="rhead">{kind_icon(kid["kind"])}'
+                f'<h4><a href="#tree-{esc(child)}">{esc(kid["name"])}</a></h4>'
+                f"{note}</div></div></div>"
+            )
+
+    tree_body: list[str] = []
+    for root in tree.roots:
+        tree_rows(root, 0, tree_body)
+    tree_sections = [
+        '<section class="logic-area"><h3 class="area-title">Entry points'
+        f"<u>{len(tree.roots)}</u>"
+        "<em>what nothing else calls — where the world touches the app</em></h3>"
+        f'<div class="rows">{"".join(tree_body)}</div></section>'
+    ]
+    if tree.unreached:
+        stranded: list[str] = []
+        for seed in tree.unreached:
+            tree_rows(seed, 0, stranded)
+        tree_sections.append(
+            '<section class="logic-area"><h3 class="area-title">Not reached from '
+            f"any entry point<u>{len(tree.unreached)}</u>"
+            "<em>called only from inside a cycle</em></h3>"
+            f'<div class="rows">{"".join(stranded)}</div></section>'
         )
 
     area_chips = ['<button type="button" class="btn chip-filter" data-kind="all" aria-pressed="true">All</button>']
@@ -1814,6 +1930,41 @@ p,li{max-width:76ch}
 .rows,.scroll,.split,.statbar,.fcase,.note,.bullets{margin:var(--sp-3) 0}
 h3+.rows,h3+.scroll,h3+.split,h3+.statbar,h3+.fcase,h3+p,h3+ul{margin-top:var(--sp-2)}
 
+/* ---------------- symbols: flat / tree ---------------- */
+/* One page, two views of the same rows. Neither is a different set of
+   symbols — Tree is Flat re-nested, which is why the count never changes. */
+#symbols[data-view="flat"] .view-tree,#symbols[data-view="tree"] .view-flat{display:none}
+.fsep{width:1px;align-self:stretch;background:var(--line);margin:0 .3rem}
+/* the pressed style is .btn's own — it fills with the accent and flips the
+   label to the page background; restating the colour here erased the word */
+.callers{font:.68rem var(--mono);color:var(--faint)}
+.callers.none{opacity:.45}
+/* The two counts are one reading — what the product leans on, then what the
+   code does — so they travel as one block. Let them wrap apart and a row
+   narrow enough to break shows a lone em dash above a lone caller count. */
+.weights{margin-left:auto;display:inline-flex;align-items:baseline;gap:.5rem;
+  white-space:nowrap}
+.weights .used{margin-left:0}
+.weights .callers{padding-left:.5rem;border-left:1px solid var(--line)}
+/* indent is the only thing saying who owns whom, so it has to survive a
+   narrow screen: a rule per level, not a margin that wraps away */
+.trow .rmain{padding-left:calc(1rem + var(--d,0) * .9rem)}
+.trow[data-depth="1"]{--d:1}.trow[data-depth="2"]{--d:2}.trow[data-depth="3"]{--d:3}
+.trow[data-depth="4"]{--d:4}.trow[data-depth="5"]{--d:5}.trow[data-depth="6"]{--d:6}
+.trow[data-depth="7"]{--d:7}.trow[data-depth="8"]{--d:8}.trow[data-depth="9"]{--d:9}
+.trow[data-depth]:not([data-depth="0"]) .rmain{
+  box-shadow:inset calc(1rem + (var(--d) - 1) * .9rem + .25rem) 0 0 -.5rem var(--line-strong)}
+.trow.stub .rmain{padding-top:.4rem;padding-bottom:.4rem;opacity:.72}
+.trow.stub .rhead h4{font-weight:400}
+.trow.stub .rhead h4 a{color:var(--muted)}
+.trow.stub:hover .rmain{opacity:1}
+.stub-home{font:.68rem var(--sans);color:var(--faint);font-style:italic}
+/* an ancestor kept only to hold a match up is context, not a hit */
+.trow.is-context>.rmain{opacity:.5}
+.trow.is-context:hover>.rmain{opacity:1}
+.rarea{font:.62rem var(--sans);text-transform:uppercase;letter-spacing:.07em;
+  color:var(--sc,var(--faint));border:1px solid var(--line);padding:.05em .35em}
+
 /* ---------------- stat bar ---------------- */
 .statbar{display:flex;border:1px solid var(--line);background:var(--surface);flex-wrap:wrap}
 .statbar div{flex:1 1 8rem;padding:.7rem .9rem;border-right:1px solid var(--line);
@@ -2113,11 +2264,15 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const pages=$$('.page'), navlinks=$$('#nav a');
 const q=$('#q'), wrap=$('#searchwrap'), hits=$('#hits');
-const rows=$$('#symbols .row'), flows=$$('#flows .fcase'), areas=$$('.logic-area');
+const rows=$$('#symbols .view-flat .row'), flows=$$('#flows .fcase');
+const areas=$$('#symbols .view-flat .logic-area');
+const treeNodes=$$('#symbols .view-tree .trow');
+const treeDepth=treeNodes.map(el=>+el.dataset.depth||0);
 const allCases=$$('.fcase');   // Flows page + the ones inlined on Newest slice
 const newest=$('#newest');
-const chips=$$('.chip-filter');
+const chips=$$('.chip-filter'), viewBtns=$$('.view-btn');
 let kind='all';
+let view=localStorage.getItem('slicer-view')==='tree'?'tree':'flat';
 
 // ---------- theme ----------
 const root=document.documentElement, saved=localStorage.getItem('slicer-theme');
@@ -2152,6 +2307,9 @@ function route(){
   const h=decodeURIComponent(location.hash.slice(1));
   if(!h)return show(pages[0].id);
   const el=document.getElementById(h);
+  // A link into Symbols has to land on the view that holds its target, or it
+  // scrolls to a row the current view has hidden and the page looks broken.
+  if(el&&el.classList.contains('row'))setView(el.classList.contains('trow')?'tree':'flat');
   if(el&&el.classList.contains('page'))return show(h);
   const p=pageOf(el);
   if(p)return show(p.id,h);
@@ -2186,6 +2344,25 @@ function apply(){
       if(query)setFold(f,true);
     }
   });
+  // Tree filters on the same test, then keeps whatever holds a match up:
+  // hiding an ancestor because it does not itself match would orphan every
+  // hit under it, and the reader loses the one thing the tree is for.
+  const self=treeNodes.map(el=>
+    (kind==='all'||el.dataset.kind===kind)&&
+    (!query||(el.dataset.search||'').includes(query)));
+  const show=self.slice();
+  for(let i=treeNodes.length-1;i>=0;i--){
+    if(!show[i])continue;
+    let d=treeDepth[i];
+    for(let j=i-1;j>=0&&d>0;j--){
+      if(treeDepth[j]<d){show[j]=true;d=treeDepth[j];}
+    }
+  }
+  treeNodes.forEach((el,i)=>{
+    el.classList.toggle('is-hidden',!show[i]);
+    el.classList.toggle('is-context',show[i]&&!self[i]);
+  });
+
   const newestHit=!newest||!newest.dataset.search||!query||
     (newest.dataset.search||'').includes(query);
 
@@ -2212,6 +2389,14 @@ chips.forEach(b=>b.addEventListener('click',()=>{
   kind=b.dataset.kind||'all';
   apply();
 }));
+function setView(v){
+  view=v;
+  $('#symbols').dataset.view=v;
+  viewBtns.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===v)));
+  localStorage.setItem('slicer-view',v);
+}
+viewBtns.forEach(b=>b.addEventListener('click',()=>{setView(b.dataset.view);apply();}));
+setView(view);
 
 // ---------- flow folding ----------
 function setFold(f,open){
@@ -2399,6 +2584,10 @@ apply();
       <span class="crumb">slicer board / <b id="here">Overview</b></span>
       <a class="livelink" href="{LIVE_APP_URL}" target="_blank" rel="noopener">Open the app ↗</a>
       <div class="filterbar" id="filterbar">
+        <b>View</b>
+        <button type="button" class="btn view-btn" data-view="flat" aria-pressed="true">Flat</button>
+        <button type="button" class="btn view-btn" data-view="tree" aria-pressed="false">Tree</button>
+        <span class="fsep"></span>
         <b>Kind</b>
         {''.join(area_chips)}
       </div>
@@ -2443,12 +2632,14 @@ apply();
         </table></div>
       </section>
 
-      <section class="page" id="symbols" data-title="Symbols" tabindex="-1">
+      <section class="page" id="symbols" data-title="Symbols" data-view="flat" tabindex="-1">
         <p class="kicker">Current system</p>
         <h1>What the code does</h1>
-        <p class="lede">Every meaningful piece of behaviour, grouped by <em>where it runs</em> — UI, device, edge, server. Filter by <strong>kind</strong> above: what a piece is, marked by the glyph before each name. Areas run in path order; inside one, rows are ordered by weight — how many flows lean on them — so the pieces the app actually turns on come first. For how they run end to end, see <a href="#flows">Flows</a>.</p>
+        <p class="lede view-flat">Every meaningful piece of behaviour, grouped by <em>where it runs</em> — UI, device, edge, server. Filter by <strong>kind</strong> above: what a piece is, marked by the glyph before each name. Areas run in path order; inside one, rows are ordered by weight — how many flows lean on them — so the pieces the app actually turns on come first. For how they run end to end, see <a href="#flows">Flows</a>.</p>
+        <p class="lede view-tree">The same {logic_count} pieces, nested under what calls them. Roots are what nothing else calls — the screens a person opens and the endpoints the wire reaches. Children are read from the source, not authored, and a piece that several others call <strong>expands once</strong> and appears as a stub everywhere else, so the tree holds every symbol exactly once. Area rides on the row here, because a call chain crosses areas by nature. For how they run end to end, see <a href="#flows">Flows</a>.</p>
         <p class="empty is-hidden" id="logic-empty">No symbols match.</p>
-        {''.join(logic_sections)}
+        <div class="view-flat">{''.join(logic_sections)}</div>
+        <div class="view-tree">{''.join(tree_sections)}</div>
       </section>
 
       <section class="page" id="flows" data-title="Flows" tabindex="-1">

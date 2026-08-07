@@ -27,3 +27,10 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      # The board generator is Python, so its seams cannot be reached from
+      # Vitest. The call graph behind the Symbols tree is derived from source
+      # rather than authored, which makes it the one part of the board that can
+      # be silently wrong — so it is gated here rather than trusted (D-037).
+      - name: Board tooling tests
+        run: npm run test:board

@@ -41,6 +41,11 @@ The closed report is a **document inside a document**: box it and demote its hea
 17. **Edge paths are the review, so they render as a review.** A plain full-width row list on *This slice*: surface (rendered as its symbol or flow chip, like every other ref), the state in the middle, what happens as the sentence. No pills, no colour coding by severity — every row is a state that was checked, and ranking them invents a judgement the archive never made. Section omitted entirely when the block is empty.
 18. **Steering last** — next / parked / timeline; do not compete with the map.
 19. **Narrow screens** — rail collapses to a top bar, nav wraps, rows stack; search stays usable.
+20. **Symbols has two views of the same rows, and the count never changes between them.** **Flat** — grouped by area, ordered by flow weight — stays the default and answers *what exists*. **Tree** re-nests those same rows under the symbols that call them and answers *what leans on what*: its roots are whatever nothing calls, which is the app's entry points falling out of the graph rather than being asserted. The relationship is **derived from the source at generation time, never authored in `LOGIC.md`** — a `uses` column is stale within a slice, and the board's own rule is that weight is measured. Deriving it has one trap worth stating: the map lists deep modules and omits private helpers, so a mapped symbol's own declaration often contains none of its real calls (`flushQueue` only delegates to `flushQueueInner`). The walk follows unmapped local declarations transitively and **stops at any name the map claims** — a mapped symbol is an edge, not a corridor, or every root inherits every leaf.
+
+    **A symbol with twelve callers cannot nest twelve times.** The graph is a DAG, and unfolding every occurrence turns 49 rows into 217 — a view of the map whose row count does not match the map is not a view of the map. Each symbol **expands once, at its shallowest position**, and is a stub naming its home everywhere else. Anything no root reaches is a cycle and gets its own trailing group rather than disappearing.
+
+    Both views carry the pair `N flows · N callers` — what the product leans on and what the code does, which are not the same reading and are worth seeing together. **Area survives as a row tag in Tree, never as the divider**: a call chain crosses areas by nature, so dividing by area would shred the thing the view exists to show. Search and the kind filter keep working, with **keep-ancestors** semantics — an ancestor held only to carry a match down renders as context, dimmed, not as a hit — and the hit counts stay measured on the flat rows so the rail cannot double-count.
 
 ## Structure
 
@@ -61,7 +66,7 @@ From `OVERVIEW.md` — the page you hand a newcomer.
 
 ### 2. Symbols (`#symbols`)
 
-From `LOGIC.md`: row lists grouped by **Kind**, each group headed by its dot, blurb and live count; every row tags its area. Nothing else — the direction lives on Overview.
+From `LOGIC.md`: row lists grouped by **Kind**, each group headed by its dot, blurb and live count; every row tags its area. Nothing else — the direction lives on Overview. Two views of the same rows — **Flat** and **Tree** — switched in the topbar (rule 20).
 
 ### 3. Flows (`#flows`)
 
