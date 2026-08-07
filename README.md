@@ -4,7 +4,9 @@ A local-first app for splitting shared costs among a small group of friends — 
 
 No accounts: a per-device capability token proves access to a group, members are name-slots rather than logins, and everything works offline and merges when it reconnects.
 
-**Live board:** https://santistebanc.github.io/splitnext-app/ — the generated map of what exists today: every behaviour piece, every flow with a recorded clip, the slice in progress, and what is parked.
+**Try it:** https://santistebanc.github.io/splitnext-app/app/ — the web build, deployed on every merge to `main`. Everything is local to your browser; groups you make are yours.
+
+**Live board:** https://santistebanc.github.io/splitnext-app/ — the generated map of what exists today: every behaviour piece, every flow with a recorded clip, the slice in progress, and what is parked. Path chips link straight to the code.
 
 ## Stack
 

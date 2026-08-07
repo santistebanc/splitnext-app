@@ -96,6 +96,10 @@ main{min-width:0;display:flex;flex-direction:column}
 .topbar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
   display:flex;align-items:center;gap:.6rem;padding:.6rem 1.6rem;flex-wrap:wrap}
 .crumb{font:.78rem var(--mono);color:var(--faint);margin-right:auto}
+/* The board describes the app; this is the app itself, one click away. */
+.livelink{font:.72rem var(--mono);text-decoration:none;color:var(--text);
+  border:1px solid var(--line);border-radius:999px;padding:.28rem .7rem;white-space:nowrap}
+.livelink:hover{border-color:var(--text)}
 .crumb b{color:var(--text);font-family:var(--sans);font-size:.86rem;font-weight:600}
 .filterbar{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap}
 .filterbar>b{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
@@ -443,6 +447,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
   <main>
     <div class="topbar">
       <span class="crumb">slicer board / <b id="here">Overview</b></span>
+      <a class="livelink" href="https://santistebanc.github.io/splitnext-app/app/" target="_blank" rel="noopener">Open the app ↗</a>
       <div class="filterbar" id="filterbar">
         <b>Kind</b>
         <button type="button" class="btn chip-filter" data-kind="all" aria-pressed="true">All</button><button type="button" class="btn chip-filter" data-kind="Job" style="--sc:var(--s1)" aria-pressed="false" title="Sequences other pieces into one unit of work"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>Job <span class="cnt">13</span></button><button type="button" class="btn chip-filter" data-kind="Pure" style="--sc:var(--s2)" aria-pressed="false" title="Input in, answer out — no state, no network"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>Pure <span class="cnt">12</span></button><button type="button" class="btn chip-filter" data-kind="Network" style="--sc:var(--s3)" aria-pressed="false" title="Crosses the wire from the device"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>Network <span class="cnt">7</span></button><button type="button" class="btn chip-filter" data-kind="State" style="--sc:var(--s4)" aria-pressed="false" title="Owns local data: store, SQLite, Secure Store"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>State <span class="cnt">8</span></button><button type="button" class="btn chip-filter" data-kind="Screen" style="--sc:var(--s5)" aria-pressed="false" title="What the person sees and taps"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>Screen <span class="cnt">3</span></button><button type="button" class="btn chip-filter" data-kind="Endpoint" style="--sc:var(--s6)" aria-pressed="false" title="The server side of that wire"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>Endpoint <span class="cnt">6</span></button>
@@ -476,7 +481,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
         <div><span class='chip chip-dec'>User accounts / OAuth</span><span class='chip chip-dec'>payment rails</span><span class='chip chip-dec'>contact import / social graphs</span><span class='chip chip-dec'>accounting / OCR / budgets / recurring bills</span><span class='chip chip-dec'>behavioural analytics</span><span class='chip chip-dec'>push notifications</span><span class='chip chip-dec'>marketing site</span><span class='chip chip-dec'>OTA updates</span><span class='chip chip-dec'>full CRDT sync frameworks</span><span class='chip chip-dec'>dedicated sync platforms (ElectricSQL</span><span class='chip chip-dec'>PowerSync</span><span class='chip chip-dec'>Replicache)</span><span class='chip chip-dec'>group-wide invite UI (MVP)</span><span class='chip chip-dec'>close/reopen UI (MVP)</span></div>
 
         <h3 id="o-stack">Stack</h3>
-        <div class="rows swrows"><div class='sw2'><b>Client</b><span>Expo RN 57 + Expo Router — mobile-first; web is a real second target, used for headless testing and board screenshots</span></div><div class='sw2'><b>UI state</b><span>Legend State v3 (<code>useValue</code>, per-group observable) — UI source of truth</span></div><div class='sw2'><b>Local durability</b><span><code>expo-sqlite</code> kv-store via <code>observablePersistSqlite</code> + <code>configureObservableSync</code> — write-through persist; web swaps the plugin for <code>localStorage</code> (<code>persistPlugin.web.ts</code>) because expo-sqlite&#x27;s web path is wasm over OPFS, which headless Chromium cannot run</span></div><div class='sw2'><b>Secrets</b><span><code>expo-secure-store</code> behind <code>src/secrets/secureStorage.ts</code> — <code>device_user_id</code>, <code>access_token.{groupId}</code>; lobby id list also there for now (temporary). Web has no keychain and falls back to <code>localStorage</code></span></div><div class='sw2'><b>Server DB</b><span>Supabase Postgres — <code>groups</code>, <code>access_tokens</code>, <code>members</code>, <code>binds</code>, <code>expenses</code> (with <code>allocations jsonb</code>); deny-all RLS</span></div><div class='sw2'><b>Server API</b><span>Edge Functions <code>create-group</code>, <code>merge</code>, <code>fetch-entity</code>, <code>list-roster</code>, <code>rt-jwt</code> — capability hash-check then service role</span></div><div class='sw2'><b>Wake channel</b><span>Realtime broadcast on <code>group:{id}</code>; payload is tip only; <code>rt-jwt</code> gates subscribe (anon_channel fallback — D-006)</span></div><div class='sw2'><b>Hosting</b><span>remote <code>splitnext-v3</code> — D-001</span></div><div class='sw2'><b>Repo</b><span><code>github.com/santistebanc/splitnext-app</code>, public; a slice is branch → PR (CI: <code>npm test</code> + <code>npm run typecheck</code>) → squash merge → tag <code>slice-NNNN</code> on <code>main</code> — D-028</span></div><div class='sw2'><b>Board</b><span>regenerated by CI and published to https://santistebanc.github.io/splitnext-app/ on every merge to <code>main</code></span></div><div class='sw2'><b>Agent entry point</b><span><code>AGENTS.md</code> + the process vendored at <code>.claude/skills/{slicer,tdd,code-review,prototype}</code>, so a clone carries the loop — D-029</span></div></div>
+        <div class="rows swrows"><div class='sw2'><b>Client</b><span>Expo RN 57 + Expo Router — mobile-first; web is a real second target, used for headless testing and board screenshots</span></div><div class='sw2'><b>UI state</b><span>Legend State v3 (<code>useValue</code>, per-group observable) — UI source of truth</span></div><div class='sw2'><b>Local durability</b><span><code>expo-sqlite</code> kv-store via <code>observablePersistSqlite</code> + <code>configureObservableSync</code> — write-through persist; web swaps the plugin for <code>localStorage</code> (<code>persistPlugin.web.ts</code>) because expo-sqlite&#x27;s web path is wasm over OPFS, which headless Chromium cannot run</span></div><div class='sw2'><b>Secrets</b><span><code>expo-secure-store</code> behind <code>src/secrets/secureStorage.ts</code> — <code>device_user_id</code>, <code>access_token.{groupId}</code>; lobby id list also there for now (temporary). Web has no keychain and falls back to <code>localStorage</code></span></div><div class='sw2'><b>Server DB</b><span>Supabase Postgres — <code>groups</code>, <code>access_tokens</code>, <code>members</code>, <code>binds</code>, <code>expenses</code> (with <code>allocations jsonb</code>); deny-all RLS</span></div><div class='sw2'><b>Server API</b><span>Edge Functions <code>create-group</code>, <code>merge</code>, <code>fetch-entity</code>, <code>list-roster</code>, <code>rt-jwt</code> — capability hash-check then service role</span></div><div class='sw2'><b>Wake channel</b><span>Realtime broadcast on <code>group:{id}</code>; payload is tip only; <code>rt-jwt</code> gates subscribe (anon_channel fallback — D-006)</span></div><div class='sw2'><b>Hosting</b><span>remote <code>splitnext-v3</code> — D-001</span></div><div class='sw2'><b>Repo</b><span><code>github.com/santistebanc/splitnext-app</code>, public; a slice is branch → PR (CI: <code>npm test</code> + <code>npm run typecheck</code>) → squash merge → tag <code>slice-NNNN</code> on <code>main</code> — D-028</span></div><div class='sw2'><b>Board</b><span>regenerated by CI and published to https://santistebanc.github.io/splitnext-app/ on every merge to <code>main</code>; its path chips link to the file on GitHub, and to the editor when served locally</span></div><div class='sw2'><b>Live app</b><span>the static web export ships to https://santistebanc.github.io/splitnext-app/app/ from the same workflow, linked from the board&#x27;s topbar — D-031</span></div><div class='sw2'><b>Agent entry point</b><span><code>AGENTS.md</code> + the process vendored at <code>.claude/skills/{slicer,tdd,code-review,prototype}</code>, so a clone carries the loop — D-029</span></div></div>
 
         <h3 id="o-model">Data model</h3>
         <div class="rows"><div class='row' style="--sc:var(--s1)"><div class='rmain'><div class='rhead'><h4>Group</h4></div><p class='one'><code>id</code>, <code>version</code>, <code>updated_at</code>, <code>deleted_at</code>, <code>name</code>, <code>currency_label</code>, <code>is_closed</code>. Client UUID v4; merge when <code>incoming.version &gt; stored.version</code>.</p></div></div><div class='row' style="--sc:var(--s2)"><div class='rmain'><div class='rhead'><h4>Member</h4></div><p class='one'><code>id</code>, <code>group_id</code>, <code>display_name</code>, <code>version</code>, <code>updated_at</code>, <code>deleted_at</code>. Name-slot; not a login. Soft-delete only (UI for delete/rename parked).</p></div></div><div class='row' style="--sc:var(--s3)"><div class='rmain'><div class='rhead'><h4>Bind</h4></div><p class='one'><code>id</code>, <code>group_id</code>, <code>device_user_id</code>, <code>member_id</code>, <code>version</code>, <code>updated_at</code>, <code>deleted_at</code>. Active bind = assumed member. Unique: one active bind per device per group — re-choosing re-points that bind at a higher version rather than adding a second.</p></div></div><div class='row' style="--sc:var(--s4)"><div class='rmain'><div class='rhead'><h4>Expense</h4></div><p class='one'><code>id</code>, <code>group_id</code>, <code>payer_member_id</code>, <code>amount_cents</code>, <code>description</code>, <code>allocations</code>, <code>version</code>, <code>updated_at</code>, <code>deleted_at</code>. Integer cents only. <code>allocations</code> is <code>[{ member_id, amount_cents }]</code> carried *inside* the expense (jsonb server-side), so one version number covers the whole split and a merge can never take a new amount while rejecting a share. Optional on the type: expenses recorded before slice 0007 carry none, and balances treat that as &quot;payer credited, nobody debited&quot;.</p></div></div><div class='row' style="--sc:var(--s5)"><div class='rmain'><div class='rhead'><h4>Access token</h4></div><p class='one'>server: <code>token_hash</code>, <code>group_id</code>, <code>device_user_id</code>, <code>revoked_at</code>. Client holds plaintext in Secure Store. One per device per group.</p></div></div></div>
@@ -499,7 +504,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#L-hub">Group hub</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/app/group/[id].tsx" data-path="app/group/[id].tsx" data-line="" title="Open in Cursor">app/group/[id].tsx</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/group/[id].tsx" data-path="app/group/[id].tsx" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/app/group/[id].tsx" title="Open on GitHub — or in the editor, from a local board">app/group/[id].tsx</a>
       <span class="used" title="Named by 6 flows">6 flows</span>
     </div>
     <p class="one">One group&#x27;s screen: shows its name, member list and everyone&#x27;s balance, lets you add a member or an expense, claim a member as yourself, rename the group, and surfaces the last sync error.</p>
@@ -510,7 +515,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#L-lobby">Lobby screen</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/app/index.tsx" data-path="app/index.tsx" data-line="" title="Open in Cursor">app/index.tsx</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/index.tsx" data-path="app/index.tsx" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/app/index.tsx" title="Open on GitHub — or in the editor, from a local board">app/index.tsx</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">The first screen: lists every group this device knows, offers Create group, and opens one into the hub.</p>
@@ -521,7 +526,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg>
       <h4><a class="self" href="#L-rootLayout">Root layout</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/app/_layout.tsx" data-path="app/_layout.tsx" data-line="" title="Open in Cursor">app/_layout.tsx</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/_layout.tsx" data-path="app/_layout.tsx" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/app/_layout.tsx" title="Open on GitHub — or in the editor, from a local board">app/_layout.tsx</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app.</p>
@@ -532,7 +537,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-flushQueue">flushQueue</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/outbound.ts:52" data-path="src/sync/outbound.ts" data-line="52" title="Open in Cursor">src/sync/outbound.ts:52</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/outbound.ts#L52" data-path="src/sync/outbound.ts" data-line="52" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/outbound.ts:52" title="Open on GitHub — or in the editor, from a local board">src/sync/outbound.ts:52</a>
       <span class="used" title="Named by 5 flows">5 flows</span>
     </div>
     <p class="one">Sends everything pending for a group in dependency order, keeps whatever the server did not accept, and records a typed error when it fails.</p>
@@ -543,7 +548,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-wakeSub">startWakeSubscription</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/wake.ts:17" data-path="src/sync/wake.ts" data-line="17" title="Open in Cursor">src/sync/wake.ts:17</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/wake.ts#L17" data-path="src/sync/wake.ts" data-line="17" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/wake.ts:17" title="Open on GitHub — or in the editor, from a local board">src/sync/wake.ts:17</a>
       <span class="used" title="Named by 4 flows">4 flows</span>
     </div>
     <p class="one">Listens on the group&#x27;s Realtime channel; a wake says only what changed, and this fetches that one entity. One subscription per group.</p>
@@ -554,7 +559,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-applyRemoteFetch">applyRemoteFetch</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/inbound.ts:39" data-path="src/sync/inbound.ts" data-line="39" title="Open in Cursor">src/sync/inbound.ts:39</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L39" data-path="src/sync/inbound.ts" data-line="39" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/inbound.ts:39" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:39</a>
       <span class="used" title="Named by 3 flows">3 flows</span>
     </div>
     <p class="one">Fetches one entity from the server and commits it, clearing or setting the group&#x27;s error.</p>
@@ -565,7 +570,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-sortByFlushOrder">sortByFlushOrder</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/version.ts:28" data-path="src/domain/version.ts" data-line="28" title="Open in Cursor">src/domain/version.ts:28</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/version.ts#L28" data-path="src/domain/version.ts" data-line="28" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/version.ts:28" title="Open on GitHub — or in the editor, from a local board">src/domain/version.ts:28</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">Orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it.</p>
@@ -576,7 +581,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-assumedMember">assumedMemberIdFromBinds</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/assumedMember.ts:4" data-path="src/domain/assumedMember.ts" data-line="4" title="Open in Cursor">src/domain/assumedMember.ts:4</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/assumedMember.ts#L4" data-path="src/domain/assumedMember.ts" data-line="4" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/assumedMember.ts:4" title="Open on GitHub — or in the editor, from a local board">src/domain/assumedMember.ts:4</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">Answers &quot;which member am I in this group?&quot; by finding this device&#x27;s live bind.</p>
@@ -587,7 +592,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-balances">computeBalances</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/balances.ts:25" data-path="src/domain/balances.ts" data-line="25" title="Open in Cursor">src/domain/balances.ts:25</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/balances.ts#L25" data-path="src/domain/balances.ts" data-line="25" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/balances.ts:25" title="Open on GitHub — or in the editor, from a local board">src/domain/balances.ts:25</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">Works out what each member is up or down overall — what they paid minus what they owe — most-negative first.</p>
@@ -598,7 +603,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-getGroupStore">getGroupStore</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/groupStore.ts:9" data-path="src/store/groupStore.ts" data-line="9" title="Open in Cursor">src/store/groupStore.ts:9</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/groupStore.ts#L9" data-path="src/store/groupStore.ts" data-line="9" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/groupStore.ts:9" title="Open on GitHub — or in the editor, from a local board">src/store/groupStore.ts:9</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">Hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by <a class="chip chip-l" style="--sc:var(--s2)" href="#L-normalizeTimestamps" title="L-normalizeTimestamps · Pure"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>normalizePersistedTimestamps</a>.</p>
@@ -609,7 +614,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-deviceUser">getOrCreateDeviceUserId</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/device/deviceUser.ts:7" data-path="src/device/deviceUser.ts" data-line="7" title="Open in Cursor">src/device/deviceUser.ts:7</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/device/deviceUser.ts#L7" data-path="src/device/deviceUser.ts" data-line="7" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/device/deviceUser.ts:7" title="Open on GitHub — or in the editor, from a local board">src/device/deviceUser.ts:7</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">The identity of this install: one id, generated once and kept in the secret store, since there are no accounts.</p>
@@ -620,7 +625,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-accessToken">getAccessToken / saveAccessToken</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/secrets/tokens.ts:15" data-path="src/secrets/tokens.ts" data-line="15" title="Open in Cursor">src/secrets/tokens.ts:15</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/tokens.ts#L15" data-path="src/secrets/tokens.ts" data-line="15" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/secrets/tokens.ts:15" title="Open on GitHub — or in the editor, from a local board">src/secrets/tokens.ts:15</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">Keeps each group&#x27;s capability token in the secret store — holding it is what proves access to that group.</p>
@@ -631,7 +636,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-lobbyIds">listLobbyGroupIds / addLobbyGroupId</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/secrets/tokens.ts:21" data-path="src/secrets/tokens.ts" data-line="21" title="Open in Cursor">src/secrets/tokens.ts:21</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/tokens.ts#L21" data-path="src/secrets/tokens.ts" data-line="21" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/secrets/tokens.ts:21" title="Open on GitHub — or in the editor, from a local board">src/secrets/tokens.ts:21</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">The device&#x27;s list of known group ids, which is what the lobby and the catch-up sync iterate over. Temporary home.</p>
@@ -642,7 +647,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-shouldAcceptVersion">shouldAcceptVersion</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/version.ts:2" data-path="src/domain/version.ts" data-line="2" title="Open in Cursor">src/domain/version.ts:2</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/version.ts#L2" data-path="src/domain/version.ts" data-line="2" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/version.ts:2" title="Open on GitHub — or in the editor, from a local board">src/domain/version.ts:2</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Decides who wins when two copies of an entity disagree: the incoming one, but only if its version number is strictly higher.</p>
@@ -653,7 +658,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-bindingOpen">bindingIsOpen</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/assumedMember.ts:26" data-path="src/domain/assumedMember.ts" data-line="26" title="Open in Cursor">src/domain/assumedMember.ts:26</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/assumedMember.ts#L26" data-path="src/domain/assumedMember.ts" data-line="26" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/assumedMember.ts:26" title="Open on GitHub — or in the editor, from a local board">src/domain/assumedMember.ts:26</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Answers &quot;can this device still say which member it is?&quot; — yes until the group&#x27;s first live expense, which is what shows or hides the This is me button.</p>
@@ -664,7 +669,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-splitEqually">splitEqually</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/split.ts:14" data-path="src/domain/split.ts" data-line="14" title="Open in Cursor">src/domain/split.ts:14</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/split.ts#L14" data-path="src/domain/split.ts" data-line="14" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/split.ts:14" title="Open on GitHub — or in the editor, from a local board">src/domain/split.ts:14</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly.</p>
@@ -675,7 +680,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-createGroup">createGroup</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:31" data-path="src/sync/groupSync.ts" data-line="31" title="Open in Cursor">src/sync/groupSync.ts:31</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L31" data-path="src/sync/groupSync.ts" data-line="31" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:31" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:31</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes.</p>
@@ -686,7 +691,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-openGroup">openGroup</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:269" data-path="src/sync/groupSync.ts" data-line="269" title="Open in Cursor">src/sync/groupSync.ts:269</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L269" data-path="src/sync/groupSync.ts" data-line="269" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:269" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:269</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Opens a group for viewing — subscribes for wakes, then runs a full sync. Realtime being down does not block opening.</p>
@@ -697,7 +702,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-syncGroup">syncGroup</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:246" data-path="src/sync/groupSync.ts" data-line="246" title="Open in Cursor">src/sync/groupSync.ts:246</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L246" data-path="src/sync/groupSync.ts" data-line="246" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:246" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:246</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">One full round trip for a group: push everything pending, pull the group back, then pull its roster. Runs alone per group so nothing races.</p>
@@ -708,7 +713,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-syncAllLobby">syncAllLobbyGroups</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:256" data-path="src/sync/groupSync.ts" data-line="256" title="Open in Cursor">src/sync/groupSync.ts:256</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L256" data-path="src/sync/groupSync.ts" data-line="256" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:256" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:256</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest.</p>
@@ -719,7 +724,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-bumpName">bumpGroupName</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:85" data-path="src/sync/groupSync.ts" data-line="85" title="Open in Cursor">src/sync/groupSync.ts:85</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L85" data-path="src/sync/groupSync.ts" data-line="85" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:85" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:85</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Renames a group: the new name shows immediately, then goes to the server as the next version.</p>
@@ -730,7 +735,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-addMember">addMember</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:110" data-path="src/sync/groupSync.ts" data-line="110" title="Open in Cursor">src/sync/groupSync.ts:110</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L110" data-path="src/sync/groupSync.ts" data-line="110" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:110" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:110</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Adds a person to the group locally, then sends them to the server.</p>
@@ -741,7 +746,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-addExpense">addExpense</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:146" data-path="src/sync/groupSync.ts" data-line="146" title="Open in Cursor">src/sync/groupSync.ts:146</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L146" data-path="src/sync/groupSync.ts" data-line="146" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:146" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:146</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it.</p>
@@ -752,7 +757,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-bindMe">bindMe</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:197" data-path="src/sync/groupSync.ts" data-line="197" title="Open in Cursor">src/sync/groupSync.ts:197</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L197" data-path="src/sync/groupSync.ts" data-line="197" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:197" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:197</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Claims a member as this device&#x27;s own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. Refuses once the group has an expense, or if the member is gone.</p>
@@ -763,7 +768,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-runExclusive">runExclusive</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/exclusive.ts:4" data-path="src/sync/exclusive.ts" data-line="4" title="Open in Cursor">src/sync/exclusive.ts:4</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/exclusive.ts#L4" data-path="src/sync/exclusive.ts" data-line="4" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/exclusive.ts:4" title="Open on GitHub — or in the editor, from a local board">src/sync/exclusive.ts:4</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Queues async work per group so a push and a pull can never overlap on the same group.</p>
@@ -774,7 +779,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-shouldFlush">shouldAttemptFlush</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/queuePolicy.ts:2" data-path="src/sync/queuePolicy.ts" data-line="2" title="Open in Cursor">src/sync/queuePolicy.ts:2</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/queuePolicy.ts#L2" data-path="src/sync/queuePolicy.ts" data-line="2" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/queuePolicy.ts:2" title="Open on GitHub — or in the editor, from a local board">src/sync/queuePolicy.ts:2</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Says whether a push is worth making at all — an empty queue is a no-op, not a request.</p>
@@ -785,7 +790,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-queuePolicy">queueAfterMergeResults</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/queuePolicy.ts:23" data-path="src/sync/queuePolicy.ts" data-line="23" title="Open in Cursor">src/sync/queuePolicy.ts:23</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/queuePolicy.ts#L23" data-path="src/sync/queuePolicy.ts" data-line="23" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/queuePolicy.ts:23" title="Open on GitHub — or in the editor, from a local board">src/sync/queuePolicy.ts:23</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Decides what stays pending after a push: drop only the exact versions the server accepted, so nothing newer is lost.</p>
@@ -796,7 +801,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-applyRemoteEntity">applyRemoteEntity</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/inboundApply.ts:18" data-path="src/sync/inboundApply.ts" data-line="18" title="Open in Cursor">src/sync/inboundApply.ts:18</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inboundApply.ts#L18" data-path="src/sync/inboundApply.ts" data-line="18" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/inboundApply.ts:18" title="Open on GitHub — or in the editor, from a local board">src/sync/inboundApply.ts:18</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Works out the next local state for one incoming entity, or says no change if the local copy is already as new. Pure, so it is unit-tested.</p>
@@ -807,7 +812,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-commitRemote">commitRemoteEntity</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/inbound.ts:19" data-path="src/sync/inbound.ts" data-line="19" title="Open in Cursor">src/sync/inbound.ts:19</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L19" data-path="src/sync/inbound.ts" data-line="19" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/inbound.ts:19" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:19</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Writes the accepted result of that decision into the store.</p>
@@ -818,7 +823,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-pullRoster">pullRoster</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/inbound.ts:72" data-path="src/sync/inbound.ts" data-line="72" title="Open in Cursor">src/sync/inbound.ts:72</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/inbound.ts#L72" data-path="src/sync/inbound.ts" data-line="72" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/inbound.ts:72" title="Open on GitHub — or in the editor, from a local board">src/sync/inbound.ts:72</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call.</p>
@@ -829,7 +834,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg>
       <h4><a class="self" href="#L-foreground">useLobbyForegroundSync</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/appForegroundSync.ts:6" data-path="src/sync/appForegroundSync.ts" data-line="6" title="Open in Cursor">src/sync/appForegroundSync.ts:6</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/appForegroundSync.ts#L6" data-path="src/sync/appForegroundSync.ts" data-line="6" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/appForegroundSync.ts:6" title="Open on GitHub — or in the editor, from a local board">src/sync/appForegroundSync.ts:6</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Runs the lobby-wide catch-up on mount and every time the app returns to the foreground.</p>
@@ -840,7 +845,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-syncError">syncError / coerceSyncError</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/syncErrors.ts:5" data-path="src/sync/syncErrors.ts" data-line="5" title="Open in Cursor">src/sync/syncErrors.ts:5</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/syncErrors.ts#L5" data-path="src/sync/syncErrors.ts" data-line="5" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/syncErrors.ts:5" title="Open on GitHub — or in the editor, from a local board">src/sync/syncErrors.ts:5</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape.</p>
@@ -851,7 +856,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-initLocalGroup">initLocalGroup</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/groupStore.ts:53" data-path="src/store/groupStore.ts" data-line="53" title="Open in Cursor">src/store/groupStore.ts:53</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/groupStore.ts#L53" data-path="src/store/groupStore.ts" data-line="53" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/groupStore.ts:53" title="Open on GitHub — or in the editor, from a local board">src/store/groupStore.ts:53</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Seeds a freshly created group into its store as local-only, before the server knows about it.</p>
@@ -862,7 +867,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-normalizeTimestamps">normalizePersistedTimestamps</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/timestamps.ts:19" data-path="src/store/timestamps.ts" data-line="19" title="Open in Cursor">src/store/timestamps.ts:19</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/timestamps.ts#L19" data-path="src/store/timestamps.ts" data-line="19" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/timestamps.ts:19" title="Open on GitHub — or in the editor, from a local board">src/store/timestamps.ts:19</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Undoes the <code>Date</code> objects that reloading a saved store invents in place of our timestamp strings, so a reopened group holds exactly what a freshly synced one does.</p>
@@ -873,7 +878,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-secureStorage">getSecret / setSecret</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/secrets/secureStorage.ts:11" data-path="src/secrets/secureStorage.ts" data-line="11" title="Open in Cursor">src/secrets/secureStorage.ts:11</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/secrets/secureStorage.ts#L11" data-path="src/secrets/secureStorage.ts" data-line="11" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/secrets/secureStorage.ts:11" title="Open on GitHub — or in the editor, from a local board">src/secrets/secureStorage.ts:11</a>
       <span class="used none" title="No flow names this symbol">—</span>
     </div>
     <p class="one">The one door to the device&#x27;s secrets. Native goes to the OS keychain; the web build swaps in <code>localStorage</code>, which is why nothing wider than a per-group token belongs here.</p>
@@ -884,7 +889,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg>
       <h4><a class="self" href="#L-persistPlugin">persistPlugin</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/persistPlugin.ts:10" data-path="src/store/persistPlugin.ts" data-line="10" title="Open in Cursor">src/store/persistPlugin.ts:10</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/persistPlugin.ts#L10" data-path="src/store/persistPlugin.ts" data-line="10" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/persistPlugin.ts:10" title="Open on GitHub — or in the editor, from a local board">src/store/persistPlugin.ts:10</a>
       <span class="used none" title="No flow names this symbol">—</span>
     </div>
     <p class="one">Where a store survives a restart: SQLite on a device, <code>localStorage</code> on web, so the browser target needs no wasm.</p>
@@ -895,7 +900,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeCreate">createGroupRemote</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:52" data-path="src/api/edge.ts" data-line="52" title="Open in Cursor">src/api/edge.ts:52</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L52" data-path="src/api/edge.ts" data-line="52" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:52" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:52</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Asks the server to register a new group and hand back its access token.</p>
@@ -906,7 +911,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeMerge">mergeEntities</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:62" data-path="src/api/edge.ts" data-line="62" title="Open in Cursor">src/api/edge.ts:62</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L62" data-path="src/api/edge.ts" data-line="62" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:62" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:62</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Pushes a batch of pending changes and reports per item whether the server accepted them.</p>
@@ -917,7 +922,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeFetch">fetchEntity</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:91" data-path="src/api/edge.ts" data-line="91" title="Open in Cursor">src/api/edge.ts:91</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L91" data-path="src/api/edge.ts" data-line="91" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:91" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:91</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Asks for one entity by type and id — the call a wake triggers.</p>
@@ -928,7 +933,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeRoster">listRoster</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:112" data-path="src/api/edge.ts" data-line="112" title="Open in Cursor">src/api/edge.ts:112</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L112" data-path="src/api/edge.ts" data-line="112" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:112" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:112</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Asks for a group&#x27;s whole roster — members, binds and expenses — in one request.</p>
@@ -939,7 +944,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-edgeRtJwt">mintRealtimeAuth</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:131" data-path="src/api/edge.ts" data-line="131" title="Open in Cursor">src/api/edge.ts:131</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/api/edge.ts#L131" data-path="src/api/edge.ts" data-line="131" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/api/edge.ts:131" title="Open on GitHub — or in the editor, from a local board">src/api/edge.ts:131</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Trades the group&#x27;s access token for permission to listen on its Realtime channel.</p>
@@ -950,7 +955,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efMerge">merge / mergeOne</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/merge" data-path="supabase/functions/merge" data-line="" title="Open in Cursor">supabase/functions/merge</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/merge" data-path="supabase/functions/merge" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/merge" title="Open on GitHub — or in the editor, from a local board">supabase/functions/merge</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">The write path: applies each pushed item if its version wins, reports accepted or rejected per item, and wakes the group&#x27;s other devices.</p>
@@ -961,7 +966,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 13V3"/><path d="M3 5l2-2 2 2"/><path d="M11 3v10"/><path d="M9 11l2 2 2-2"/></svg>
       <h4><a class="self" href="#L-efWake">publishWake</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/_shared/wake.ts:11" data-path="supabase/functions/_shared/wake.ts" data-line="11" title="Open in Cursor">supabase/functions/_shared/wake.ts:11</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/wake.ts#L11" data-path="supabase/functions/_shared/wake.ts" data-line="11" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/_shared/wake.ts:11" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/wake.ts:11</a>
       <span class="used" title="Named by 2 flows">2 flows</span>
     </div>
     <p class="one">Tells the group&#x27;s other devices that something changed, naming only what — never the data itself. A failed wake never undoes the write.</p>
@@ -972,7 +977,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efCreate">create-group</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/create-group" data-path="supabase/functions/create-group" data-line="" title="Open in Cursor">supabase/functions/create-group</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/create-group" data-path="supabase/functions/create-group" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/create-group" title="Open on GitHub — or in the editor, from a local board">supabase/functions/create-group</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Creates the group row and issues an access token, storing only its hash.</p>
@@ -983,7 +988,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efFetch">fetch-entity</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/fetch-entity" data-path="supabase/functions/fetch-entity" data-line="" title="Open in Cursor">supabase/functions/fetch-entity</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/fetch-entity" data-path="supabase/functions/fetch-entity" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/fetch-entity" title="Open on GitHub — or in the editor, from a local board">supabase/functions/fetch-entity</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Returns one entity to a caller whose token proves access to that group.</p>
@@ -994,7 +999,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efRoster">list-roster</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/list-roster" data-path="supabase/functions/list-roster" data-line="" title="Open in Cursor">supabase/functions/list-roster</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/list-roster" data-path="supabase/functions/list-roster" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/list-roster" title="Open on GitHub — or in the editor, from a local board">supabase/functions/list-roster</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Returns every member, bind and expense of a group in one response.</p>
@@ -1005,7 +1010,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efRtJwt">rt-jwt</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/rt-jwt" data-path="supabase/functions/rt-jwt" data-line="" title="Open in Cursor">supabase/functions/rt-jwt</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/rt-jwt" data-path="supabase/functions/rt-jwt" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/rt-jwt" title="Open on GitHub — or in the editor, from a local board">supabase/functions/rt-jwt</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">Issues a short-lived Realtime token, falling back to a shared anonymous channel when it cannot.</p>
@@ -1016,7 +1021,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="4.5"/><rect x="2" y="9" width="12" height="4.5"/><path d="M4.5 4.75h1.5"/><path d="M4.5 11.25h1.5"/></svg>
       <h4><a class="self" href="#L-efAccess">resolveAccessToken</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/_shared/access.ts:11" data-path="supabase/functions/_shared/access.ts" data-line="11" title="Open in Cursor">supabase/functions/_shared/access.ts:11</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/access.ts#L11" data-path="supabase/functions/_shared/access.ts" data-line="11" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/_shared/access.ts:11" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/access.ts:11</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">The door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device.</p>
@@ -1027,7 +1032,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
     <div class="rhead">
       <svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>
       <h4><a class="self" href="#L-efShouldAccept">shouldAccept</a></h4>
-      <a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/_shared/entities.ts:8" data-path="supabase/functions/_shared/entities.ts" data-line="8" title="Open in Cursor">supabase/functions/_shared/entities.ts:8</a>
+      <a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/supabase/functions/_shared/entities.ts#L8" data-path="supabase/functions/_shared/entities.ts" data-line="8" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/supabase/functions/_shared/entities.ts:8" title="Open on GitHub — or in the editor, from a local board">supabase/functions/_shared/entities.ts:8</a>
       <span class="used" title="Named by 1 flow">1 flow</span>
     </div>
     <p class="one">The server&#x27;s copy of the version rule, deliberately identical to the client&#x27;s so both sides agree on who wins.</p>
@@ -1234,7 +1239,7 @@ tbody th{background:var(--surface);color:var(--text);font-family:var(--sans);tex
   </table></div>
 
   <h3 id="n-symbols">Symbols that slice touched</h3>
-  <div class="rows"><div class="row" style="--sc:var(--s2)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg><h4><a class="self" href="#L-splitEqually">splitEqually</a></h4><a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/split.ts:14" data-path="src/domain/split.ts" data-line="14" title="Open in Cursor">src/domain/split.ts:14</a><span class="pill ok">Added</span></div><p class="one">Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly.</p><p class="dnote">divide a cost to the cent, same answer on every device</p></div></div><div class="row" style="--sc:var(--s2)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg><h4><a class="self" href="#L-balances">computeBalances</a></h4><a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/balances.ts:25" data-path="src/domain/balances.ts" data-line="25" title="Open in Cursor">src/domain/balances.ts:25</a><span class="pill ok">Added</span></div><p class="one">Works out what each member is up or down overall — what they paid minus what they owe — most-negative first.</p><p class="dnote">what each member is up or down</p></div></div><div class="row" style="--sc:var(--s2)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg><h4><a class="self" href="#L-normalizeTimestamps">normalizePersistedTimestamps</a></h4><a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/timestamps.ts:19" data-path="src/store/timestamps.ts" data-line="19" title="Open in Cursor">src/store/timestamps.ts:19</a><span class="pill ok">Added</span></div><p class="one">Undoes the <code>Date</code> objects that reloading a saved store invents in place of our timestamp strings, so a reopened group holds exactly what a freshly synced one does.</p><p class="dnote">undo the Dates a reload invents</p></div></div><div class="row" style="--sc:var(--s1)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg><h4><a class="self" href="#L-addExpense">addExpense</a></h4><a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:146" data-path="src/sync/groupSync.ts" data-line="146" title="Open in Cursor">src/sync/groupSync.ts:146</a><span class="pill warn">Changed</span></div><p class="one">Records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it.</p><p class="dnote change">splits across live members and freezes it in</p></div></div><div class="row" style="--sc:var(--s4)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg><h4><a class="self" href="#L-getGroupStore">getGroupStore</a></h4><a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/groupStore.ts:9" data-path="src/store/groupStore.ts" data-line="9" title="Open in Cursor">src/store/groupStore.ts:9</a><span class="pill warn">Changed</span></div><p class="one">Hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by <a class="chip chip-l" style="--sc:var(--s2)" href="#L-normalizeTimestamps" title="L-normalizeTimestamps · Pure"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>normalizePersistedTimestamps</a>.</p><p class="dnote change">normalizes on open</p></div></div><div class="row" style="--sc:var(--s5)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg><h4><a class="self" href="#L-hub">Group hub</a></h4><a class="ref src" href="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/app/group/[id].tsx" data-path="app/group/[id].tsx" data-line="" title="Open in Cursor">app/group/[id].tsx</a><span class="pill warn">Changed</span></div><p class="one">One group&#x27;s screen: shows its name, member list and everyone&#x27;s balance, lets you add a member or an expense, claim a member as yourself, rename the group, and surfaces the last sync error.</p><p class="dnote change">balances section, split count per row</p></div></div></div>
+  <div class="rows"><div class="row" style="--sc:var(--s2)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg><h4><a class="self" href="#L-splitEqually">splitEqually</a></h4><a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/split.ts#L14" data-path="src/domain/split.ts" data-line="14" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/split.ts:14" title="Open on GitHub — or in the editor, from a local board">src/domain/split.ts:14</a><span class="pill ok">Added</span></div><p class="one">Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly.</p><p class="dnote">divide a cost to the cent, same answer on every device</p></div></div><div class="row" style="--sc:var(--s2)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg><h4><a class="self" href="#L-balances">computeBalances</a></h4><a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/domain/balances.ts#L25" data-path="src/domain/balances.ts" data-line="25" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/domain/balances.ts:25" title="Open on GitHub — or in the editor, from a local board">src/domain/balances.ts:25</a><span class="pill ok">Added</span></div><p class="one">Works out what each member is up or down overall — what they paid minus what they owe — most-negative first.</p><p class="dnote">what each member is up or down</p></div></div><div class="row" style="--sc:var(--s2)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg><h4><a class="self" href="#L-normalizeTimestamps">normalizePersistedTimestamps</a></h4><a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/timestamps.ts#L19" data-path="src/store/timestamps.ts" data-line="19" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/timestamps.ts:19" title="Open on GitHub — or in the editor, from a local board">src/store/timestamps.ts:19</a><span class="pill ok">Added</span></div><p class="one">Undoes the <code>Date</code> objects that reloading a saved store invents in place of our timestamp strings, so a reopened group holds exactly what a freshly synced one does.</p><p class="dnote">undo the Dates a reload invents</p></div></div><div class="row" style="--sc:var(--s1)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="4" height="4"/><rect x="10.5" y="10.5" width="4" height="4"/><path d="M5.5 3.5h5a2 2 0 0 1 2 2v5"/></svg><h4><a class="self" href="#L-addExpense">addExpense</a></h4><a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/sync/groupSync.ts#L146" data-path="src/sync/groupSync.ts" data-line="146" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/sync/groupSync.ts:146" title="Open on GitHub — or in the editor, from a local board">src/sync/groupSync.ts:146</a><span class="pill warn">Changed</span></div><p class="one">Records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it.</p><p class="dnote change">splits across live members and freezes it in</p></div></div><div class="row" style="--sc:var(--s4)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></svg><h4><a class="self" href="#L-getGroupStore">getGroupStore</a></h4><a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/src/store/groupStore.ts#L9" data-path="src/store/groupStore.ts" data-line="9" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/src/store/groupStore.ts:9" title="Open on GitHub — or in the editor, from a local board">src/store/groupStore.ts:9</a><span class="pill warn">Changed</span></div><p class="one">Hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by <a class="chip chip-l" style="--sc:var(--s2)" href="#L-normalizeTimestamps" title="L-normalizeTimestamps · Pure"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8h9"/><path d="M8 5l3 3-3 3"/><path d="M2 4v8"/></svg>normalizePersistedTimestamps</a>.</p><p class="dnote change">normalizes on open</p></div></div><div class="row" style="--sc:var(--s5)"><div class="rmain"><div class="rhead"><svg class="kicon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="9"/><path d="M6 14h4"/></svg><h4><a class="self" href="#L-hub">Group hub</a></h4><a class="ref src" href="https://github.com/santistebanc/splitnext-app/blob/main/app/group/[id].tsx" data-path="app/group/[id].tsx" data-line="" data-editor="cursor://vscode-remote/wsl+Ubuntu-24.04/root/code/v3/splitnext/app/group/[id].tsx" title="Open on GitHub — or in the editor, from a local board">app/group/[id].tsx</a><span class="pill warn">Changed</span></div><p class="one">One group&#x27;s screen: shows its name, member list and everyone&#x27;s balance, lets you add a member or an expense, claim a member as yourself, rename the group, and surfaces the last sync error.</p><p class="dnote change">balances section, split count per row</p></div></div></div>
 
   <h3 id="n-flows">Flows that slice touched</h3>
   
@@ -1537,9 +1542,14 @@ addEventListener('scroll',()=>{if(popAnchor)closePop();},true);
 addEventListener('resize',closePop);
 
 // ---------- open in the editor ----------
-// Served over http? Ask the helper to run `cursor -r -g`, which reuses the
-// window. On file:// fall through to the cursor:// href, which does not.
-const servedLocally=location.protocol==='http:'||location.protocol==='https:';
+// A path chip is a link to the file on GitHub, so it works for anyone reading
+// the published board. On a board served from this machine it means the other
+// thing: ask the helper to run `cursor -r -g`, which reuses the window.
+const servedLocally=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+// Published board: a chip leaves for GitHub, so send it to its own tab and
+// leave the reader's place on the board intact.
+if(!servedLocally)document.querySelectorAll('a.ref.src, a.shot-open')
+  .forEach(a=>{a.target='_blank';a.rel='noopener';});
 document.addEventListener('click',e=>{
   const a=e.target.closest && e.target.closest('a.ref.src, a.shot-open');
   if(!a||!servedLocally||!a.dataset.path)return;
@@ -1551,11 +1561,14 @@ document.addEventListener('click',e=>{
     mode:a.dataset.mode||'',
   });
   // if the helper is not there (plain static server), fall back to the scheme
+  // No helper (a plain static server on localhost)? Try the cursor:// scheme,
+  // then give up to the GitHub link the chip already carries.
+  const fallback=a.dataset.editor||a.href;
   fetch('/open?'+q).then(r=>{
     if(r.ok)return;
     a.classList.add('open-failed');
-    if(r.status===404||r.status===501)location.href=a.href;
-  }).catch(()=>{a.classList.add('open-failed');location.href=a.href;});
+    if(r.status===404||r.status===501)location.href=fallback;
+  }).catch(()=>{a.classList.add('open-failed');location.href=fallback;});
 });
 
 // ---------- keys ----------
