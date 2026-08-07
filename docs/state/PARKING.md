@@ -8,22 +8,23 @@
 - **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002 + roster list in 0003; full protocol still open*
 - **Realtime JWT signing secret** — leave `anon_channel` fallback; mint short-lived JWT for private channel auth (D-006) — area: sync — raised: slice 0001
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
-- **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
+- **Invite rate limits** — nothing throttles `redeem-invite`, so the 31⁸ keyspace is the only thing standing between a guesser and a group. One-time + 7-day expiry now enforced (slice 0009); attempt limiting is not — area: abuse — raised: bootstrap · *sharpened by 0009*
 
 ## Core value
+
+- **Release a member slot** — an invite can only fill a slot nobody holds, so a device that binds by mistake (or is lost) leaves that member uninvitable forever; needs a deliberate unbind, which is also what **Leave group** wants — area: membership — raised: slice 0009
 
 - **Reopen the binding choice after an expense exists** — "in the future it will be possible to change in other way" — the first expense closes it for good today (D-020); reopening has to decide what happens to expenses already attributed to the old member — area: membership — raised: slice 0005
 
 - **Member rename / soft-delete** — rename any assumed member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap
 - **Expense editor + invariants** — edit an existing expense; participant picker; uneven / share-based splits with real largest-remainder ranking; defaults (payer = assumed member, equal shares). Slice 0007 shipped the equal-split half only, at record time, with no way to change it after — area: ledger — raised: bootstrap
-- **Member invites** — HTTPS deep link join; mint access token; preselect / picker / add-new — area: invites — raised: bootstrap
 - **Settle-up suggestions** — minimise transfer count via group-net flows; prefill settlement expense — area: ledger — raised: bootstrap
 - **Leave group** — unbind + revoke this device’s access token; member history remains — area: membership — raised: bootstrap
 
 ## Breadth
 
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a Vercel or Cloudflare project would give a URL per branch — area: deploy — raised: slice 0008
-- **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — area: invites — raised: bootstrap
+- **Invite link instead of a typed code** — slice 0009 ships the code half (mint per member, type it in). The link half — HTTPS deep link so an invite is tappable, plus the exact URL shape on splitnext.online — still needs a dev build, not Expo Go (D-003) — area: invites — raised: bootstrap · *partially delivered in 0009*
 - **Activity feed** — twelve event types; client-authored; flushed last — area: activity — raised: bootstrap
 - **Member detail** — paid-for / owes-for buckets; leave group — area: membership — raised: bootstrap
 - **All-expenses list** — area: expenses — raised: bootstrap
@@ -42,6 +43,8 @@
 - **Handoff checklist** — "Final spec section outline and the acceptance checklist proving the design is implementable" — area: meta — raised: bootstrap
 
 ## Delivered
+
+- **Member invites** — delivered in slice 0009; per-member one-time codes, redeemed on a fresh device that arrives already bound. The deep-link half stays parked above.
 
 - **Balances list (group hub home)** — delivered in [slice 0007](slices/0007-allocations-balances.md); derived Σ paid − Σ owed, most-negative first, You (Name) marked
 

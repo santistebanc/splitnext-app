@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0008
+Last updated: slice 0009
 
 ## Direction
 
@@ -39,6 +39,7 @@ Last updated: slice 0008
 - Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Edge Functions — [slice 0007](slices/0007-allocations-balances.md)
 - Work the repo from any clone: the loop is vendored at `.claude/skills/`, `AGENTS.md` is the entry point, CI enforces the gates — [slice 0008](slices/0008-repo-home.md)
 - Read the board and use the app as URLs, both published by CI on every merge, with code chips linking to GitHub — [slice 0008](slices/0008-repo-home.md)
+- Invite someone to a named member slot with a one-time code, and join from a second device already bound as that person — slice 0009
 
 ## Stack
 
@@ -46,8 +47,8 @@ Last updated: slice 0008
 - UI state — Legend State v3 (`useValue`, per-group observable) — UI source of truth
 - Local durability — `expo-sqlite` kv-store via `observablePersistSqlite` + `configureObservableSync` — write-through persist; web swaps the plugin for `localStorage` (`persistPlugin.web.ts`) because expo-sqlite's web path is wasm over OPFS, which headless Chromium cannot run
 - Secrets — `expo-secure-store` behind `src/secrets/secureStorage.ts` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary). Web has no keychain and falls back to `localStorage`
-- Server DB — Supabase Postgres — `groups`, `access_tokens`, `members`, `binds`, `expenses` (with `allocations jsonb`); deny-all RLS
-- Server API — Edge Functions `create-group`, `merge`, `fetch-entity`, `list-roster`, `rt-jwt` — capability hash-check then service role
+- Server DB — Supabase Postgres — `groups`, `access_tokens`, `members`, `binds`, `expenses` (with `allocations jsonb`), `invites`; deny-all RLS
+- Server API — Edge Functions `create-group`, `merge`, `fetch-entity`, `list-roster`, `rt-jwt`, `create-invite`, `redeem-invite` — capability hash-check then service role; `create-group` and `redeem-invite` are the two that grant access without one (D-036)
 - Wake channel — Realtime broadcast on `group:{id}`; payload is tip only; `rt-jwt` gates subscribe (anon_channel fallback — D-006)
 - Hosting — remote `splitnext-v3` — D-001
 - Repo — `github.com/santistebanc/splitnext-app`, public; a slice is branch → PR (CI: `npm test` + `npm run typecheck`) → squash merge → tag `slice-NNNN` on `main` — D-028
@@ -69,20 +70,24 @@ Last updated: slice 0008
 
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
+**Invite** (server only, never synced) — `id`, `group_id`, `member_id`, `code_hash`, `created_at`, `expires_at`, `redeemed_at`, `redeemed_by_device_user_id`. Names one member, so redeeming it binds without a picker. Hash only, one-time, 7 days — D-035.
+
 **Outbound queue** (client) — per-group `{ entity_type, id, version, payload }` on the Legend store; flushed to `merge` in flush order. Auto-flushed on open/foreground via `syncGroup`.
 
 ## Routes / surfaces
 
 | Route | What it does | Shipped in |
 | --- | --- | --- |
-| `/` | Lobby: create group, list local group ids; root AppState sync | slice 0001 / 0002 |
-| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), You (Name); balances (net per member, signed); expenses list + add, each row saying how many ways it split; bump sync proof; open → syncGroup | slice 0001–0007 |
+| `/` | Lobby: create group, join with an invite code, list local group ids; root AppState sync | slice 0001 / 0002 / 0009 |
+| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite (on unclaimed members, any time), You (Name); balances (net per member, signed); expenses list + add, each row saying how many ways it split; bump sync proof; open → syncGroup | slice 0001–0009 |
 
 ## Seams
 
 - `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest
 - `shouldAttemptFlush` / `queueAfterMergeResults` — `src/sync/queuePolicy.ts` — vitest
 - `assumedMemberIdFromBinds` / `bindingIsOpen` — `src/domain/assumedMember.ts` — vitest
+- `memberHasLiveBind` — `src/domain/assumedMember.ts` — vitest — whether a slot is still invitable
+- `normalizeInviteCode` / `isWellFormedInviteCode` / `formatInviteCode` — `src/domain/inviteCode.ts` — vitest
 - Edge Functions behind `src/api/edge.ts` — the HTTP capability boundary; the place a fake would go if one comes back
 - `syncError` / `coerceSyncError` — `src/sync/syncErrors.ts` — vitest
 - `getSecret` / `setSecret` — `src/secrets/secureStorage.ts` — the platform split for secrets; a fake here replaces the keychain

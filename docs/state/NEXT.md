@@ -49,6 +49,30 @@ Server-side invite logic (expiry, one-time-use, the gating order in `redeem-invi
 - `bindMe`/This-is-me behavior is unchanged — still closes after the group's first expense.
 - Full suite + typecheck green; `npm run web` drives create → member → expense → invite → (fresh context) join → hub bound.
 
+## Edge paths
+
+| Surface | State | What happens |
+| --- | --- | --- |
+| `create-invite` / `redeem-invite` | member legitimately held by two devices (D-014) | **Was a 500.** Both bind lookups used `.maybeSingle()`, which errors on more than one row — so the very state the check exists to detect turned "member already bound" into `internal`. Now `.limit(1)` on both. |
+| `redeem-invite` | code of the wrong length | Rejected as `invalid_code` before any query. Only an empty code was caught before, so a 3- or 40-character string cost a hash and a round trip to reach the same answer. |
+| `redeem-invite` | two devices redeem the same code at once | Both read `redeemed_at` as null, but the claim is a conditional `update … is('redeemed_at', null)` whose row count decides: one wins, the loser gets `already_redeemed` and no token is ever minted for it. |
+| `redeem-invite` | two *different* codes for the same member redeemed at once | Both can pass, leaving one member held by two devices. Allowed rather than raced-against, because D-014 already permits exactly that; the unique index only ever protected one bind per *device*. |
+| `redeem-invite` | bind inserts, access token insert fails | Bind is deleted and the invite released, so the code still works. A bind with no token would put a device in the roster that can never sync — worse than not joining. |
+| `redeem-invite` | invite claimed, bind insert fails | Invite released back to unredeemed, so a server-side failure never silently burns somebody's one-time code. |
+| `redeem-invite` | device already bound in this group | `already_joined` before anything is written — redeeming would strand the old bind or break one-bind-per-device (D-021), and the code was almost certainly meant for a different phone. |
+| `redeem-invite` | member soft-deleted between mint and redeem | `member_gone`. The code named a slot that no longer exists; binding to it would put a deleted person back on the roster. |
+| `redeem-invite` | wrong code vs. deleted invite | Both answer `invalid_code`, deliberately — distinguishing them would make the endpoint an oracle for which codes exist. |
+| `randomInviteCode` | — | Rejection sampling, not `% 31`: 256 is not a multiple of the alphabet, so plain modulo would bias the first few characters and quietly shrink the keyspace. |
+| Invite button | member already claimed by anyone | Button is absent — `memberHasLiveBind` is device-agnostic, so a slot someone else holds is not offerable here either. |
+| Invite button | group has expenses | Still shown. This is the whole point of the slice: `bindingIsOpen` gates *changing your mind*, not *filling an empty slot* (D-034). |
+| Hub | code minted, app reloaded | Code is gone — it lives in component state only. The server holds a hash, so re-showing it is impossible by construction; **New code** mints a fresh one and the old invite stays valid until it expires. |
+| Lobby | code half-typed | Join button disabled by `isWellFormedInviteCode`, so an incomplete code never becomes a failed round trip. |
+| Lobby | join fails | Each server reason maps to a sentence about the code, not a raw error string; the message clears as soon as the field is edited. |
+| `redeemInvite` | roster pull fails after joining | Swallowed — the token is saved and the group is in the lobby, so the hub opens and the next sync catches up. Joining succeeded; the pull is a head start. |
+| `redeemInvite` | Realtime unavailable | Swallowed, same as opening any group: live updates are a bonus, not a gate on joining. |
+| `redeem-invite` | group soft-deleted | Not checked — no delete-group surface exists yet, so there is no way to reach it. Named here so it is a known gap rather than an assumption. |
+| Invite codes | brute force | 31⁸ ≈ 8.5×10¹¹, one-time and 7-day, but **nothing rate-limits redemption attempts** (parked: **Invite rate limits**). Acceptable at this keyspace; it is the parked item that closes it properly. |
+
 ## Out of scope
 
 - HTTPS deep link / `.well-known` hosting for invites (parked: **Deep link hosting**, **Invite URL path** — needs a dev build, not Expo Go, per D-003)

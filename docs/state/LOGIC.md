@@ -39,6 +39,8 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-sortByFlushOrder | `sortByFlushOrder` | Pure | `src/domain/version.ts` | Orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it. |
 | L-assumedMember | `assumedMemberIdFromBinds` | Pure | `src/domain/assumedMember.ts` | Answers "which member am I in this group?" by finding this device's live bind. |
 | L-bindingOpen | `bindingIsOpen` | Pure | `src/domain/assumedMember.ts` | Answers "can this device still say which member it is?" — yes until the group's first live expense, which is what shows or hides the This is me button. |
+| L-memberClaimed | `memberHasLiveBind` | Pure | `src/domain/assumedMember.ts` | Answers "is this person's slot still free?" — whether any device has claimed them, which is what decides if they can be invited. Unlike the rule above, expenses have no say in it. |
+| L-inviteCode | `normalizeInviteCode` / `formatInviteCode` | Pure | `src/domain/inviteCode.ts` | The shape of an invite code: prints it hyphenated to read aloud, and takes back whatever someone typed — any case, spaces, hyphens — as the one canonical form. |
 | L-splitEqually | `splitEqually` | Pure | `src/domain/split.ts` | Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. |
 | L-balances | `computeBalances` | Pure | `src/domain/balances.ts` | Works out what each member is up or down overall — what they paid minus what they owe — most-negative first. |
 | L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes. |
@@ -49,6 +51,8 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-addMember | `addMember` | Job | `src/sync/groupSync.ts` | Adds a person to the group locally, then sends them to the server. |
 | L-addExpense | `addExpense` | Job | `src/sync/groupSync.ts` | Records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it. |
 | L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. Refuses once the group has an expense, or if the member is gone. |
+| L-createInvite | `createInvite` | Job | `src/sync/groupSync.ts` | Asks the server for a one-time code that will bind whoever redeems it to one named member. Needs the network — there is no offline way to grant somebody else access. |
+| L-redeemInvite | `redeemInvite` | Job | `src/sync/groupSync.ts` | Joins a group this device has never seen: trades the code for an access token, saves it, adds the group to the lobby, subscribes for wakes and pulls the roster. Arrives already bound, because the code named the member. |
 | L-runExclusive | `runExclusive` | Job | `src/sync/exclusive.ts` | Queues async work per group so a push and a pull can never overlap on the same group. |
 | L-flushQueue | `flushQueue` | Job | `src/sync/outbound.ts` | Sends everything pending for a group in dependency order, keeps whatever the server did not accept, and records a typed error when it fails. |
 | L-shouldFlush | `shouldAttemptFlush` | Pure | `src/sync/queuePolicy.ts` | Says whether a push is worth making at all — an empty queue is a no-op, not a request. |
@@ -80,6 +84,8 @@ The client side of the wire — HTTP calls out of the device.
 | L-edgeFetch | `fetchEntity` | Network | `src/api/edge.ts` | Asks for one entity by type and id — the call a wake triggers. |
 | L-edgeRoster | `listRoster` | Network | `src/api/edge.ts` | Asks for a group's whole roster — members, binds and expenses — in one request. |
 | L-edgeRtJwt | `mintRealtimeAuth` | Network | `src/api/edge.ts` | Trades the group's access token for permission to listen on its Realtime channel. |
+| L-edgeCreateInvite | `createInviteRemote` | Network | `src/api/edge.ts` | Asks the server to mint an invite code for one member of a group this device is already in. |
+| L-edgeRedeemInvite | `redeemInviteRemote` | Network | `src/api/edge.ts` | Trades an invite code for access to its group. The one call made without an access token — the code is the capability. |
 
 ## Server
 
@@ -92,6 +98,9 @@ Edge Functions and their shared helpers.
 | L-efFetch | `fetch-entity` | Endpoint | `supabase/functions/fetch-entity` | Returns one entity to a caller whose token proves access to that group. |
 | L-efRoster | `list-roster` | Endpoint | `supabase/functions/list-roster` | Returns every member, bind and expense of a group in one response. |
 | L-efRtJwt | `rt-jwt` | Endpoint | `supabase/functions/rt-jwt` | Issues a short-lived Realtime token, falling back to a shared anonymous channel when it cannot. |
+| L-efCreateInvite | `create-invite` | Endpoint | `supabase/functions/create-invite` | Mints a one-time code for one member, storing only its hash and a 7-day expiry. Refuses a member who is already claimed. |
+| L-efRedeemInvite | `redeem-invite` | Endpoint | `supabase/functions/redeem-invite` | Trades a code for access: checks it is live, unspent and for a free slot, claims it atomically, then issues an access token and writes the bind. The only endpoint besides create-group that grants access without one. |
+| L-inviteAlphabet | `randomInviteCode` | Pure | `supabase/functions/_shared/crypto.ts` | Makes a code short enough to read aloud, from an alphabet with no characters people confuse, sampled without the bias a plain modulo would introduce. |
 | L-efAccess | `resolveAccessToken` | Endpoint | `supabase/functions/_shared/access.ts` | The door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device. |
 | L-efWake | `publishWake` | Network | `supabase/functions/_shared/wake.ts` | Tells the group's other devices that something changed, naming only what — never the data itself. A failed wake never undoes the write. |
 | L-efShouldAccept | `shouldAccept` | Pure | `supabase/functions/_shared/entities.ts` | The server's copy of the version rule, deliberately identical to the client's so both sides agree on who wins. |

@@ -175,6 +175,56 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-invite',
+    // Deliberately `spent`: the group already has an expense, which is exactly
+    // the state D-034 says must still be invitable. A clip from `roster` would
+    // record the easy case and prove nothing.
+    from: 'spent',
+    async run(d, page) {
+      await d.tap('Invite');
+      await d.beat(2800);
+      const code = (await page.innerText('body')).match(INVITE_CODE_RE)?.[0];
+      if (!code) problems.push('[F-invite] no invite code appeared on screen');
+      await d.beat(1500);
+    },
+  },
+  {
+    id: 'F-join',
+    at: '/',
+    // The only flow that needs two devices, so it seeds its own: one context
+    // mints the code, and the clip records a second that starts with nothing.
+    async prepare(browser) {
+      const { storageState, hubUrl } = await seed(browser, 'spent');
+      const context = await browser.newContext({ viewport: VIEWPORT, storageState });
+      const page = await context.newPage();
+      await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
+      await page.waitForTimeout(2000);
+      await page.getByText('Invite', { exact: true }).first().click();
+      await page.waitForTimeout(3000);
+      const code = (await page.innerText('body')).match(INVITE_CODE_RE)?.[0];
+      if (!code) problems.push('[F-join] host device never produced a code');
+      await context.close();
+      // Fresh storage = a device that has never seen this group, and whose
+      // device_user_id is therefore its own.
+      return { storageState: undefined, hubUrl: BASE, data: { code } };
+    },
+    async run(d, page, data) {
+      if (!data.code) return;
+      await d.type('ABCD-2345', data.code);
+      await d.tap('Join group');
+      await d.beat(4000);
+      // The point of the whole slice: arriving already bound, with no tap.
+      const body = await page.innerText('body');
+      if (!/You \(/.test(body)) {
+        problems.push('[F-join] joined but the hub never showed You (Name)');
+      }
+      if (/This is me/.test(body)) {
+        problems.push('[F-join] joiner was offered This is me — should arrive bound');
+      }
+      await d.beat(1500);
+    },
+  },
+  {
     id: 'F-bump',
     from: 'bound',
     async run(d) {
@@ -183,6 +233,9 @@ const FLOWS = [
     },
   },
 ];
+
+/** The alphabet has no I/L/O and no 0/1, so this cannot match a group id. */
+const INVITE_CODE_RE = /\b[A-HJ-KM-NP-Z2-9]{4}-[A-HJ-KM-NP-Z2-9]{4}\b/;
 
 /** Stated, not silently skipped — an absent clip should say why. */
 const UNRECORDED = {
@@ -241,7 +294,7 @@ async function seed(browser, stage) {
 }
 
 // ── Record ─────────────────────────────────────────────────────────────────
-async function record(browser, flow, storageState, hubUrl) {
+async function record(browser, flow, storageState, hubUrl, data = {}) {
   const dir = join(FLOW_SHOTS, `.tmp-${flow.id}`);
   await rm(dir, { recursive: true, force: true });
 
@@ -269,7 +322,7 @@ async function record(browser, flow, storageState, hubUrl) {
   const loadedFor = (Date.now() - startedAt) / 1000 - 0.5;
   await d.beat(1100);
 
-  await flow.run(d, page);
+  await flow.run(d, page, data);
 
   await context.close();
   const [recorded] = await readdir(dir);
@@ -301,8 +354,12 @@ const browser = await chromium.launch();
 
 for (const flow of FLOWS) {
   if (only.length && !only.includes(flow.id)) continue;
-  const { storageState, hubUrl } = await seed(browser, flow.from);
-  await record(browser, flow, storageState, hubUrl);
+  // A flow that needs more than one device seeds itself; the rest take a
+  // snapshot of the stage their trigger assumes.
+  const { storageState, hubUrl, data } = flow.prepare
+    ? await flow.prepare(browser)
+    : await seed(browser, flow.from);
+  await record(browser, flow, storageState, hubUrl, data);
 }
 
 if (SLICE) {

@@ -58,19 +58,22 @@ Deno.serve(async (req: Request) => {
     // A member only ever needs one device to answer for them. Inviting a slot
     // someone already holds would either be a no-op or a way to hand their
     // identity to somebody else, so it is refused rather than defined.
-    const { data: existingBind, error: bindError } = await supabase
+    // `limit(1)`, not `maybeSingle()`: D-014 allows one member to be held by
+    // several devices, so more than one live bind here is a legal state, and
+    // maybeSingle would turn exactly the case we are testing for into a 500.
+    const { data: existingBinds, error: bindError } = await supabase
       .from('binds')
       .select('id')
       .eq('member_id', memberId)
       .eq('group_id', groupId)
       .is('deleted_at', null)
-      .maybeSingle();
+      .limit(1);
 
     if (bindError) {
       console.error('create-invite bind lookup', bindError);
       return jsonResponse({ error: 'internal' }, 500);
     }
-    if (existingBind) {
+    if (existingBinds && existingBinds.length > 0) {
       return jsonResponse({ error: 'member_already_bound' }, 409);
     }
 

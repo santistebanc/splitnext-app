@@ -16,6 +16,7 @@ import { publishWake } from '../_shared/wake.ts';
 
 /** Must match `INVITE_CODE_ALPHABET` in `src/domain/inviteCode.ts`. */
 const INVITE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const INVITE_LENGTH = 8;
 
 /**
  * The client normalizes before sending; this repeats it rather than trusting
@@ -48,8 +49,10 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'invalid_body' }, 400);
     }
 
+    // A code of the wrong length can never hash to a minted one, so answer
+    // before touching the database rather than after a pointless round trip.
     const code = normalizeCode(rawCode);
-    if (code.length === 0) {
+    if (code.length !== INVITE_LENGTH) {
       return jsonResponse({ error: 'invalid_code' }, 404);
     }
 
@@ -100,19 +103,22 @@ Deno.serve(async (req: Request) => {
     // tapped This-is-me on it, or an earlier invite for the same member was
     // redeemed first. Either way this code is now for a person who is already
     // here, and quietly adding a second claimant would be worse than refusing.
-    const { data: memberBind, error: memberBindError } = await supabase
+    // `limit(1)`, not `maybeSingle()`: D-014 allows one member to be held by
+    // several devices, so more than one live bind here is a legal state, and
+    // maybeSingle would turn exactly the case we are testing for into a 500.
+    const { data: memberBinds, error: memberBindError } = await supabase
       .from('binds')
       .select('id')
       .eq('member_id', memberId)
       .eq('group_id', groupId)
       .is('deleted_at', null)
-      .maybeSingle();
+      .limit(1);
 
     if (memberBindError) {
       console.error('redeem-invite member bind lookup', memberBindError);
       return jsonResponse({ error: 'internal' }, 500);
     }
-    if (memberBind) {
+    if (memberBinds && memberBinds.length > 0) {
       return jsonResponse({ error: 'member_already_bound' }, 409);
     }
 

@@ -98,6 +98,30 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 6. `L-assumedMember` now resolves this device to that member, which is what puts You (Name) on the hub.
 7. The first expense closes it: `L-bindingOpen` turns false, every remaining button disappears, and the choice is fixed until some future slice offers a deliberate way to change it.
 
+## F-invite — Invite someone to their slot
+
+**Trigger** — On the hub, the person taps **Invite** next to a member nobody has claimed yet.
+**Outcome** — A one-time code appears on screen, to be handed over however they like; it is good for seven days and for that member only.
+
+1. `L-hub` shows the button only where `L-memberClaimed` says the slot is still free. Expenses are irrelevant here — unlike This is me, inviting the friend nobody has claimed stays possible on day forty of a trip.
+2. `L-hub` calls `L-createInvite`, which sends the member to `L-edgeCreateInvite` / `L-efCreateInvite` with this device's access token as proof it is allowed to invite into this group.
+3. `L-efCreateInvite` checks the member is live and in this group, and refuses outright if somebody already holds that slot.
+4. `L-inviteAlphabet` makes the code; the server stores only its hash with a seven-day expiry and returns the code itself once.
+5. `L-hub` shows it through `L-inviteCode`, hyphenated to read aloud. It lives in the screen and nowhere else — a reload loses it, because the server kept only a hash. **New code** mints another; the old one stays valid until it expires.
+
+## F-join — Join with a code
+
+**Trigger** — On the lobby of a device that has never seen the group, the person types the code they were given and taps **Join group**.
+**Outcome** — They are in the group, already being the member the code named, with no "which one am I?" to answer.
+
+1. `L-lobby` keeps the button disabled until `L-inviteCode` says the code is complete, so a half-typed one never becomes a failed request.
+2. `L-lobby` calls `L-redeemInvite`, which normalizes the code — any case, spaces, hyphens — and sends it to `L-edgeRedeemInvite` / `L-efRedeemInvite`. This is the one call made with no access token: the code is the proof.
+3. `L-efRedeemInvite` walks the gates in order — is the code real, unspent, unexpired; is the member still live; is the slot still free; is this device not already someone here — and answers with the reason if any fails.
+4. It then claims the invite with a conditional update, so two taps racing cannot both spend it, and only after winning does it mint an access token and write the bind. If anything after that fails, the code is handed back rather than burned.
+5. `L-efWake` tells the devices already in the group that a bind appeared, so the new arrival shows up without anyone reopening the screen.
+6. `L-redeemInvite` saves the token through `L-accessToken`, adds the group with `L-lobbyIds`, subscribes with `L-wakeSub` and runs `L-syncGroup` so the hub opens with the roster already in place.
+7. `L-assumedMember` resolves this device to the invited member from the bind the server wrote — which is why the hub says You (Name) on arrival and `L-hub` never offers This is me.
+
 ## F-bump — Bump group name
 
 **Trigger** — On the hub, the person renames the group.  
