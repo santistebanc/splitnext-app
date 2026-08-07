@@ -139,6 +139,8 @@ After every regenerate of `docs/slicer.html` during a `/slicer` session:
 2. Tell them briefly what refreshed (e.g. “Board updated — logic map + flows; newest closed slice still 0003”).
 3. Do this at: end of a build chunk that changed behaviour, demo gate, and slice close. Skipping the open is a process bug.
 
+The **published** board is https://santistebanc.github.io/splitnext-app/ — regenerated from `docs/state/` by CI on every merge to `main`, so it always shows closed slices, never work in progress. During a session use the local server: it is the only copy that shows the slice being built, and the only one whose path chips open files in the editor.
+
 ## State
 
 `docs/state/` is the truth. Templates: [references/templates.md](references/templates.md).
