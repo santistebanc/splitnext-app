@@ -22,8 +22,6 @@
 
 ## Breadth
 
-- **Import-level dependency view** — a second graph on the board, module to module rather than symbol to symbol; the symbol tree draws call sites only — area: board — raised: slice 0009
-- **Wire-hop edges in the symbol graph** — draw `mergeEntities` → `merge` as a distinct kind of edge so the tree can cross the device/server boundary the way Flows does; today it is not a call and so not an edge — area: board — raised: slice 0009
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a Vercel or Cloudflare project would give a URL per branch — area: deploy — raised: slice 0008
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — area: invites — raised: bootstrap
 - **Activity feed** — twelve event types; client-authored; flushed last — area: activity — raised: bootstrap
@@ -38,12 +36,16 @@
 
 ## Polish
 
+- **Import-level dependency view** — a second graph on the board, module to module rather than symbol to symbol; the symbol tree draws call sites only — area: board — raised: slice 0009
+- **Wire-hop edges in the symbol graph** — draw `mergeEntities` → `merge` as a distinct kind of edge so the tree can cross the device/server boundary the way Flows does; today it is not a call and so not an edge — area: board — raised: slice 0009
 - **Lobby index out of Secure Store** — move `lobby_group_ids` to Legend/SQLite; Secure Store for secrets only — area: client — raised: slice 0001
 - **Design system application** — locked palette/components in blueprint; apply across screens — area: ui — raised: bootstrap
 - **Debug telemetry** — crash reporter; tags group_id + device_user_id only — area: observability — raised: bootstrap
 - **Handoff checklist** — "Final spec section outline and the acceptance checklist proving the design is implementable" — area: meta — raised: bootstrap
 
 ## Delivered
+
+- **Symbol tree view on the board** — delivered in [slice 0009](slices/0009-symbol-tree.md); Flat and Tree over the same 49 rows, the call graph derived from source and gated by `npm run test:board`
 
 - **Balances list (group hub home)** — delivered in [slice 0007](slices/0007-allocations-balances.md); derived Σ paid − Σ owed, most-negative first, You (Name) marked
 

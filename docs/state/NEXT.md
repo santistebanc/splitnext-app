@@ -65,7 +65,21 @@ Fixture-based — small synthetic source files under `docs/scripts/fixtures/`, n
 
 ## Edge paths
 
-Filled during build — the self-review, written down while there is still time to act on it.
+| Surface | State | What happens |
+| --- | --- | --- |
+| `resolve` | mapped symbol whose real calls sit under a private helper | The case the whole slice turns on. Extent-scoped detection reports `flushQueue` as calling nothing; the walk follows unmapped local declarations and finds all nine. Bogus roots went from 13 to 10. |
+| `resolve` | a mapped name reached through another mapped name | Not traversed. `middle` is an edge, not a corridor — without this every root inherits every leaf and a deep module stops being a boundary. |
+| `resolve` | a name mentioned but never called (`import { target }`) | No edge. The call regex needs the paren, and a negative lookbehind drops `function target(` / `const target = (` so a file's own declarations cannot read as calls to themselves. |
+| `resolve` | entry whose `where` no longer exists | Empty edge list, not a crash. The map can name a piece the tree has already moved. |
+| `resolve` | read/write pair calling its other half (`saveAccessToken` → `getAccessToken`) | No self-edge. Two names under one id are one idea; an internal call is not a relationship between two pieces. |
+| `plan_tree` | a cycle no root can reach | Seeded as its own root into a **Not reached from any entry point** group. Zero cycles today, but a dropped symbol would be invisible and the count would silently disagree with Flat. |
+| Tree view | a symbol with 12 callers | Expands once under `Group hub`, stubs elsewhere naming their home. 49 expanded + 42 stubs, against 217 nodes if every occurrence expanded. |
+| Search in Tree | a match four levels down | Ancestors are kept and dimmed as context; hiding them would orphan the hit. Counts stay measured on the flat rows so the rail cannot double-count the same symbol. |
+| Deep link | `#L-syncGroup` arriving while Tree is the remembered view | Router reads the target's own view and switches to it. Without this the link scrolls to a row the current view has hidden and the page looks broken. |
+| View toggle | reload, or a link from Flows | View persists in `localStorage`, so returning to Symbols lands where you left it. |
+| `capture-board.mjs` | second still in the same browser context | Caught in the build: the remembered view leaked between shots and the third still waited on a hidden row. Each still now gets its own context — a capture whose result depends on the order it ran in is not evidence. |
+| Board, 900px | both counts on one row | The pair is one block (`.weights`), so it wraps as a unit. Left to wrap freely it split into a lone em dash above a lone caller count. |
+| Board, local server | browser's own `/favicon.ico` probe | 404s — the dev server serves the board and nothing else. Pre-existing, not the page's error, and the capture script filters it rather than pretending the console is clean. |
 
 ## Out of scope
 
