@@ -1,0 +1,109 @@
+# Why the board looks like this
+
+Design notes for `docs/slicer.html`, moved out of the slicer skill so they are
+not re-read into context on every session. The generator
+(`docs/scripts/generate-slicer-board.py`) implements all of it; this file is
+the reasoning behind the implementation, not a checklist to work through.
+
+The short contract an agent has to honour lives in
+[`.claude/skills/slicer/references/board.md`](../.claude/skills/slicer/references/board.md).
+
+## Removed
+
+- **Per-flow test coverage** — the board used to read `F-` ids out of the test
+  files and mark each flow Tested / Untested. No test ever named a flow, so
+  the panel never rendered, and the flow-level evidence this repo actually
+  keeps is the `.webm` clip, which asserts on its way to being recorded
+  (console clean, state survives a reload). Cut rather than left dormant.
+
+## UX (non-negotiable)
+
+Organisation and findability beat density.
+
+1. **Sidebar shell** — fixed left rail: brand, **search**, page nav (01 Overview · 02 Symbols · 03 Flows · 04 Newest · 05 Steering) with counts, theme toggle, key hints. Sticky topbar carries the crumb + area filter.
+2. **One page at a time** — `.page` sections + hash router, not one long scroll. Deep links (`#L-…`, `#F-…`) open the owning page and scroll to the target.
+3. **Search** — filters symbol rows, flows, and newest-slice text client-side. Match id, name, path, and “what for”. Show match count in the rail; per-page nav dims when it has no hit; clear button; `/` focuses, `Esc` clears, `1–5` jump pages. Empty query restores full view.
+4. **One question per page.** *What the product is* (Overview), *what exists* (Symbols) and *how it runs* (Flows) are three different questions — never stack them. Symbols and Flows link to each other in their ledes.
+5. **Group by area, filter by kind.** Symbols is divided by **area** — the `LOGIC.md` `##` headings, in the order the file writes them, because UI → Device → Edge → Server is a path and a path reads better than a leaderboard. The area is the divider title and appears nowhere else on the row. **Kind** — Screen · Pure · State · Job · Network · Endpoint — rides on the individual item as one flat inline-SVG glyph before the name. That glyph is the whole marker: no colour rail down the side of a row, which only repeated it in a form nobody can name. Kind buttons live in the topbar (All + each kind with its count) and appear **only** on Symbols; combine with search (AND). The glyph repeats everywhere that symbol is referenced — newest-slice delta rows and every deep-link chip — so a kind is recognised before the word is read. Shape carries it; colour reinforces. No icon font, no CDN: inline paths. The area a piece lives in survives as a quiet tag at the end of its row — secondary, because a folder is not a reason to read something.
+6. **Weight is measured, not asserted.** Inside an area, symbols sort by how many flows name them, and the count rides on the row (`4 flows`, `—` for none) so the order explains itself. Nobody hand-ranks anything; a symbol rises when flows start naming it.
+7. **Ids are plumbing, never copy.** `L-` / `F-` / `D-` ids live in `docs/state/*.md`, in `id=` anchors, in `title=` tooltips and in `data-search` — a reader never sees one. Every reference renders as its human label: a logic ref becomes the code symbol, a flow ref becomes the flow title, a decision becomes the decision text. Call syntax survives (`L-openGroup(groupId)` → `openGroup(groupId)`). Unknown id → fall back to the raw id.
+8. **A path is a door, and where it leads depends on who opened it.** Every file path links to its declaration line, found at generation time, and the chip shows `path:line`. Its `href` is the file **on GitHub** (`blob/main/<path>#L<line>`), so the published board works for anyone: a reader with no clone still lands on the code. On a board served from `localhost` — `docs/scripts/serve-slicer-board.py` — the click is intercepted instead and fetches `/open?path=…&line=…`, and the helper runs **`cursor -r -g <file>:<line>`**, reusing the window already attached to this folder. That fetch is the only reliable local route: a `cursor://` URL goes through the OS handler and, inside WSL, opens a *second* instance, and the IDE's built-in browser blocks custom schemes entirely. The `cursor://` URI rides along as `data-editor`, used only when the helper is absent; the helper only opens paths inside the repo. `main` rather than a sha, because CI regenerates the board on every merge, so the branch tip is the tree the board describes.
+9. **Full-width rows, never a card grid** — logic row: kind glyph · **the code symbol in mono, as the row's own permalink** · path · weight · one sentence. The headline is the exported name you would grep for, not a prose title; backticked spans inside “what it is for” render as inline code.
+10. **Flows as a spine** — one `.fcase` per flow: title, **Starts when** / **Ends with** meta (not the words “trigger”/“outcome”), numbered steps. **Steps are collapsed by default, and the fold button carries the count** (“6 steps”) — a bare “steps” label reads as a flow with none. An **Expand all** toggle sits with the layer legend, and a search match opens the flows it hits. Step refs are chips that jump to the symbol's row on the Symbols page.
+11. **Areas stay coarse, and both pages divide by them.** `LOGIC.md` carries at most four areas — `UI` · `Device` · `Edge` · `Server`, *where the code runs* — and they never take a glyph; kind owns the iconography. On Symbols an area is the group divider. On Flows, a **full-width labelled band** interrupts the steps every time the work crosses into another area, so the hop (UI → Device → Edge → Device) is a line you cannot miss rather than a badge you must compare.
+12. **A step is a sentence, not a badge rack.** No per-step kind tag: the symbol chips inside the sentence already carry their glyph and colour, and the area band above already says where the stretch runs. One signal per question — repeating kind on the row was noise between the number and the prose. The kind legend stays above the flows to teach the glyphs. Flow steps must still cite their ids: an uncited screen makes both the band and the weight lie.
+13. **Newest slice reads in the map's own vocabulary.** The delta is not a bullet list of ids — every touched piece is rendered **in the same shape its own page uses**. A symbol is a row: glyph, name, path, its one-sentence description pulled live from `LOGIC.md`, the slice's note underneath. A flow is the **whole flow case, steps expanded** — starts when, ends with, area bands, every step — because "we changed Sync one group" is unreadable without the steps that changed, and the reader should not have to leave the page to see them. Both carry an **Added / Changed / Removed** pill (word plus colour, never colour alone) and, under the description, **an explanation in words, in the pill's own colour** — never a number where a sentence belongs. For a closed slice it is the archive's note; for one in flight it is the line `NEXT.md` already wrote about that piece (`Fat orchestrator (~400 lines) → Thin facade over outbound / inbound / wake`, matched by symbol or filename against Before→After, then the plan, then the seams). The match is on the `L-` id first (exact) and the symbol or filename second (luck), which is why `NEXT.md` should cite ids the way `FLOWS.md` does. Only when nothing names the piece does the row admit it: *"Changed (+7 −1 in its file), but nothing in `NEXT.md` says why"* — the change is real; what is missing is the reason.
+
+    **Attribute changes by hunk, never by file.** A file-level delta reports every symbol that merely shares a file with the edit — on the one page whose job is saying what this slice changed, that is most of the rows wrong. Read the diff's line ranges (`git diff -U0`), and give a hunk to the symbol whose declaration it falls under, bounded by the **next declaration in the source** — not the next one the map happens to list, or an unmapped export's edits get charged to the mapped piece above it. Hunks above the first declaration (imports, types) belong to nobody and are reported as nothing. Entries whose name is not a code symbol — a route file, a function directory — stand for the whole file, so any change in it is theirs. New and untracked files have no hunks: every symbol in them is new.
+
+The same holds inside a flow: **each adjusted step says what was adjusted in it** — `↳ moving flushQueue, shouldAttemptFlush and mergeEntities` for one in flight, the archive's note for a closed one — so the reader never has to diff two lists to find the thing that moved. The flow header keeps only the count (`4 of 4 steps touched`); repeating the names there was noise and flows carry an *Open in Flows* link. Everything starts **collapsed**. Inside a **changed** flow, the steps the delta note names (`step 4 pull roster`) are highlighted and labelled, with a `1 of 4 steps changed` line under the title. An **added** flow gets no marks at all — the pill already says the whole thing is new, so marking every step is noise. The case title is itself the link to the flow's own page, so it carries no separate *Open in* link — one door per room — and the steps toggle keeps its header slot everywhere. When a changed flow's note names no step, the case says so out loud (*"the archive does not say which step"*) rather than rendering as if nothing moved — a silent flow is indistinguishable from a bug.
+
+The closed report is a **document inside a document**: box it and demote its headings, or its sections read as if they belonged to the slice in flight. Its deictics change too — *"Symbols **that** slice touched"*. The row's rail is its area colour and its title links back to the piece. A removed piece says so rather than showing an invented row. Page order: highlights, Now→After, symbols touched, flows touched, surfaces, decisions, diff pulse.
+14. **A capture is evidence, not decoration.** The board is otherwise all prose, so the slice's clips and stills sit near the **top** of *This slice* — under the stat bar, above the symbol rows — full-width, square-edged, hairline-framed, with the archive's one-line caption under each as a micro-label. Two or more ride side by side above 900px and stack below it. A still opens the file on click, through the same `/open` helper a path chip uses; **a clip does not** — clicking a video has to mean play. A slice with no captures renders nothing at all — no placeholder, no "no screenshots" box; the absence is already visible to anyone who expected one.
+15. **A flow with a clip shows it in its own entry.** `docs/state/shots/flows/<F-id>.webm`, rendered inside the flow card between the title and *Starts when* — phone-shaped, in its own grid column beside the prose on wide screens and stacked above it on narrow ones, no controls. Give it a column rather than a float: a float taller than its card spills over the flow below it. **It appears with the steps, not before them** — it illustrates them, and a video playing beside a two-line summary reads as the subject rather than the evidence. Opening the steps starts it; collapsing pauses it, so a page of closed flows is not decoding video for nobody. Size it to be read: an expanded card is tall enough to carry it, and a clip that has to be hovered to be legible ends up covering the fold button that dismisses it. A flow with no clip renders exactly as before.
+16. **Edge paths are the review, so they render as a review.** A plain full-width row list on *This slice*: surface (rendered as its symbol or flow chip, like every other ref), the state in the middle, what happens as the sentence. No pills, no colour coding by severity — every row is a state that was checked, and ranking them invents a judgement the archive never made. Section omitted entirely when the block is empty.
+17. **Steering last** — next / parked / timeline; do not compete with the map.
+18. **Narrow screens** — rail collapses to a top bar, nav wraps, rows stack; search stays usable.
+
+19. **Symbols has two views of the same rows, and the count never changes between them.** **Flat** — grouped by area, ordered by flow weight — stays the default and answers *what exists*. **Tree** re-nests those same rows under the symbols that call them and answers *what leans on what*: its roots are whatever nothing calls, which is the app's entry points falling out of the graph rather than being asserted. The relationship is **derived from the source at generation time, never authored in `LOGIC.md`** — a `uses` column is stale within a slice, and the board's own rule is that weight is measured. Deriving it has one trap worth stating: the map lists deep modules and omits private helpers, so a mapped symbol's own declaration often contains none of its real calls (`flushQueue` only delegates to `flushQueueInner`). The walk follows unmapped local declarations transitively and **stops at any name the map claims** — a mapped symbol is an edge, not a corridor, or every root inherits every leaf.
+
+    **A symbol with twelve callers cannot nest twelve times.** The graph is a DAG, and unfolding every occurrence turns 49 rows into 217 — a view of the map whose row count does not match the map is not a view of the map. Each symbol **expands once, at its shallowest position**, and is a stub naming its home everywhere else. Anything no root reaches is a cycle and gets its own trailing group rather than disappearing.
+
+    **Tree rests closed, one row per entry point** — 10 rows, not 91. **A shut row is its name and the area it runs in, and nothing else**: the path, the two counts and the sentence are what opening it is for, and four things on a shut row make a list rather than a tree you can scan. Opening a symbol shows all of that *and* its children, each of them closed in turn, so the reader walks down a path instead of being handed the whole graph.
+
+    **The whole row is the toggle**, because an 11px triangle is not a thing to ask anyone to hit; clicks landing on the row's permalink or its path chip still mean "go there", and a text selection inside the row does not shut it. A **chevron on the right** is the affordance and the only mark: **solid when children sit under it, hollow when opening reveals just that row's own detail**. Shape carries the difference, as it does for kind — without it a leaf and a parent look identical until you click, which is the question the tree exists to answer. It stays a real `<button>` so it is focusable and answers Enter. An **Expand all** toggle sits in the section header, and search opens the path to every hit it keeps — a match four levels down is no use behind three shut parents. A deep link into a tree row opens its ancestors for the same reason.
+
+    Both views carry the pair `N flows · N callers` — what the product leans on and what the code does, which are not the same reading and are worth seeing together. **Area survives as a row tag in Tree, never as the divider**: a call chain crosses areas by nature, so dividing by area would shred the thing the view exists to show. Search and the kind filter keep working, with **keep-ancestors** semantics — an ancestor held only to carry a match down renders as context, dimmed, not as a hit — and the hit counts stay measured on the flat rows so the rail cannot double-count.
+
+## Structure
+
+### 0. Shell
+
+- Sidebar: brand + `N slices · slice NNNN open`, search, nav with counts, theme toggle, key hints (also carries the “generated by /slicer” note).
+- Topbar: `slicer board / <page>` crumb + area filter.
+- Current page opens with a **stat bar** (slices shipped · current · logic count · flow count).
+
+### 1. Overview (`#overview`)
+
+From `OVERVIEW.md` — the page you hand a newcomer.
+
+1. Destination as the lede, then the stat bar (slices shipped · current · symbols · flows).
+2. Who it is for · what it can do today (capabilities, numbered, linking their slice).
+3. Constraints note · non-goals as quiet chips.
+4. Stack · data model · routes.
+
+### 2. Symbols (`#symbols`)
+
+From `LOGIC.md`: row lists grouped by **Kind**, each group headed by its dot, blurb and live count; every row tags its area. Nothing else — the direction lives on Overview. Two views of the same rows — **Flat** and **Tree** — switched in the topbar (rule 19).
+
+### 3. Flows (`#flows`)
+
+From `FLOWS.md`. One case per flow: trigger/outcome meta, numbered steps that fold, refs rendered as symbol chips that deep-link into Symbols.
+
+### 4. This slice (`#newest`)
+
+**The page is about the slice being worked on now**, not the last one finished — and it says what *this* slice has done, never the previous slice's report dressed up as current. When `NEXT.md` names a slice with no archive yet, the page is that slice: goal, tier, branch, and the delta **derived from the uncommitted working tree** read from `git status` at render time — **symbols living in the changed files**, and **the flows running through them** with every step naming a touched symbol marked. The raw file list stays out: a reader of the board wants the map moved, not `git status` reprinted; the diff stat and last commit ride along as one line of provenance — then Before→After, plan, seams under test, acceptance, out of scope. The last closed slice's report sits at the bottom behind a **collapsed** disclosure: available, never mistakable for the current one. The nav entry reads *This slice* with that number. Once the slice closes and its archive lands, the page falls back to the closed report and the nav reads *Newest slice*.
+
+Working-tree state is a render-time snapshot: **regenerate to refresh it**, which the skill already does whenever behaviour lands.
+
+The closed report contributes headline, highlights, Before→After, symbol/flow deltas, edge paths, shots, surfaces, decisions and diff pulse.
+
+**Shots and edge paths belong to whichever slice is on the page.** For a slice in flight the shots are read from disk — every `docs/state/shots/NNNN-*.png` matching the current number — because they land at the demo gate, before any archive exists, and captions come from the archive only once it is written. For a closed one both come out of its `## Report`. Page order for the in-flight slice: shots, symbols, flows, Before→After, plan, seams, acceptance, edge paths, out of scope.
+
+### 5. Steering (`#steering`)
+
+Next (`NEXT.md`) · Parked tiers with counts · Timeline, newest first, linking each archive.
+
+## Style
+
+House style — same family as `/blueprint`:
+
+- **No rounded corners anywhere.** Square edges, hairline rules, flat planes (`*{border-radius:0}`).
+- **Lists of things are full-width rows**, never boxes in a grid.
+- Token set on `:root` (`--bg --surface --surface-2 --line --line-strong --text --muted --faint --accent --s1…--s6`) with a `prefers-color-scheme` dark block **and** `:root[data-theme=light|dark]` overrides so the toggle wins both ways; theme persisted in `localStorage`.
+- One spacing scale (`--sp-1…--sp-5`); never hand-tune a margin.
+- Areas get an `--s1…--s6` slot used consistently for rail, area heading dot, and filter chip.
+- Micro-labels: 700 weight, ~.65rem, uppercase, `.08em` tracking, `--faint`. Code symbols, paths and ref chips in mono; flow and decision chips in sans (they are prose).
+- Wide content scrolls inside `.scroll`; body never forces horizontal scroll.
+- Empty search / empty sections: quiet “nothing matches” / “nothing yet”.
+- Print: all pages expanded, chrome hidden.

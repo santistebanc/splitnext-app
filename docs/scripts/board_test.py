@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+"""Tests for the board generator's parsers and its hunk attribution.
+
+`generate-slicer-board.py` is the one place that reads `docs/state/*.md` and
+says what a slice changed. When it is wrong it is silently wrong — the board
+still renders, it just reports the wrong symbol. These cover the seams: the
+parsers that turn the state files into rows, and the diff-to-symbol
+attribution that decides which piece a hunk belongs to.
+
+    python3 docs/scripts/test_board.py      (or: npm run test:board)
+"""
+from __future__ import annotations
+
+import importlib.util
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+spec = importlib.util.spec_from_file_location(
+    "board", ROOT / "docs/scripts/generate-slicer-board.py"
+)
+g = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(g)
+
+
+class ParseLogic(unittest.TestCase):
+    def test_areas_keep_file_order_and_rows_parse(self):
+        areas = g.parse_logic(
+            """# Logic
+
+## UI
+
+| Id | Name | Kind | Where | What it is for |
+| --- | --- | --- | --- | --- |
+| `L-hub` | `HubScreen` | Screen | app/hub.tsx | Shows the group. |
+
+## Device
+
+| Id | Name | Kind | Where | What it is for |
+| --- | --- | --- | --- | --- |
+| `L-queue` | `flushQueue` | Job | src/sync/queue.ts | Drains the outbox. |
+"""
+        )
+        self.assertEqual([a for a, _ in areas], ["UI", "Device"])
+        row = areas[0][1][0]
+        self.assertEqual(row["id"], "L-hub")
+        self.assertEqual(row["name"], "HubScreen")
+        self.assertEqual(row["kind"], "Screen")
+        self.assertEqual(row["where"], "app/hub.tsx")
+        self.assertEqual(row["what"], "Shows the group.")
+
+    def test_column_order_is_read_from_the_header(self):
+        areas = g.parse_logic(
+            """## UI
+
+| Id | Kind | Name | Where | What it is for |
+| --- | --- | --- | --- | --- |
+| `L-hub` | Screen | `HubScreen` | app/hub.tsx | Shows the group. |
+"""
+        )
+        row = areas[0][1][0]
+        self.assertEqual(row["kind"], "Screen")
+        self.assertEqual(row["name"], "HubScreen")
+
+    def test_rows_that_are_not_symbols_are_skipped(self):
+        areas = g.parse_logic(
+            """## UI
+
+| Id | Name | Kind | Where | What it is for |
+| --- | --- | --- | --- | --- |
+| not-an-id | `X` | Pure | a.ts | no |
+| `L-ok` | `X` | Pure | a.ts | yes |
+"""
+        )
+        self.assertEqual([r["id"] for r in areas[0][1]], ["L-ok"])
+
+
+class ParseFlows(unittest.TestCase):
+    SRC = """# Flows
+
+## F-open — Open a group
+
+**Trigger** — On the lobby, the person taps a group.
+**Outcome** — The hub shows the roster.
+
+1. The lobby calls `L-openGroup`.
+2. The hub hydrates from `L-store`.
+   - and subscribes for wakes
+
+## F-bump — Bump the version
+
+**Trigger** — A write lands.
+**Outcome** — The version goes up.
+
+1. `L-bump` increments it.
+"""
+
+    def test_ids_titles_meta_and_steps(self):
+        flows = g.parse_flows(self.SRC)
+        self.assertEqual([f["id"] for f in flows], ["F-open", "F-bump"])
+        self.assertEqual(flows[0]["title"], "Open a group")
+        self.assertTrue(flows[0]["trigger"].startswith("On the lobby"))
+        self.assertEqual(flows[0]["outcome"], "The hub shows the roster.")
+        self.assertEqual(len(flows[0]["steps"]), 2)
+
+    def test_continuation_folds_into_the_step_above(self):
+        flows = g.parse_flows(self.SRC)
+        self.assertIn("subscribes for wakes", flows[0]["steps"][1])
+
+
+class ParseNext(unittest.TestCase):
+    SRC = """# Slice 0009 — invites
+
+**Tier** — foundation-risk
+
+## Goal
+
+Someone can join
+a group from a link.
+
+## Before → After
+
+| | Now | After |
+| --- | --- | --- |
+| Joining | Impossible | One link |
+
+## Plan
+
+1. Mint the link in `L-invite`.
+
+## Out of scope
+
+- Expiry — parked
+"""
+
+    def test_header_goal_and_table(self):
+        nxt = g.parse_next(self.SRC)
+        self.assertEqual(nxt["number"], "0009")
+        self.assertEqual(nxt["tier"], "foundation-risk")
+        self.assertEqual(nxt["goal"], "Someone can join a group from a link.")
+        self.assertEqual(
+            nxt["now_after"],
+            [{"aspect": "Joining", "before": "Impossible", "after": "One link"}],
+        )
+
+    def test_plan_and_scope_bullets(self):
+        nxt = g.parse_next(self.SRC)
+        self.assertEqual(nxt["plan"], ["Mint the link in `L-invite`."])
+        self.assertEqual(nxt["out_of_scope"], ["Expiry — parked"])
+
+
+class ParseDelta(unittest.TestCase):
+    def test_status_pieces_and_notes(self):
+        out = g.parse_delta(
+            ["**Added** — `L-hub` (the group screen) · `L-addMember`"]
+        )
+        self.assertEqual(out[0][0], "Added")
+        self.assertEqual(
+            [(p["ref"], p["note"]) for p in out[0][1]],
+            [("L-hub", "the group screen"), ("L-addMember", "")],
+        )
+
+    def test_a_bullet_with_no_status_reads_as_changed(self):
+        out = g.parse_delta(["`L-hub`"])
+        self.assertEqual(out[0][0], "Changed")
+        self.assertEqual(out[0][1][0]["ref"], "L-hub")
+
+
+class ParseReport(unittest.TestCase):
+    SRC = """# Slice 0007 — balances
+
+## Report
+
+### Headline
+Balances land.
+
+### Highlights
+- Two of them
+
+### Edge paths
+
+| Surface | State | What happens |
+| --- | --- | --- |
+| `L-hub` | roster empty | The hub says so |
+
+### Shots
+
+- `0007-balances.png` — the balances panel
+- `flows/F-balances.webm` — the flow end to end
+
+### Diff pulse
+
+`+120 / −8 · 6 files`
+"""
+
+    def test_edge_paths_shots_and_pulse(self):
+        rep = g.parse_report(self.SRC)
+        self.assertEqual(rep["headline"], "Balances land.")
+        self.assertEqual(
+            rep["edge_paths"],
+            [{"surface": "`L-hub`", "state": "roster empty", "what": "The hub says so"}],
+        )
+        self.assertEqual(
+            [s["file"] for s in rep["shots"]],
+            ["0007-balances.png", "flows/F-balances.webm"],
+        )
+        self.assertEqual(rep["pulse"], "+120 / −8 · 6 files")
+
+
+class HunkAttribution(unittest.TestCase):
+    """Which symbol owns a diff hunk. A file-level answer gets most rows wrong."""
+
+    SRC = """import { store } from './store';
+
+type Row = { id: string };
+
+export function alpha(row: Row) {
+  return row.id;
+}
+
+export function beta(row: Row) {
+  return row.id + '!';
+}
+
+export function gamma() {
+  return 1;
+}
+"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        (root / "src").mkdir()
+        (root / "src/mod.ts").write_text(self.SRC)
+        (root / "src/route").mkdir()
+        (root / "src/route/index.ts").write_text("export const x = 1;\n")
+        self.real_root = g.ROOT
+        g.ROOT = root
+        self.addCleanup(lambda: setattr(g, "ROOT", self.real_root))
+
+    def ranges(self, name, where, hunks):
+        return g.symbol_change_ranges(
+            {"name": name, "where": where}, {where: hunks}
+        )
+
+    def test_extent_stops_at_the_next_declaration_in_the_source(self):
+        start = g.symbol_line("src/mod.ts", "alpha")
+        self.assertEqual(start, 5)
+        # beta is declared on line 9, so alpha owns up to line 8
+        self.assertEqual(g.symbol_extent("src/mod.ts", start), 8)
+
+    def test_a_hunk_inside_the_symbol_is_its_own(self):
+        self.assertEqual(
+            self.ranges("alpha", "src/mod.ts", [(6, 6)]), [(6, 6)]
+        )
+
+    def test_a_neighbours_hunk_is_not_charged_to_the_symbol_above(self):
+        # beta is unmapped as far as LOGIC.md is concerned; its edits still
+        # must not land on alpha's row.
+        self.assertEqual(self.ranges("alpha", "src/mod.ts", [(10, 10)]), [])
+
+    def test_hunks_above_the_first_declaration_belong_to_nobody(self):
+        self.assertEqual(self.ranges("alpha", "src/mod.ts", [(1, 1)]), [])
+
+    def test_an_entry_that_is_not_a_code_symbol_owns_the_whole_file(self):
+        # A route file / directory entry stands for everything in it.
+        self.assertEqual(
+            self.ranges("route", "src/route", [(1, 1), (9, 9)]),
+            [(1, 1), (9, 9)],
+        )
+
+    def test_no_hunks_in_the_file_means_no_ranges(self):
+        self.assertEqual(g.symbol_change_ranges({"name": "alpha", "where": "src/mod.ts"}, {}), [])
+
+
+class StateFilesParse(unittest.TestCase):
+    """The real files still parse — a heading rename shows up here, not on the board."""
+
+    def test_logic_flows_next_parse_and_cross_reference(self):
+        state = ROOT / "docs/state"
+        areas = g.parse_logic((state / "LOGIC.md").read_text())
+        rows = [e for _, r in areas for e in r]
+        flows = g.parse_flows((state / "FLOWS.md").read_text())
+        nxt = g.parse_next((state / "NEXT.md").read_text())
+        self.assertTrue(rows and flows)
+        self.assertTrue(all(e["id"] and e["where"] and e["what"] for e in rows))
+        self.assertTrue(all(f["trigger"] and f["outcome"] and f["steps"] for f in flows))
+        self.assertRegex(nxt["number"], r"^\d{4}$")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

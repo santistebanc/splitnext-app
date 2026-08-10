@@ -9,9 +9,9 @@ name: pages
 # the app" link is same-origin. The trade is no per-PR preview URL; a Vercel or
 # Cloudflare project would give that if it ever earns its keep.
 #
-# The board is generated, not hand-written, so it is regenerated here from
-# docs/state/ instead of trusting the committed docs/slicer.html — a stale
-# commit of the board can never become the published one.
+# The board is generated, not committed: docs/slicer.html is gitignored and
+# built here from docs/state/, so the published board can never be a stale
+# copy someone forgot to regenerate.
 #
 # Media paths inside the board are relative (state/shots/...), so the whole
 # docs/ directory ships as the site root, with slicer.html copied to

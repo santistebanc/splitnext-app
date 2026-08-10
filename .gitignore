@@ -45,3 +45,7 @@ supabase/.temp/
 # python bytecode from docs/scripts
 __pycache__/
 *.pyc
+
+# The slicer board is generated from docs/state/ — regenerated locally by
+# docs/scripts/serve-slicer-board.py and by CI for the published site.
+docs/slicer.html
