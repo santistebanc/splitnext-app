@@ -128,16 +128,16 @@ This pause is where parked items get re-prioritized against what the user just s
 
 ### Phase 6 — Close
 
-1. **All four gates green** — `npm test`, `npm run typecheck`, `npm run test:board`, `npm run audit`. The audit reads `docs/state/` against the code and against git: dangling ids, paths that moved, captures the board would silently drop, flow clips older than the flow they document. It prints *notes* (history, orphans) without failing; a **finding** fails and has to be fixed, not explained. The gates are the demo gate and this close, never each commit.
-2. `/code-review` on every slice. Foundation-risk and sync/auth slices get a stricter pass; still run a real review on core-value slices — do not skip for speed.
+1. **Gates green** — `npm run check` (tests, typecheck, board tooling tests, state audit). The audit reads `docs/state/` against the code and against git: dangling ids, paths that moved, captures the board would silently drop, flow clips older than the flow they document. It prints *notes* (history, orphans) without failing; a **finding** fails and has to be fixed, not explained. The gates are the demo gate and this close, never each commit.
+2. `/code-review` on every slice, **and write the result into the archive's `### Review` block** — one bullet per finding, what you did about it, including the ones you accepted and why. Foundation-risk and sync/auth slices get a stricter pass; still run a real review on core-value slices — do not skip for speed. A review nothing records is a review nobody can tell from a skipped one, which is the same argument the Edge paths block already makes.
 3. Rewrite `OVERVIEW.md` to describe the app **as it now stands**. Keep it bounded — roughly a page per area. It is a current-state document, not a history.
 4. Update **`LOGIC.md`** and **`FLOWS.md`** so they describe the app **as it stands** after this slice (add/change `L-` / `F-` entries; remove obsolete ones).
 5. Archive the slice to `docs/state/slices/NNNN-<name>.md`, including a filled **`## Report`** block: headline, highlights, Now→After, **logic delta**, **flow delta**, **edge paths**, **shots**, surfaces, decisions, diff pulse from `git show --stat`. See [templates.md](references/templates.md).
 6. Append any decisions made to `DECISIONS.md` as `D-NNN`, one line each, naming the slice that made them.
 7. Groom `PARKING.md`: prune delivered or obsolete items, re-score tiers.
-8. Re-run the gates from step 1 — the doc edits above can break the audit.
+8. Re-run `npm run check` — the doc edits above are exactly what the audit reads.
 9. Regenerate the board (`npm run board`) — see [references/board.md](references/board.md). It must show **Overview**, **Symbols**, **Flows**, **This slice** and **Steering**. **Open the board** for the user.
-10. **Squash the slice to one commit and tag it** (see Git). Commit freely while building — work in progress is the point of a slice — then collapse it at close so history reads one line per slice.
+10. **Squash the slice to one commit and tag it** (see Git) — the tag is part of closing, not an afterthought: `npm run audit` fails on an archive whose claimed tag does not exist. Then reset `NEXT.md` to the no-slice-picked stub, so the board stops presenting a closed slice as the one in flight. Commit freely while building — work in progress is the point of a slice — then collapse it at close so history reads one line per slice.
 
 Then back to Phase 1.
 
@@ -186,7 +186,9 @@ git checkout -b slice/0008-invites
 
 Commit freely on that branch while building.
 
-**`main` is one commit per slice, and the repo enforces it.** Squash is the only merge method (merge commits and rebase merges are off), linear history is required, a PR is required before merging, and the squashed commit takes the **PR title and PR body** — not the concatenated build commits. So the PR body is the commit message: write it as one, carrying the headline and the `D-NNN` decisions, exactly as the archive describes them.
+**`main` is one commit per slice — a rule you keep, not one the repo keeps for you.** Squash is the only merge method (merge commits and rebase merges are off), linear history is required, a PR is required before merging, and the squashed commit takes the **PR title and PR body** — not the concatenated build commits. But squash-only enforces one commit per *pull request*: a slice split across three PRs is three commits on `main`, every gate green, and `git revert <slice>` stops meaning anything. **So a slice opens exactly one PR.** If the work outgrows it, re-scope the slice (Phase 4b) rather than opening a second PR under the same number. `npm run audit` reports a slice that landed as more than one commit — after the fact, which is the only moment left.
+
+The PR body is the commit message: write it as one, carrying the headline and the `D-NNN` decisions, exactly as the archive describes them.
 
 **Close the slice** — at Phase 6, after the board is regenerated and everything is green:
 

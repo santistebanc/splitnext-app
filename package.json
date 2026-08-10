@@ -38,6 +38,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "vitest run",
+    "check": "npm test && npm run typecheck && npm run test:board && npm run audit",
     "test:board": "python3 -m unittest discover -s docs/scripts -p '*_test.py' -t docs/scripts",
     "typecheck": "tsc --noEmit",
     "audit": "python3 docs/scripts/audit-state.py",

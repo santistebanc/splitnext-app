@@ -45,14 +45,11 @@
 
 ## Delivered
 
+<!-- kept until it is two slices old, then pruned: the point is that the user
+     sees their input landed, not a second changelog. -->
+
 - **Symbol tree view on the board** — delivered in [slice 0009](slices/0009-symbol-tree.md); Flat and Tree over the same 49 rows, the call graph derived from source and gated by `npm run test:board`
 
 - **Balances list (group hub home)** — delivered in [slice 0007](slices/0007-allocations-balances.md); derived Σ paid − Σ owed, most-negative first, You (Name) marked
 
 - **Symbol-level change attribution on the board** — delivered in slice 0007; the delta now maps diff *hunks* onto the symbol whose declaration they fall under, bounded by the next declaration in the source. 15 reported symbols became 6, all six real
-
-- **Assumed member gates mutations** — delivered in [slice 0005](slices/0005-expense-spine.md); the expense form only appears once this device is bound
-
-- **Walking skeleton** — delivered in [slice 0001](slices/0001-walking-skeleton.md)
-- **Outbound queue auto-flush + thin reconnect fetch** — delivered in [slice 0002](slices/0002-queue-auto-flush.md)
-- **Members + binds / assumed member (add, bind, roster pull)** — delivered in [slice 0003](slices/0003-members-binds.md)

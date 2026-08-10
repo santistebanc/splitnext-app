@@ -1,27 +1,33 @@
 #!/usr/bin/env python3
-"""Tests for the board generator's parsers and its hunk attribution.
+"""Tests for `state_files.py` (the parsers) and `sourcemap.py` (hunk attribution).
 
-`generate-slicer-board.py` is the one place that reads `docs/state/*.md` and
-says what a slice changed. When it is wrong it is silently wrong — the board
-still renders, it just reports the wrong symbol. These cover the seams: the
-parsers that turn the state files into rows, and the diff-to-symbol
-attribution that decides which piece a hunk belongs to.
+Together they are the path that reads `docs/state/*.md` and says what a slice
+changed. When it is wrong it is silently wrong — the board still renders, it
+just reports the wrong symbol. These cover the seams: the parsers that turn
+the state files into rows, and the diff-to-symbol attribution that decides
+which piece a hunk belongs to.
 
-    python3 docs/scripts/test_board.py      (or: npm run test:board)
+    npm run test:board
 """
 from __future__ import annotations
 
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "docs/scripts"))
+
+import sourcemap  # noqa: E402
+import state_files as g  # noqa: E402
+
 spec = importlib.util.spec_from_file_location(
     "board", ROOT / "docs/scripts/generate-slicer-board.py"
 )
-g = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(g)
+board = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(board)
 
 
 class ParseLogic(unittest.TestCase):
@@ -150,6 +156,14 @@ a group from a link.
         self.assertEqual(nxt["out_of_scope"], ["Expiry — parked"])
 
 
+class ParseNextBetweenSlices(unittest.TestCase):
+    def test_a_next_naming_no_slice_parses_as_empty(self):
+        nxt = g.parse_next("# No slice picked\n\nThe last slice closed.\n")
+        self.assertEqual(nxt["number"], "")
+        self.assertEqual(nxt["plan"], [])
+        self.assertEqual(nxt["seams"], [])
+
+
 class ParseDelta(unittest.TestCase):
     def test_status_pieces_and_notes(self):
         out = g.parse_delta(
@@ -208,6 +222,35 @@ Balances land.
         self.assertEqual(rep["pulse"], "+120 / −8 · 6 files")
 
 
+class ReviewBlock(unittest.TestCase):
+    def test_the_review_bullets_are_read_out_of_the_report(self):
+        rep = g.parse_report(
+            "# Slice 0010 — x\n\n## Report\n\n### Review\n\n"
+            "- `L-hub` re-read the roster on every render — fixed\n"
+            "- Duplicated cents rounding — accepted, one call site\n"
+        )
+        self.assertEqual(len(rep["review"]), 2)
+        self.assertTrue(rep["review"][0].startswith("`L-hub`"))
+
+    def test_an_archive_with_no_review_block_reads_as_empty(self):
+        rep = g.parse_report("# Slice 0009 — x\n\n## Report\n\n### Headline\nA thing.\n")
+        self.assertEqual(rep["review"], [])
+
+
+class AuditRuns(unittest.TestCase):
+    """The audit is a merge gate, so a crash in it is a broken build."""
+
+    def test_it_runs_over_this_repo_and_reports(self):
+        import subprocess
+
+        out = subprocess.run(
+            [sys.executable, str(ROOT / "docs/scripts/audit-state.py")],
+            cwd=ROOT, capture_output=True, text=True, check=False,
+        )
+        self.assertIn("findings", out.stdout)
+        self.assertIn(out.returncode, (0, 1), out.stderr)
+
+
 class HunkAttribution(unittest.TestCase):
     """Which symbol owns a diff hunk. A file-level answer gets most rows wrong."""
 
@@ -236,20 +279,20 @@ export function gamma() {
         (root / "src/mod.ts").write_text(self.SRC)
         (root / "src/route").mkdir()
         (root / "src/route/index.ts").write_text("export const x = 1;\n")
-        self.real_root = g.ROOT
-        g.ROOT = root
-        self.addCleanup(lambda: setattr(g, "ROOT", self.real_root))
+        self.real_root = sourcemap.ROOT
+        sourcemap.ROOT = root
+        self.addCleanup(lambda: setattr(sourcemap, "ROOT", self.real_root))
 
     def ranges(self, name, where, hunks):
-        return g.symbol_change_ranges(
+        return sourcemap.symbol_change_ranges(
             {"name": name, "where": where}, {where: hunks}
         )
 
     def test_extent_stops_at_the_next_declaration_in_the_source(self):
-        start = g.symbol_line("src/mod.ts", "alpha")
+        start = sourcemap.symbol_line("src/mod.ts", "alpha")
         self.assertEqual(start, 5)
         # beta is declared on line 9, so alpha owns up to line 8
-        self.assertEqual(g.symbol_extent("src/mod.ts", start), 8)
+        self.assertEqual(sourcemap.symbol_extent("src/mod.ts", start), 8)
 
     def test_a_hunk_inside_the_symbol_is_its_own(self):
         self.assertEqual(
@@ -272,7 +315,9 @@ export function gamma() {
         )
 
     def test_no_hunks_in_the_file_means_no_ranges(self):
-        self.assertEqual(g.symbol_change_ranges({"name": "alpha", "where": "src/mod.ts"}, {}), [])
+        self.assertEqual(
+            sourcemap.symbol_change_ranges({"name": "alpha", "where": "src/mod.ts"}, {}), []
+        )
 
 
 class StateFilesParse(unittest.TestCase):
@@ -287,7 +332,8 @@ class StateFilesParse(unittest.TestCase):
         self.assertTrue(rows and flows)
         self.assertTrue(all(e["id"] and e["where"] and e["what"] for e in rows))
         self.assertTrue(all(f["trigger"] and f["outcome"] and f["steps"] for f in flows))
-        self.assertRegex(nxt["number"], r"^\d{4}$")
+        # between slices NEXT.md names none, which is a state, not a failure
+        self.assertRegex(nxt["number"], r"^(\d{4})?$")
 
 
 if __name__ == "__main__":

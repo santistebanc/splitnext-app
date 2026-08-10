@@ -16,6 +16,8 @@ In a slice archive's `### Logic delta` / `### Flow delta`: keep one bullet per v
 
 In an archive's `### Edge paths`: this is Phase 4's self-review, written down, and it is the only place the process records that the non-happy states were considered at all. One row per state you **actually checked** — empty list, offline, permission denied, stale hydration, a second tap while the first is in flight. **Surface** is an `L-` or `F-` id so the board can chip it; **What happens** is the behaviour you observed or built, not the intention (“the queue keeps the item and the hub shows the last sync error” — not “handled gracefully”). A state you did not check does not get a row; an empty block says the review did not happen, which is information.
 
+In an archive's `### Review`: the result of Phase 6's `/code-review`, one bullet per finding — what it was and what you did about it, including the ones you accepted and why. Edge paths and this are not the same review: edge paths are the states the builder walked before the demo, this is what a reader of the finished diff found. A slice where the review turned up nothing writes one bullet saying so; a missing block means the review left no trace, which is the same as not having run it.
+
 In an archive's `### Shots`: one bullet per file in `docs/state/shots/`, `` `NNNN-slug.png` `` then what it shows, plus a line naming the flow clips this slice recorded or re-recorded (`` `flows/F-add-expense.webm` ``). Flow clips are keyed by flow id and live on past the slice — the archive records that they were refreshed, not that they belong to it. If nothing could be captured, write the single line why instead — the block is never silently empty.
 
 In `FLOWS.md`: **Trigger** and **Outcome** are sentences about the person — “On the lobby screen, the person taps **Create group**”, not “Lobby → Create group”. Each step is a sentence too: who acts, on what, and why, with the `L-` ids cited inline so they render as symbol chips. An arrow between two ids is not a description of anything.
@@ -241,6 +243,13 @@ Written once at close, then never read unless someone asks about that slice. It 
 | --- | --- | --- |
 | `L-hub` | roster empty | <what the person sees> |
 | `F-sync` | offline mid-push | <what happens to the queue and the error> |
+
+### Review
+
+<!-- what /code-review found, one bullet each: the finding and what you did
+     about it. "Clean" is a legitimate result and gets one line saying so. -->
+
+- <finding> — fixed in `<symbol>` / accepted because <reason>
 
 ### Shots
 

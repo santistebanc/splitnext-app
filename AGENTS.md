@@ -31,7 +31,8 @@ The short version:
 A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` on `main`. Commit freely on the branch; `main` reads one line per slice. The full rules — what goes in the PR body, why the tag lands after the merge — are in the [slicer skill](.claude/skills/slicer/SKILL.md#git--pr-per-slice-this-repo); three things are non-negotiable here:
 
 - **Never push to `main` directly**, and never merge a slice PR with `--merge` or `--rebase`. Squash is the only enabled merge method and the repo enforces it.
-- **CI is the gate**: `npm test`, `npm run typecheck`, `npm run test:board`, `npm run audit`.
+- **CI is the gate**: `npm run check` — run it before you push, not after CI tells you.
+- **One slice opens one PR.** Squash-only enforces one commit per PR, not per slice; two PRs under one slice number is two commits on `main` and a slice you can no longer revert.
 - **`docs/slicer.html` is generated and gitignored** — regenerate it, never hand-edit or hand-merge it.
 
 Merging `main` republishes the board and the web app to GitHub Pages.
@@ -40,10 +41,11 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Vitest, the seam tests. Gate for merge. |
-| `npm run typecheck` | `tsc --noEmit`. Gate for merge. |
-| `npm run test:board` | Tests the board generator's parsers and hunk attribution. Gate for merge. |
-| `npm run audit` | Audits `docs/state/` against the code and git — dangling ids, moved paths, missing captures, stale flow clips. Findings fail; notes do not. Gate for merge. |
+| `npm run check` | **The merge gate**: `test` + `typecheck` + `test:board` + `audit`, in that order. CI runs exactly this. |
+| `npm test` | Vitest, the seam tests. |
+| `npm run typecheck` | `tsc --noEmit`. |
+| `npm run test:board` | Python tests for the board generator — parsers, call graph, hunk attribution. |
+| `npm run audit` | Audits `docs/state/` against the code and git: dangling ids, moved paths, missing captures, stale flow clips, missing tags, thin archives. Findings fail; notes do not. |
 | `npm start` | Expo dev server (phone via Expo Go). |
 | `npm run web` | Runs the whole app in a browser — the target headless runs and captures use. |
 | `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. |

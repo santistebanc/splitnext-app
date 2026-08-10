@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Generate docs/slicer.html from docs/state/*.md — run from repo root or docs/."""
+"""Render docs/slicer.html from docs/state/*.md — run from repo root or docs/.
+
+This file is the renderer. The parts of the board that have a right answer
+live beside it and are tested on their own:
+
+    state_files.py   Markdown in, dicts out — every parser the board reads
+    sourcemap.py     where a symbol is declared, and which diff hunks are its
+    callgraph.py     what calls what, derived from source (D-034)
+
+Keeping them here would leave the map's correctness reachable only through a
+2000-line render pass, which is the god-file the slicer's own quality bar
+forbids in app code. Tests: board_test.py, callgraph_test.py.
+"""
 
 from __future__ import annotations
 
@@ -14,6 +26,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from callgraph import plan_tree, resolve  # noqa: E402
+from sourcemap import (  # noqa: E402
+    git_state,
+    symbol_change_ranges,
+    symbol_extent,
+    symbol_line,
+)
+from state_files import (  # noqa: E402
+    parse_delta,
+    parse_flows,
+    parse_logic,
+    parse_next,
+    parse_overview_direction,
+    parse_parking,
+    parse_report,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE = ROOT / "docs" / "state"
@@ -118,54 +145,6 @@ def editor_uri(
     return f"cursor://file{target}"
 
 
-def symbol_line(rel_path: str, name: str) -> int | None:
-    """Where the symbol is declared, so the link lands on it and not line 1."""
-    path = ROOT / rel_path
-    if path.is_dir():
-        path = path / "index.ts"
-    if not path.is_file():
-        return None
-    first = name.split("/")[0].strip().strip("`")
-    if not re.match(r"^[A-Za-z_][\w]*$", first):
-        return None
-    body = path.read_text(encoding="utf-8", errors="ignore").splitlines()
-    patterns = [
-        rf"^export\s+(async\s+)?function\s+{re.escape(first)}\b",
-        rf"^export\s+(const|class|type|interface)\s+{re.escape(first)}\b",
-        rf"\b(function|const|class)\s+{re.escape(first)}\b",
-    ]
-    for pattern in patterns:
-        for i, ln in enumerate(body, 1):
-            if re.search(pattern, ln):
-                return i
-    return None
-
-
-DECL_RE = re.compile(
-    r"^(export\s+)?(default\s+)?(async\s+)?"
-    r"(function|const|let|var|class|type|interface|enum)\b"
-)
-
-
-def symbol_extent(rel_path: str, start: int) -> int:
-    """Last line a symbol declared at `start` can be said to own.
-
-    Everything up to the next top-level declaration — any declaration, not
-    just the ones the map lists. Used to decide whether a diff hunk landed on
-    this piece or merely on its neighbour in the same file.
-    """
-    path = ROOT / rel_path
-    if path.is_dir():
-        path = path / "index.ts"
-    if not path.is_file():
-        return start
-    body = path.read_text(encoding="utf-8", errors="ignore").splitlines()
-    for i in range(start, len(body)):  # start is 1-based, so this is start+1 on
-        if DECL_RE.match(body[i]):
-            return i  # the line before the next declaration, 1-based
-    return len(body)
-
-
 def source_ref(rel_path: str, name: str = "") -> str:
     """The path chip, as a link into the editor."""
     line = symbol_line(rel_path, name) if name else None
@@ -180,21 +159,6 @@ def source_ref(rel_path: str, name: str = "") -> str:
         f'title="Open on GitHub — or in the editor, from a local board">'
         f'{esc(label)}</a>'
     )
-
-
-def symbol_change_ranges(
-    entry: dict, hunks_by_path: dict[str, list[tuple[int, int]]]
-) -> list[tuple[int, int]]:
-    """Diff hunks that fall inside this symbol's declaration extent."""
-    where = entry["where"]
-    file_hunks = hunks_by_path.get(where) or []
-    if not file_hunks:
-        return []
-    mine = symbol_line(where, entry["name"])
-    if not mine:
-        return list(file_hunks)
-    end_of = symbol_extent(where, mine)
-    return [(s, e) for s, e in file_hunks if s <= end_of and e >= mine]
 
 
 def _range_label(start: int, end: int) -> str:
@@ -263,410 +227,6 @@ KIND_BLURB = {
 }
 
 
-def parse_logic(text: str) -> list[tuple[str, list[dict]]]:
-    """Areas of the map, header-driven so column order can change safely."""
-    areas: list[tuple[str, list[dict]]] = []
-    current: str | None = None
-    rows: list[dict] = []
-    cols: dict[str, int] = {}
-    for line in text.splitlines():
-        if line.startswith("## ") and not line.startswith("## Logic"):
-            if current is not None:
-                areas.append((current, rows))
-            current = line[3:].strip()
-            rows = []
-            cols = {}
-            continue
-        if current is None or not line.startswith("|"):
-            continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if cells and cells[0].lower() == "id":
-            cols = {c.lower(): i for i, c in enumerate(cells)}
-            continue
-        if not re.match(r"^`?L-[\w]+`?$", cells[0] if cells else ""):
-            continue
-
-        def cell(name: str, fallback: int) -> str:
-            i = cols.get(name, fallback)
-            return cells[i].strip().replace("`", "").strip() if i < len(cells) else ""
-
-        rows.append(
-            {
-                "id": cell("id", 0),
-                "name": cell("name", 1),
-                "kind": cell("kind", 2) or "Job",
-                "where": cell("where", 3),
-                "what": cells[cols.get("what it is for", 4)].strip()
-                if cols.get("what it is for", 4) < len(cells)
-                else "",
-            }
-        )
-    if current is not None:
-        areas.append((current, rows))
-    return areas
-
-
-def parse_flows(text: str) -> list[dict]:
-    flows: list[dict] = []
-    blocks = re.split(r"\n(?=## F-)", text)
-    for block in blocks:
-        if not block.strip().startswith("## F-"):
-            continue
-        lines = block.strip().splitlines()
-        head = lines[0][3:].strip()
-        m = re.match(r"(F-[\w-]+)\s*—\s*(.+)", head)
-        if not m:
-            continue
-        fid, title = m.group(1), m.group(2)
-        trigger = outcome = ""
-        steps: list[str] = []
-        for line in lines[1:]:
-            if line.startswith("**Trigger**"):
-                trigger = re.sub(r"^\*\*Trigger\*\*\s*—\s*", "", line).strip()
-            elif line.startswith("**Outcome**"):
-                outcome = re.sub(r"^\*\*Outcome\*\*\s*—\s*", "", line).strip()
-            elif re.match(r"^\d+\.\s+", line):
-                steps.append(re.sub(r"^\d+\.\s+", "", line).strip())
-            elif line.startswith("   -") or line.startswith("   -"):
-                if steps:
-                    steps[-1] += "\n" + line.strip()
-            elif line.startswith("   ") and steps and not line.startswith("##"):
-                # continuation / nested bullets under a step
-                steps[-1] += "\n" + line.strip()
-        flows.append(
-            {
-                "id": fid,
-                "title": title,
-                "trigger": trigger,
-                "outcome": outcome,
-                "steps": steps,
-            }
-        )
-    return flows
-
-
-def parse_overview_direction(text: str) -> dict:
-    """Everything the Overview page shows, straight out of OVERVIEW.md."""
-
-    def section(name: str) -> str:
-        m = re.search(rf"\n## {re.escape(name)}\n(.*?)(?=\n## |\Z)", text, re.S)
-        return m.group(1).strip() if m else ""
-
-    def field(label: str) -> str:
-        m = re.search(rf"\*\*{label}\*\*\s*—\s*(.+)", text)
-        return m.group(1).strip() if m else ""
-
-    def bullets_after(label: str) -> list[str]:
-        m = re.search(rf"\*\*{label}\*\*\s*—\s*\n((?:- .+\n?)+)", text)
-        if not m:
-            return []
-        return [ln[2:].strip() for ln in m.group(1).splitlines() if ln.startswith("- ")]
-
-    def bullets_of(name: str) -> list[str]:
-        return [
-            ln[2:].strip()
-            for ln in section(name).splitlines()
-            if ln.startswith("- ")
-        ]
-
-    non_goals = [g.strip() for g in field("Non-goals").split(",") if g.strip()]
-
-    model = []
-    for ln in section("Data model").splitlines():
-        m = re.match(r"\*\*(.+?)\*\*\s*—\s*(.+)", ln)
-        if m:
-            model.append({"name": m.group(1), "what": m.group(2).strip()})
-
-    routes = []
-    for ln in section("Routes / surfaces").splitlines():
-        if not ln.startswith("|") or "---" in ln or "Route" in ln:
-            continue
-        cells = [c.strip() for c in ln.strip("|").split("|")]
-        if len(cells) >= 3:
-            routes.append(
-                {"route": cells[0], "what": cells[1], "since": cells[2]}
-            )
-
-    return {
-        "destination": field("Destination"),
-        "users": field("Users"),
-        "constraints": bullets_after("Constraints"),
-        "non_goals": non_goals,
-        "capabilities": bullets_of("Capabilities"),
-        "stack": bullets_of("Stack"),
-        "model": model,
-        "routes": routes,
-    }
-
-
-def parse_next(text: str) -> dict:
-    """The slice being built right now, from NEXT.md."""
-
-    def section(name: str) -> str:
-        m = re.search(rf"\n## {re.escape(name)}\n(.*?)(?=\n## |\Z)", text, re.S)
-        return m.group(1).strip() if m else ""
-
-    def bullets(name: str) -> list[str]:
-        return [
-            re.sub(r"^[-\d.]+\s*", "", ln).strip()
-            for ln in section(name).splitlines()
-            if ln.strip().startswith("-") or re.match(r"^\d+\.", ln.strip())
-        ]
-
-    title = ""
-    tier = ""
-    for line in text.splitlines():
-        if line.startswith("# Slice"):
-            title = line[2:].strip()
-        elif line.startswith("**Tier**"):
-            tier = re.sub(r"^\*\*Tier\*\*\s*—\s*", "", line).strip()
-
-    goal = section("Goal").replace("\n", " ").strip()
-
-    now_after = []
-    for ln in (section("Before → After") or section("Now → After")).splitlines():
-        if not ln.startswith("|") or "---" in ln or ln.strip().startswith("| |"):
-            continue
-        cells = [c.strip() for c in ln.strip("|").split("|")]
-        if len(cells) >= 3 and cells[1].lower() != "now":
-            now_after.append({"aspect": cells[0], "before": cells[1], "after": cells[2]})
-
-    seams = []
-    for ln in section("Seams under test").splitlines():
-        if not ln.startswith("|") or "---" in ln or "Seam" in ln:
-            continue
-        cells = [c.strip() for c in ln.strip("|").split("|")]
-        if len(cells) >= 2:
-            seams.append({"seam": cells[0], "behavior": cells[1]})
-
-    # The self-review while it is still a review — kept here during the build,
-    # moved into the archive's Report at close.
-    edge = []
-    for ln in section("Edge paths").splitlines():
-        if not ln.startswith("|") or "---" in ln or "Surface" in ln:
-            continue
-        cells = [c.strip() for c in ln.strip("|").split("|")]
-        if len(cells) >= 3 and any(cells[:3]):
-            edge.append({"surface": cells[0], "state": cells[1], "what": cells[2]})
-
-    m = re.search(r"(\d{4})", title)
-    return {
-        "title": title,
-        "number": m.group(1) if m else "",
-        "tier": tier,
-        "goal": goal,
-        "now_after": now_after,
-        "plan": bullets("Plan"),
-        "seams": seams,
-        "acceptance": bullets("Acceptance"),
-        "edge_paths": edge,
-        "out_of_scope": bullets("Out of scope"),
-    }
-
-
-def git_state() -> dict | None:
-    """Working-tree truth: what is uncommitted right now. None when not a repo."""
-    def raw(*args: str) -> str:
-        """Never strip: porcelain's status codes are column-positioned."""
-        try:
-            out = subprocess.run(
-                ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=10
-            )
-        except (OSError, subprocess.SubprocessError):
-            return ""
-        return out.stdout if out.returncode == 0 else ""
-
-    def run(*args: str) -> str:
-        return raw(*args).strip()
-
-    if run("rev-parse", "--is-inside-work-tree") != "true":
-        return None
-
-    changes = []
-    for line in raw("status", "--porcelain").splitlines():
-        m = re.match(r"^(..) (.+)$", line)
-        if not m:
-            continue
-        code, path = m.group(1).strip() or "?", m.group(2).strip()
-        state = (
-            "new" if code in ("??", "A") else "gone" if code == "D" else "changed"
-        )
-        changes.append({"code": code, "path": path, "state": state})
-
-    churn = {}
-    for line in raw("diff", "--numstat").splitlines():
-        parts = line.split("\t")
-        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
-            churn[parts[2]] = (int(parts[0]), int(parts[1]))
-
-    # Which *lines* changed, not just which files. Without this the board can
-    # only say "something in this file moved", so every symbol sharing a file
-    # with the real edit gets reported as touched — nine wrong rows for six
-    # right ones, on a page whose whole job is saying what this slice changed.
-    hunks: dict[str, list[tuple[int, int]]] = {}
-    current: str | None = None
-    for line in raw("diff", "-U0", "HEAD").splitlines():
-        if line.startswith("+++ b/"):
-            current = line[6:].strip()
-            hunks.setdefault(current, [])
-        elif line.startswith("@@") and current:
-            m = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))?", line)
-            if not m:
-                continue
-            start = int(m.group(1))
-            count = int(m.group(2)) if m.group(2) is not None else 1
-            # A pure deletion reports zero new lines; it still happened *at*
-            # that point, so give it the line it collapsed to.
-            hunks[current].append((start, start + max(count, 1) - 1))
-
-    # Untracked files never appear in `diff HEAD`, so treat the whole file as
-    # the change — otherwise the board can say *what* changed but not *where*.
-    for c in changes:
-        if c["state"] != "new" or c["path"] in hunks:
-            continue
-        path = ROOT / c["path"]
-        if not path.is_file():
-            continue
-        n = len(path.read_text(encoding="utf-8", errors="ignore").splitlines()) or 1
-        hunks[c["path"]] = [(1, n)]
-
-    return {
-        "churn": churn,
-        "hunks": hunks,
-        "branch": run("rev-parse", "--abbrev-ref", "HEAD"),
-        "last_commit": run("log", "-1", "--pretty=%h %s"),
-        "changes": sorted(changes, key=lambda c: (c["state"] != "new", c["path"])),
-        "stat": run("diff", "--shortstat"),
-    }
-
-
-def parse_parking(text: str) -> list[tuple[str, list[str]]]:
-    tiers: list[tuple[str, list[str]]] = []
-    current = None
-    items: list[str] = []
-    for line in text.splitlines():
-        if line.startswith("## "):
-            if current:
-                tiers.append((current, items))
-            heading = line[3:].strip()
-            if heading == "Delivered":
-                current = None
-                items = []
-                break
-            current = heading
-            items = []
-        elif current and line.startswith("- **"):
-            m = re.match(r"- \*\*(.+?)\*\*", line)
-            if m:
-                items.append(m.group(1))
-    if current:
-        tiers.append((current, items))
-    return tiers
-
-
-def parse_report(text: str) -> dict | None:
-    if "## Report" not in text:
-        return None
-    report = text.split("## Report", 1)[1]
-    # stop at next ## that's not ###
-    parts = re.split(r"\n## (?!#)", report, maxsplit=1)
-    report = parts[0]
-
-    def section(name: str) -> str:
-        m = re.search(
-            rf"### {re.escape(name)}\n(.*?)(?=\n### |\Z)",
-            report,
-            re.S,
-        )
-        return m.group(1).strip() if m else ""
-
-    head = text.splitlines()[0]
-    meta = ""
-    for line in text.splitlines()[:6]:
-        if line.startswith("**Tier**"):
-            meta = re.sub(r"\*\*", "", line).strip()
-            break
-
-    headline = section("Headline").strip()
-    highlights_raw = section("Highlights")
-    highlights = [
-        re.sub(r"\*\*", "", re.sub(r"^-\s*", "", ln)).strip()
-        for ln in highlights_raw.splitlines()
-        if ln.strip().startswith("-")
-    ]
-
-    # Before → After table (older archives wrote it as "Now → After")
-    na = section("Before → After") or section("Now → After")
-    rows = []
-    for ln in na.splitlines():
-        if not ln.startswith("|") or "---" in ln or "Aspect" in ln:
-            continue
-        cells = [c.strip() for c in ln.strip("|").split("|")]
-        if len(cells) >= 3:
-            rows.append({"aspect": cells[0], "before": cells[1], "after": cells[2]})
-
-    def bullets(sec: str) -> list[str]:
-        return [
-            re.sub(r"\*\*", "", re.sub(r"^-\s*", "", ln)).strip()
-            for ln in section(sec).splitlines()
-            if ln.strip().startswith("-")
-        ]
-
-    decisions = [
-        re.sub(r"^-\s*", "", ln).strip()
-        for ln in section("Decisions this slice").splitlines()
-        if ln.strip().startswith("-")
-    ]
-    surfaces = {}
-    for ln in section("Surfaces touched").splitlines():
-        m = re.match(r"- \*\*(.+?)\*\*\s*—\s*(.+)", ln)
-        if m:
-            surfaces[m.group(1)] = m.group(2).strip()
-
-    pulse = section("Diff pulse").strip().strip("`")
-
-    # Edge paths — the written-down self-review. Surface | State | What happens.
-    edge = []
-    for ln in section("Edge paths").splitlines():
-        if not ln.startswith("|") or "---" in ln or "Surface" in ln:
-            continue
-        cells = [c.strip() for c in ln.strip("|").split("|")]
-        if len(cells) >= 3 and any(cells[:3]):
-            edge.append({"surface": cells[0], "state": cells[1], "what": cells[2]})
-
-    # Shots — `file.png` — caption. A line with no file is the "could not capture" note.
-    shots = []
-    for ln in section("Shots").splitlines():
-        if not ln.strip().startswith("-"):
-            continue
-        body = re.sub(r"^-\s*", "", ln).strip()
-        m = re.match(
-            # a path, not just a name: flow clips are recorded as `flows/F-x.webm`
-            r"`?([\w.\-/]+\.(?:png|jpg|jpeg|webp|gif|webm|mp4))`?\s*(?:—|--|-)?\s*(.*)",
-            body,
-        )
-        if m:
-            shots.append({"file": m.group(1), "caption": m.group(2).strip()})
-
-    # archive filename from head
-    return {
-        "title": head[2:].strip() if head.startswith("#") else head,
-        "meta": meta,
-        "headline": headline,
-        "highlights": highlights,
-        "now_after": rows,
-        "logic_delta": bullets("Logic delta"),
-        "flow_delta": bullets("Flow delta"),
-        "surfaces": surfaces,
-        "decisions": decisions,
-        "edge_paths": edge,
-        "shots": shots,
-        "pulse": pulse,
-    }
-
-
-# id → human label, filled by render(). Ids stay in the DOM as anchors and in
-# data-search; they are never shown to a reader.
 LABELS: dict[str, str] = {}
 
 
@@ -810,34 +370,6 @@ LOGIC_BY_ID: dict[str, dict] = {}
 FLOW_BY_ID: dict[str, dict] = {}
 
 STATUS_TONE = {"added": "ok", "changed": "warn", "removed": "open"}
-
-
-def parse_delta(bullets: list[str]) -> list[tuple[str, list[dict]]]:
-    """["Added — `L-hub` members UI · `L-addMember`"] → [("Added", [{ref, note}])]."""
-    out: list[tuple[str, list[dict]]] = []
-    for line in bullets:
-        head, _, rest = line.partition("—")
-        status = head.strip().strip("*").strip()
-        if not rest.strip():
-            status, rest = "Changed", line
-        pieces = []
-        for chunk in rest.split("·"):
-            chunk = chunk.strip()
-            if not chunk:
-                continue
-            refs = re.findall(r"[LF]-[\w-]+", chunk)
-            if not refs:
-                pieces.append({"ref": "", "note": chunk})
-                continue
-            note = chunk
-            for ref in refs:
-                note = note.replace(ref, "")
-            note = note.replace("`", "").strip(" ()/·").strip()
-            for ref in refs:
-                pieces.append({"ref": ref, "note": note})
-        if pieces:
-            out.append((status, pieces))
-    return out
 
 
 def delta_row(status: str, piece: dict) -> str:
@@ -1596,6 +1128,15 @@ def render() -> str:
         closed_edge = (
             f'<h3 id="n-edge">Edge paths checked</h3>{closed_edge}' if closed_edge else ""
         )
+        # /code-review, written down. Edge paths are the states the builder
+        # walked; this is what a reader of the diff found — the two are not
+        # the same review and neither substitutes for the other.
+        closed_review = "".join(f"<li>{rich(r)}</li>" for r in report["review"])
+        closed_review = (
+            f'<h3 id="n-review">Review</h3><ul class="bullets">{closed_review}</ul>'
+            if closed_review
+            else ""
+        )
         newest_search = " ".join(
             [
                 report["title"],
@@ -1627,6 +1168,8 @@ def render() -> str:
   {flow_d}
 
   {closed_edge}
+
+  {closed_review}
 
   <h3 id="n-surfaces">Surfaces touched</h3>
   <div class="rows swrows">{surf}</div>
@@ -1719,6 +1262,22 @@ def render() -> str:
         newest_html = (
             f'<section class="page" id="newest" data-title="Newest slice" tabindex="-1"'
             f' data-search="{esc(newest_search)}">{closed_html}</section>'
+        )
+
+    # Between slices NEXT.md carries no slice, and the board says so rather
+    # than rendering an empty row that reads like a slice with no name.
+    if nxt["number"]:
+        next_row = (
+            '<div class="row" style="--sc:var(--s3)"><div class="rmain">'
+            f'<div class="rhead"><h4>{esc(nxt["title"])}</h4>'
+            f'<code class="ref">{esc(nxt["tier"])}</code></div>'
+            f'<p class="one">{esc(nxt["goal"])}</p>'
+            "</div></div>"
+        )
+    else:
+        next_row = (
+            '<p class="empty">No slice picked — the last one closed and the next '
+            "has not been chosen. Pick it risk-first from Parked, below.</p>"
         )
 
     # parking
@@ -2739,20 +2298,10 @@ apply();
       <section class="page" id="steering" data-title="Steering" tabindex="-1">
         <p class="kicker">Steering</p>
         <h1>What's next</h1>
-        <p class="lede">{esc(nxt['goal'])}</p>
+        <p class="lede">{esc(nxt['goal'] or 'Nothing is picked. The board shows the app as the last closed slice left it.')}</p>
 
         <h3 id="s-next">Next slice</h3>
-        <div class="rows">
-          <div class="row" style="--sc:var(--s3)">
-                      <div class="rmain">
-              <div class="rhead">
-                <h4>{esc(nxt['title'])}</h4>
-                <code class="ref">{esc(nxt['tier'])}</code>
-              </div>
-              <p class="one">{esc(nxt['goal'])}</p>
-            </div>
-          </div>
-        </div>
+        <div class="rows">{next_row}</div>
 
         <h3 id="s-parked" class="with-count">Parked<u>{park_count}</u></h3>
         <div class="rows">{''.join(park_html)}</div>
