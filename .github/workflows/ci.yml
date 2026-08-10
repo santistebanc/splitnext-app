@@ -14,7 +14,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      # Full history and tags: the audit checks that every archive's claimed
+      # tag exists and that no slice landed as two commits on main, and a
+      # shallow clone has neither to look at.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

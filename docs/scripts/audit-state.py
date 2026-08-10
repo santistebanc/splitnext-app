@@ -243,10 +243,23 @@ for arch in archives:
 # merged as three PRs is three commits, and `git revert <slice>` stops meaning
 # anything. Nothing can fix that after the fact, so this is a note — but a
 # loud one, because the rule reads as if the repo enforced it.
+main_ref = next(
+    (
+        ref
+        for ref in ("main", "origin/main")
+        if subprocess.run(
+            ["git", "rev-parse", "-q", "--verify", ref],
+            cwd=ROOT, capture_output=True, check=False,
+        ).returncode == 0
+    ),
+    None,
+)
 subjects = subprocess.run(
-    ["git", "log", "main", "--format=%s"],
+    ["git", "log", main_ref, "--format=%s"],
     cwd=ROOT, capture_output=True, text=True, check=False,
-).stdout.splitlines()
+).stdout.splitlines() if main_ref else []
+if not main_ref:
+    note("no-main", "no main ref here, so the one-commit-per-slice check did not run")
 counts = {}
 for line in subjects:
     m = re.match(r"slice\((\d{4})\)", line.strip())
