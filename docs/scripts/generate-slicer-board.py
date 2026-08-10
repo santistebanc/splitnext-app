@@ -641,7 +641,8 @@ def parse_report(text: str) -> dict | None:
             continue
         body = re.sub(r"^-\s*", "", ln).strip()
         m = re.match(
-            r"`?([\w.\-]+\.(?:png|jpg|jpeg|webp|gif|webm|mp4))`?\s*(?:—|--|-)?\s*(.*)",
+            # a path, not just a name: flow clips are recorded as `flows/F-x.webm`
+            r"`?([\w.\-/]+\.(?:png|jpg|jpeg|webp|gif|webm|mp4))`?\s*(?:—|--|-)?\s*(.*)",
             body,
         )
         if m:
@@ -908,7 +909,10 @@ def shots_html(shots: list[dict]) -> str:
     """
     cards = []
     for shot in shots:
-        rel = f"docs/state/shots/{shot['file']}"
+        # archives write flow clips either way round — `flows/F-x.webm` or
+        # `shots/flows/F-x.webm`; both name the same file.
+        name = re.sub(r"^shots/", "", shot["file"])
+        rel = f"docs/state/shots/{name}"
         if not (ROOT / rel).exists():
             continue
         cap = (
@@ -916,8 +920,8 @@ def shots_html(shots: list[dict]) -> str:
             if shot.get("caption")
             else ""
         )
-        src = f"state/shots/{esc(shot['file'])}"
-        is_clip = Path(shot["file"]).suffix.lower() in CLIP_SUFFIXES
+        src = f"state/shots/{esc(name)}"
+        is_clip = Path(name).suffix.lower() in CLIP_SUFFIXES
         if is_clip:
             # Plays itself, on a loop: a capture nobody presses play on is a
             # capture nobody watches. Muted and playsinline so it can never
@@ -990,26 +994,6 @@ def edge_paths_html(rows: list[dict]) -> str:
         for r in rows
     )
     return f'<div class="rows edgerows">{out}</div>'
-
-
-def flow_tests() -> dict[str, dict]:
-    """Which flows have a test, read from the test files — never hand-maintained.
-
-    A file naming a flow id (`F-sync.flow.test.ts`, or a `describe('F-sync …')`)
-    counts as that flow's test; its `it(...)` titles are the cases.
-    """
-    out: dict[str, dict] = {}
-    for path in sorted((ROOT / "src").rglob("*.test.ts")):
-        text = path.read_text(encoding="utf-8", errors="ignore")
-        ids = set(re.findall(r"\bF-[\w-]+", path.name + " " + text))
-        if not ids:
-            continue
-        cases = re.findall(r"\bit\(\s*['\"](.+?)['\"]", text, re.S)
-        for fid in ids:
-            entry = out.setdefault(fid, {"file": "", "cases": []})
-            entry["file"] = str(path.relative_to(ROOT))
-            entry["cases"].extend(c.strip() for c in cases)
-    return out
 
 
 def newest_archive() -> Path | None:
@@ -1267,22 +1251,6 @@ def render() -> str:
             )
         return "".join(parts)
 
-    def test_block(f: dict) -> str:
-        if not tests:
-            return ""  # no flow tests in the tree at all — not a finding
-        t = tests.get(f["id"])
-        if not t:
-            return (
-                '<p class="ftests none">Untested — no test names this flow</p>'
-            )
-        cases = "".join(f"<li>{esc(c)}</li>" for c in t["cases"])
-        return (
-            f'<details class="ftests"><summary>Tested · {len(t["cases"])} cases</summary>'
-            f'<ul>{cases}</ul>'
-            f'<p class="ffile"><code class="ref">{esc(t["file"])}</code></p>'
-            f"</details>"
-        )
-
     def flow_case(
         f: dict,
         *,
@@ -1314,12 +1282,9 @@ def render() -> str:
     <span class="lbl">Starts when</span><span>{rich(f['trigger'])}</span>
     <span class="lbl">Ends with</span><span>{rich(f['outcome'])}</span>
   </div>
-  {test_block(f)}
   {note}
   <ol class="fsteps"{'' if open_steps else ' hidden'}>{flow_steps_html(f, marks, mark_word, step_notes)}</ol>
 </section>"""
-
-    tests = flow_tests()
 
     flow_blocks = [
         flow_case(
@@ -2110,15 +2075,6 @@ a.self:hover{color:var(--accent);text-decoration:underline}
 .closed .lede{font-size:.92rem;margin-bottom:var(--sp-2)}
 .closed h3{font-size:.68rem;margin:var(--sp-4) 0 var(--sp-2);border-bottom:1px dashed var(--line)}
 .closed .statbar,.closed .rows,.closed .fcase{background:var(--bg)}
-.ftests{margin:0;padding:0 1rem .6rem;font-size:.78rem}
-.ftests > summary{cursor:pointer;list-style:none;display:inline-block;color:var(--ok);
-  font:700 .62rem var(--sans);letter-spacing:.08em;text-transform:uppercase}
-.ftests > summary::-webkit-details-marker{display:none}
-.ftests > summary::before{content:"✓ ";font-weight:700}
-.ftests ul{margin:.35rem 0 0;padding-left:1.1rem;color:var(--muted)}
-.ftests .ffile{margin:.35rem 0 0}
-.ftests.none{font:700 .62rem var(--sans);letter-spacing:.08em;text-transform:uppercase;
-  color:var(--open)}
 .fnote{margin:0;padding:0 1rem .6rem;font-size:.8rem;color:var(--faint)}
 .fmarks{margin:0;padding:.1rem 1rem .5rem;font:700 .62rem var(--sans);letter-spacing:.08em;
   text-transform:uppercase;color:var(--warn)}
@@ -2770,7 +2726,6 @@ apply();
         <p class="kicker">Current system</p>
         <h1>How it runs end to end</h1>
         <p class="lede">Each flow is one path a person can trigger, start to finish. A band marks each stretch by the area it runs in — UI, device, edge, server — and every symbol named inside carries the glyph of its <a href="#symbols">kind</a>. Click any symbol to open it in <a href="#symbols">Symbols</a>.</p>
-        {f'<p class="why">{sum(1 for f in flows if f["id"] in tests)} of {len(flows)} flows have a test naming them — run <code class="ref">npm test</code>.</p>' if tests else ''}
         <div class="fkey">
           {''.join(layer_key)}
           <button type="button" class="btn" id="fold-all" aria-pressed="false">Expand all</button>

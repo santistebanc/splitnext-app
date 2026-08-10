@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Audit docs/state/*.md against itself, against the code, and against git.
 
-Run at slice close: it catches dangling ids, paths that moved, symbols that no
-flow names, and "Added" claims for things that already existed.
+Run at slice close (`npm run audit`): it catches dangling ids, paths that
+moved, symbols that no flow names, "Added" claims for things that already
+existed, captures the board will silently drop, and flow clips left behind by
+a change to the flow they document.
+
+Exits non-zero when it finds anything, so CI and the close checklist can gate
+on it rather than on someone reading the output.
 """
 import importlib.util
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,10 +30,17 @@ flow_ids = {f["id"] for f in flows}
 archives = sorted((STATE / "slices").glob("*.md"))
 
 problems = []
+notes = []
 
 
 def report(kind, msg):
+    """A finding that fails the audit — the state files say something untrue."""
     problems.append((kind, msg))
+
+
+def note(kind, msg):
+    """Worth reading, not worth failing: history, or a shape nobody promised."""
+    notes.append((kind, msg))
 
 
 # 1. every id cited anywhere resolves
@@ -39,7 +52,7 @@ def cited(text, where):
             report("dangling-id", f"{where} cites {ref} — not in FLOWS.md")
 
 
-for f in [STATE / "FLOWS.md", STATE / "OVERVIEW.md", *archives]:
+for f in [STATE / "FLOWS.md", STATE / "OVERVIEW.md"]:
     cited(f.read_text(), f.name)
 
 # NEXT.md plans the slice that has not happened yet, so it may name ids that do
@@ -102,28 +115,41 @@ for arch in archives:
                         )
                     added_at[ref] = arch.name
 
-# 6. a symbol/flow that a slice touched must still exist
+# 6. an archive naming a piece the map no longer has
+#
+# An archive describes the app as it was, so a since-removed id is history
+# rather than a mistake — printed, never fatal. It is still worth reading: a
+# typo looks exactly the same, and this is the only place it would surface.
 for arch in archives:
-    for ref in re.findall(r"\b([LF]-[\w-]+)\b", arch.read_text()):
+    for ref in sorted(set(re.findall(r"\b([LF]-[\w-]+)\b", arch.read_text()))):
         if ref.startswith("L-") and ref not in by_id:
-            report("stale-delta", f"{arch.name} references removed {ref}")
+            note("archive-history", f"{arch.name} names {ref}, which the map no longer has")
+        if ref.startswith("F-") and ref not in flow_ids:
+            note("archive-history", f"{arch.name} names {ref}, which the map no longer has")
 
-# 7. symbols no flow names
+# 7. symbols no flow names — a gap in FLOWS.md or a piece nothing needs
 for e in rows:
     if not any(re.search(rf"\b{re.escape(e['id'])}\b", " ".join([f["trigger"], f["outcome"], *f["steps"]])) for f in flows):
-        report("orphan", f'{e["id"]} ({e["name"]}) is named by no flow')
+        note("orphan", f'{e["id"]} ({e["name"]}) is named by no flow')
 
-# 8. OVERVIEW routes vs UI symbols
-ui_paths = {e["where"] for e in rows if e["area"] == "UI"}
-ov = (STATE / "OVERVIEW.md").read_text()
-for route in re.findall(r"^\| `([^`]+)` \|", ov, re.M):
-    pass
+# 8. every capture an archive claims is on disk, under the name the board reads
+for arch in archives:
+    rep = g.parse_report(arch.read_text())
+    for shot in (rep or {}).get("shots", []):
+        name = re.sub(r"^shots/", "", shot["file"])
+        if not (STATE / "shots" / name).exists():
+            report("missing-shot", f'{arch.name} claims {shot["file"]} — not in docs/state/shots/')
 
 # 9. NEXT.md slice number vs archives
 nxt = g.parse_next((STATE / "NEXT.md").read_text())
 nums = {re.match(r"(\d{4})", a.name).group(1) for a in archives}
+newest = max(nums) if nums else ""
 if nxt["number"] in nums:
-    report("slice-number", f'NEXT.md is slice {nxt["number"]} but an archive already exists')
+    if nxt["number"] == newest:
+        # the slice just closed and no next one has been picked yet
+        note("slice-number", f'NEXT.md still describes slice {nxt["number"]}, which is closed')
+    else:
+        report("slice-number", f'NEXT.md is slice {nxt["number"]} but that slice is already archived')
 
 # 10. files changed in the working tree that no state doc mentions
 git = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True)
@@ -137,9 +163,63 @@ for line in git.stdout.splitlines():
     if path not in state_text and not any(e["where"] == path for e in rows):
         report("unmapped-file", f"{path} changed but appears in no LOGIC.md row")
 
-for kind in sorted({k for k, _ in problems}):
-    print(f"\n## {kind}")
-    for k, msg in problems:
-        if k == kind:
-            print(" -", msg)
-print(f"\n{len(problems)} findings")
+# 11. flow clips that predate the flow they document
+#
+# A clip is the only non-prose record of what the app does, and a stale one is
+# worse than a missing one: it plays confidently beside steps it no longer
+# shows. Compare the last commit that touched the flow's own block in FLOWS.md
+# against the last commit that touched its clip.
+def last_commit(*paths):
+    out = subprocess.run(
+        ["git", "log", "-1", "--format=%ct", "--", *paths],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    ).stdout.strip()
+    return int(out) if out.isdigit() else None
+
+
+def flow_block_touched(fid):
+    """Newest commit time across the lines of this flow's block in FLOWS.md."""
+    text = (STATE / "FLOWS.md").read_text().splitlines()
+    start = next((i for i, ln in enumerate(text, 1) if ln.startswith(f"## {fid} ")), None)
+    if not start:
+        return None
+    end = next(
+        (i for i, ln in enumerate(text[start:], start + 1) if ln.startswith("## F-")),
+        len(text),
+    )
+    blame = subprocess.run(
+        ["git", "blame", "-L", f"{start},{end}", "--line-porcelain", "--", "docs/state/FLOWS.md"],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    ).stdout
+    times = [int(m) for m in re.findall(r"^committer-time (\d+)", blame, re.M)]
+    return max(times) if times else None
+
+
+unrecorded = set(
+    re.findall(r"'(F-[\w-]+)':", (ROOT / "docs/scripts/capture-flows.mjs").read_text())
+)
+for f in flows:
+    clip = STATE / "shots" / "flows" / f'{f["id"]}.webm'
+    if not clip.exists():
+        if f["id"] not in unrecorded:
+            report("missing-clip", f'{f["id"]} has no clip and capture-flows.mjs does not say why')
+        continue
+    flow_t, clip_t = flow_block_touched(f["id"]), last_commit(str(clip.relative_to(ROOT)))
+    if flow_t and clip_t and flow_t > clip_t:
+        report("stale-clip", f'{f["id"]}: FLOWS.md changed after {clip.name} was last recorded')
+
+def dump(items, heading):
+    if not items:
+        return
+    print(f"\n# {heading}")
+    for kind in sorted({k for k, _ in items}):
+        print(f"\n## {kind}")
+        for k, msg in items:
+            if k == kind:
+                print(" -", msg)
+
+
+dump(problems, "findings")
+dump(notes, "notes")
+print(f"\n{len(problems)} findings, {len(notes)} notes")
+sys.exit(1 if problems else 0)

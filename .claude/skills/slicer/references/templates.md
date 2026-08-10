@@ -6,9 +6,7 @@ Also maintain **`LOGIC.md`** (catalogue of behaviour pieces with stable `L-` ids
 
 In `LOGIC.md`: the `##` headings are **areas** — where the code runs. Keep them coarse and few (`UI` · `Device` · `Edge` · `Server`); they are the group dividers on Symbols and a band on Flows, not a folder listing. Their order in the file is their order on the board, so write them as a path. **Kind** is one of `Screen` (what the person sees and taps) · `Pure` (input in, answer out — no state, no network) · `State` (owns local data) · `Job` (sequences other pieces into one unit of work) · `Network` (crosses the wire from the device) · `Endpoint` (the server side of that wire). It is the board's browsing axis, so pick exactly one and pick it honestly — a “Pure” that touches the store makes the Pure filter a lie. **Name** is the real code symbol in backticks (the thing you would grep for); **What it is for** is one plain sentence a newcomer can read — what it does and why, not a telegraphic list of the identifiers it touches. “Local v1 group + `create-group` remote + token + lobby id + wake” is a changelog; “Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes” is a description.
 
-Cite `L-` ids in `NEXT.md` too — in the plan, the Before → After rows and the seams. The board matches a changed file's symbols against those lines to explain *what* the change is for; an id matches exactly, prose only matches by luck, and an unmatched symbol shows up on the board as "nothing in NEXT.md says what for".
-
-Cite `L-` ids in `NEXT.md` too — in the plan, the Before → After rows and the seams. The board matches the symbols in your changed files against those lines to say *what each change is for*; an id matches exactly, prose matches only by luck. A symbol nothing names shows on the board as "Its file changed, but nothing in `NEXT.md` names this piece" — sometimes that is a gap in the plan, sometimes it is just a neighbour in a shared file.
+Cite `L-` ids in `NEXT.md` too — in the plan, the Before → After rows and the seams under test. The board matches the symbols in your changed files against those lines to say *what each change is for*; an id matches exactly, prose matches only by luck. A symbol nothing names shows on the board as "Its file changed, but nothing in `NEXT.md` names this piece" — sometimes that is a gap in the plan, sometimes it is just a neighbour in a shared file.
 
 Cite step numbers in a flow delta note (`- **Changed** — `F-sync` (step 4 pull roster)`) — the board highlights exactly those steps, so a vague note costs the reader the highlight.
 
@@ -98,6 +96,15 @@ Overwritten each time a slice is picked. This is the pre-build gate's script —
 ## Plan
 
 1. <step — narrow, concrete, ordered>
+
+## Seams under test
+
+<!-- the public interfaces this slice puts under test, agreed at the pre-build
+     gate. Prefer seams OVERVIEW.md already lists; cite `L-` ids. -->
+
+| Seam | Behavior |
+| --- | --- |
+| `L-splitEvenly` | <what the tests pin down at that seam> |
 
 ## Acceptance
 

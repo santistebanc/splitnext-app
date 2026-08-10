@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Serve docs/ and open files in the *running* editor window.
+"""Generate the board, serve docs/, and open files in the *running* editor window.
+
+`docs/slicer.html` is not committed — it is a render of `docs/state/`, and a
+tracked copy of it only ever produced rebase conflicts and stale boards. So it
+is built here at startup, and rebuilt by CI for the published site.
 
 `cursor://` URLs go through the OS handler, which starts a fresh Cursor and —
 inside WSL — often lands you in a second instance. The CLI does not: `cursor -r
@@ -119,8 +123,23 @@ class Handler(SimpleHTTPRequestHandler):
         pass
 
 
+def generate() -> None:
+    """Build docs/slicer.html before the first request can ask for it."""
+    out = subprocess.run(
+        [sys.executable, str(ROOT / "docs/scripts/generate-slicer-board.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if out.returncode:
+        print(out.stdout + out.stderr, flush=True)
+        print("board generation failed — serving whatever is on disk", flush=True)
+
+
 def main() -> None:
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8777
+    generate()
     # 0.0.0.0 so a Windows-side browser can reach the WSL port.
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     print(f"Slicer board → http://127.0.0.1:{port}/slicer.html", flush=True)

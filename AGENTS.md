@@ -28,11 +28,13 @@ The short version:
 
 ## Git: PR per slice
 
-`main` is protected by CI (`npm test` + `npm run typecheck`). A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` on `main`. Commit freely on the branch; `main` reads one line per slice. Merging `main` republishes the board and the web app to GitHub Pages.
+A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` on `main`. Commit freely on the branch; `main` reads one line per slice. The full rules — what goes in the PR body, why the tag lands after the merge — are in the [slicer skill](.claude/skills/slicer/SKILL.md#git--pr-per-slice-this-repo); three things are non-negotiable here:
 
-**One slice is one commit on `main`, and the repo enforces it:** squash is the only enabled merge method, linear history is required, a PR is required before merging, and the squashed commit is built from the **PR title and PR body**. Write the PR body as the commit message you want — headline plus the `D-NNN` decisions. Never merge a slice PR with `--merge` or `--rebase`, and never push to `main` directly.
+- **Never push to `main` directly**, and never merge a slice PR with `--merge` or `--rebase`. Squash is the only enabled merge method and the repo enforces it.
+- **CI is the gate**: `npm test`, `npm run typecheck`, `npm run test:board`, `npm run audit`.
+- **`docs/slicer.html` is generated and gitignored** — regenerate it, never hand-edit or hand-merge it.
 
-`docs/slicer.html` is generated — never hand-edit it, and on a conflict regenerate rather than merge.
+Merging `main` republishes the board and the web app to GitHub Pages.
 
 ## Commands
 
@@ -40,11 +42,13 @@ The short version:
 | --- | --- |
 | `npm test` | Vitest, the seam tests. Gate for merge. |
 | `npm run typecheck` | `tsc --noEmit`. Gate for merge. |
+| `npm run test:board` | Tests the board generator's parsers and hunk attribution. Gate for merge. |
+| `npm run audit` | Audits `docs/state/` against the code and git — dangling ids, moved paths, missing captures, stale flow clips. Findings fail; notes do not. Gate for merge. |
 | `npm start` | Expo dev server (phone via Expo Go). |
 | `npm run web` | Runs the whole app in a browser — the target headless runs and captures use. |
 | `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. |
-| `python3 docs/scripts/generate-slicer-board.py` | Regenerates `docs/slicer.html` from `docs/state/`. |
-| `python3 docs/scripts/serve-slicer-board.py` | Serves the board at http://127.0.0.1:8777/slicer.html, where a path chip opens the file in the editor instead of on GitHub. |
+| `npm run board` | Regenerates `docs/slicer.html` from `docs/state/`. |
+| `npm run board:serve` | Regenerates, then serves the board at http://127.0.0.1:8777/slicer.html, where a path chip opens the file in the editor instead of on GitHub. |
 | `npx expo export -p web` | The static build CI publishes to `/app` on Pages. |
 
 ## Setup
