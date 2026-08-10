@@ -2,6 +2,8 @@
 
 One self-contained HTML file, rendered from `docs/state/` by `docs/scripts/generate-slicer-board.py`. It answers two questions fast: **how the app works now**, and **what the slice in flight is changing**.
 
+The generator is four files: `generate-slicer-board.py` renders, `state_files.py` parses the state files, `sourcemap.py` locates symbols and attributes diff hunks, `callgraph.py` derives what calls what. The three beside the renderer are the parts with a right answer, and they are tested — `board_test.py`, `callgraph_test.py`, both under `npm run test:board`.
+
 The generator already implements the design. **The reasoning behind it lives in [`docs/board-design.md`](../../../../docs/board-design.md)** — read that only when changing how the board looks, not to use it. What follows is the part an agent can violate.
 
 ## Contract
@@ -11,8 +13,8 @@ The generator already implements the design. **The reasoning behind it lives in 
 - **Serve it, never `file://`** — `npm run board:serve` → `http://127.0.0.1:8777/slicer.html`. The helper is what makes a path chip open the file in the *running* editor (`cursor -r -g`), including inside the IDE's own browser.
 - **Nothing leaves the machine.** Inline CSS and one inline script for search/filter. No CDN, no external fonts, no fetches. Captures are the one exception and ride as **relative sibling paths** (`state/shots/…`), never data URIs — inlining them would add hundreds of KB per slice to a file that is regenerated constantly.
 - **Ids are plumbing.** `L-` / `F-` / `D-` ids live in the state files, in anchors, tooltips and `data-search`. A reader never sees one; every reference renders as its human label.
-- **The Symbols call graph is derived from source at generation time, never authored in `LOGIC.md`.** A `uses` column is stale within a slice. Tests for the walk are in `docs/scripts/callgraph_test.py` (D-037).
-- **Changes are attributed by hunk, not by file** — a file-level delta reports every symbol that merely shares a file with the edit. Tests for that logic are in `docs/scripts/board_test.py`; keep them passing.
+- **The Symbols call graph is derived from source at generation time, never authored in `LOGIC.md`.** A `uses` column is stale within a slice. It lives in `callgraph.py` and is tested (D-037).
+- **Changes are attributed by hunk, not by file** — a file-level delta reports every symbol that merely shares a file with the edit. It lives in `sourcemap.py` and is tested; keep it that way.
 - **Light and dark**, square edges, full-width rows, one spacing scale. Same structure in every project so the board stays recognizable.
 
 ## Pages

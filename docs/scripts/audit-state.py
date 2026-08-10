@@ -208,6 +208,102 @@ for f in flows:
     if flow_t and clip_t and flow_t > clip_t:
         report("stale-clip", f'{f["id"]}: FLOWS.md changed after {clip.name} was last recorded')
 
+# 12. the driver and the map name the same flows
+#
+# capture-flows.mjs keeps its own list of flow ids — it has to, it drives them —
+# so a flow renamed in FLOWS.md leaves a driver entry and a clip named after an
+# id nothing else knows.
+driver = ROOT / "docs/scripts/capture-flows.mjs"
+driver_ids = set(re.findall(r"id: '(F-[\w-]+)'", driver.read_text())) | unrecorded
+for fid in sorted(driver_ids - flow_ids):
+    report("driver-drift", f"capture-flows.mjs drives {fid}, which FLOWS.md does not define")
+for clip in sorted((STATE / "shots" / "flows").glob("*.webm")):
+    if clip.stem not in flow_ids:
+        report("orphan-clip", f"{clip.name} names {clip.stem}, which FLOWS.md does not define")
+
+# 13. every archive's claimed tag exists, and lands on main
+for arch in archives:
+    text = arch.read_text()
+    m = re.search(r"\*\*Tag\*\*\s*—\s*`([^`]+)`", text)
+    if not m:
+        continue
+    tag = m.group(1)
+    if not re.match(r"^slice-\d{4}$", tag):
+        continue  # 0001–0004 recorded a subject line instead
+    exists = subprocess.run(
+        ["git", "rev-parse", "-q", "--verify", f"refs/tags/{tag}"],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    ).returncode == 0
+    if not exists:
+        report("missing-tag", f"{arch.name} claims tag {tag}, which does not exist")
+
+# 14. one slice, one commit on main
+#
+# Squash-only enforces one commit per *pull request*, not per slice: a slice
+# merged as three PRs is three commits, and `git revert <slice>` stops meaning
+# anything. Nothing can fix that after the fact, so this is a note — but a
+# loud one, because the rule reads as if the repo enforced it.
+subjects = subprocess.run(
+    ["git", "log", "main", "--format=%s"],
+    cwd=ROOT, capture_output=True, text=True, check=False,
+).stdout.splitlines()
+counts = {}
+for line in subjects:
+    m = re.match(r"slice\((\d{4})\)", line.strip())
+    if m:
+        counts[m.group(1)] = counts.get(m.group(1), 0) + 1
+for num, n in sorted(counts.items()):
+    if n > 1:
+        note("split-slice", f"slice {num} is {n} commits on main, not one")
+
+# 15. OVERVIEW.md is the current-state doc, so its claims have to hold
+ov_text = (STATE / "OVERVIEW.md").read_text()
+for link in re.findall(r"\]\((slices/[\w.-]+\.md)\)", ov_text):
+    if not (STATE / link).exists():
+        report("dead-link", f"OVERVIEW.md links {link}, which is not in docs/state/slices/")
+seams_block = re.search(r"\n## Seams\n(.*?)(?=\n## |\Z)", ov_text, re.S)
+for ln in (seams_block.group(1).splitlines() if seams_block else []):
+    for path in re.findall(r"`((?:src|app|docs|supabase)/[\w./\[\]-]+)`", ln):
+        if not (ROOT / path).exists():
+            report("missing-path", f"OVERVIEW.md names seam file {path} — not on disk")
+routes_block = re.search(r"\n## Routes / surfaces\n(.*?)(?=\n## |\Z)", ov_text, re.S)
+listed = set(re.findall(r"^\| `([^`]+)`", routes_block.group(1) if routes_block else "", re.M))
+on_disk = set()
+for f in sorted((ROOT / "app").rglob("*.tsx")):
+    rel = f.relative_to(ROOT / "app").with_suffix("")
+    if rel.name.startswith(("_", "+")):
+        continue
+    route = "/" + str(rel).removesuffix("/index").removesuffix("index")
+    on_disk.add(route.rstrip("/") or "/")
+for route in sorted(on_disk - listed):
+    note("route-drift", f"{route} is a route in app/ that OVERVIEW.md does not list")
+
+# 16. an archive records that the review and the demo happened
+#
+# The Report block is the only trace of either. An empty Edge paths block says
+# the self-review did not happen, which is information; a missing one says
+# nobody wrote the section at all. 0001–0004 predate the template.
+for arch in archives:
+    num = re.match(r"(\d{4})", arch.name).group(1)
+    if num < "0005":
+        continue
+    text = arch.read_text()
+    for needed in ["### Headline", "### Edge paths", "### Shots"]:
+        if needed not in text:
+            report("thin-archive", f"{arch.name} has no {needed} block")
+    if num >= "0010" and "### Review" not in text:
+        report("thin-archive", f"{arch.name} has no ### Review block — /code-review left no trace")
+
+# 17. Delivered parking that has outstayed its welcome
+newest_num = max((re.match(r"(\d{4})", a.name).group(1) for a in archives), default="0000")
+delivered = re.search(r"\n## Delivered\n(.*?)(?=\n## |\Z)", (STATE / "PARKING.md").read_text(), re.S)
+for ln in (delivered.group(1).splitlines() if delivered else []):
+    m = re.search(r"slice (\d{4})", ln)
+    if m and int(newest_num) - int(m.group(1)) > 2:
+        label = re.search(r"\*\*(.+?)\*\*", ln)
+        note("stale-delivered", f'"{label.group(1) if label else ln.strip()[:40]}" was delivered in slice {m.group(1)} — prune it')
+
+
 def dump(items, heading):
     if not items:
         return

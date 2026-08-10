@@ -1,9 +1,8 @@
 name: ci
 
-# The gates a slice has to pass before it can merge: the test suite, the type
-# checker, the board generator's own tests, and the state audit — the board and
-# the map are how this repo is steered, so a broken one is a broken build.
-# Capture runs (npm run capture) are deliberately not here — they drive the
+# The gates a slice has to pass before it can merge, as `npm run check` — the
+# board and the map are how this repo is steered, so a broken one is a broken
+# build. Capture runs (npm run capture) are deliberately not here — they drive the
 # real deployed Edge Functions and would make CI depend on a live Supabase
 # project.
 on:
@@ -28,21 +27,15 @@ jobs:
 
       - run: npm ci
 
-      - name: Tests
-        run: npm test
-
-      - name: Typecheck
-        run: npm run typecheck
-
+      # One step, because the list of gates lives in package.json and nowhere
+      # else: tests, typecheck, board tooling tests, state audit. A second copy
+      # of that list here is a copy that drifts.
+      #
       # The board generator is Python, so its seams cannot be reached from
       # Vitest. The call graph behind the Symbols tree is derived from source
       # rather than authored, and so is the map's own delta attribution, which
-      # makes them the parts of the board that can be silently wrong — so they
-      # are gated here rather than trusted (D-037).
-      - name: Board tooling tests
-        run: npm run test:board
-
-      # The state files are how this repo is steered; the audit reads them
-      # against the code and against git. Findings fail, notes do not.
-      - name: State audit
-        run: npm run audit
+      # makes them the parts of the board that can be silently wrong (D-037).
+      # The audit reads docs/state/ against the code and against git; findings
+      # fail, notes do not.
+      - name: Gates
+        run: npm run check
