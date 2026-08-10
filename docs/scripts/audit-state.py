@@ -198,13 +198,22 @@ def flow_block_touched(fid):
 unrecorded = set(
     re.findall(r"'(F-[\w-]+)':", (ROOT / "docs/scripts/capture-flows.mjs").read_text())
 )
+uncommitted = {
+    ln[3:].strip()
+    for ln in subprocess.run(
+        ["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True, check=False
+    ).stdout.splitlines()
+}
 for f in flows:
     clip = STATE / "shots" / "flows" / f'{f["id"]}.webm'
     if not clip.exists():
         if f["id"] not in unrecorded:
             report("missing-clip", f'{f["id"]} has no clip and capture-flows.mjs does not say why')
         continue
-    flow_t, clip_t = flow_block_touched(f["id"]), last_commit(str(clip.relative_to(ROOT)))
+    rel_clip = str(clip.relative_to(ROOT))
+    if rel_clip in uncommitted:
+        continue  # just re-recorded, not yet committed — fresher than any commit
+    flow_t, clip_t = flow_block_touched(f["id"]), last_commit(rel_clip)
     if flow_t and clip_t and flow_t > clip_t:
         report("stale-clip", f'{f["id"]}: FLOWS.md changed after {clip.name} was last recorded')
 

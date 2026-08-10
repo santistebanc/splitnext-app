@@ -17,13 +17,21 @@ tree via `cursor -r -d`. The CLI cannot select a line *range* inside one file,
 but `--diff` is the highlighted view of what actually moved. Ordinary path
 chips still use `-g <file>:<line>`.
 
-    python3 docs/scripts/serve-slicer-board.py [port]   # default 8777
+    npm run board:serve                 # 127.0.0.1:8777
+    npm run board:serve -- 8999         # another port
+    npm run board:serve -- 8777 --lan   # reachable from the LAN
+
+`/open` launches an editor, so it is guarded two ways: the server binds to
+localhost unless `--lan` is passed, and every request must carry the one-run
+token this process injects into the page it serves. Without both, anything
+that can reach the port can open files in your editor.
 """
 
 from __future__ import annotations
 
 import hashlib
 import os
+import secrets
 import shutil
 import subprocess
 import sys
@@ -36,6 +44,9 @@ DOCS = ROOT / "docs"
 EDITOR = shutil.which("cursor") or shutil.which("code")
 # HEAD snapshots for --diff; overwritten per path, never deleted while open.
 DIFF_CACHE = Path("/tmp/slicer-board-diff")
+# New every run: a token that outlives the process would end up in a committed
+# board or a stale tab, which is the thing it exists to prevent.
+TOKEN = secrets.token_urlsafe(16)
 
 
 def git_show_head(rel: str) -> bytes | None:
@@ -75,9 +86,15 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):  # noqa: N802 - stdlib naming
         url = urlparse(self.path)
         if url.path != "/open":
+            if url.path in ("/", "/slicer.html", "/index.html"):
+                return self.serve_board()
             return super().do_GET()
 
         query = parse_qs(url.query)
+        # The token is what separates "the board this process served" from any
+        # other page that found the port.
+        if not secrets.compare_digest((query.get("token") or [""])[0], TOKEN):
+            return self.reply(403, "bad or missing token")
         rel = (query.get("path") or [""])[0]
         line_s = (query.get("line") or [""])[0]
         mode = (query.get("mode") or [""])[0]
@@ -110,6 +127,21 @@ class Handler(SimpleHTTPRequestHandler):
             return self.reply(500, str(err))
         return self.reply(204, "")
 
+    def serve_board(self) -> None:
+        """The board, with this run's token in its head so /open will answer it."""
+        page = DOCS / "slicer.html"
+        if not page.is_file():
+            return self.reply(404, "no slicer.html — run npm run board")
+        html = page.read_text(encoding="utf-8")
+        tag = f'<meta name="slicer-token" content="{TOKEN}">'
+        html = html.replace("</head>", f"{tag}</head>", 1)
+        payload = html.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
     def reply(self, code: int, body: str) -> None:
         payload = body.encode()
         self.send_response(code)
@@ -138,11 +170,17 @@ def generate() -> None:
 
 
 def main() -> None:
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8777
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    lan = "--lan" in sys.argv
+    port = int(args[0]) if args else 8777
     generate()
-    # 0.0.0.0 so a Windows-side browser can reach the WSL port.
-    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
+    # Localhost by default: /open runs an editor, and WSL forwards localhost to
+    # the Windows side anyway. --lan binds wide for the cases it does not.
+    host = "0.0.0.0" if lan else "127.0.0.1"  # noqa: S104 - opt-in
+    server = ThreadingHTTPServer((host, port), Handler)
     print(f"Slicer board → http://127.0.0.1:{port}/slicer.html", flush=True)
+    if lan:
+        print("Bound to 0.0.0.0 — anything on this network can reach it.", flush=True)
     print(f"Opening files with: {EDITOR or 'nothing found — install the CLI'}", flush=True)
     try:
         server.serve_forever()

@@ -10,12 +10,12 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Outcome** — The group exists on the server, this device holds its access token, and the hub opens.
 
 1. `L-lobby` calls `L-createGroup`.
-2. `L-deviceUser` reads this install's id from Secure Store, creating it the first time.
+2. `L-deviceUser` reads this install's id through `L-secureStorage`, creating it the first time.
 3. `L-getGroupStore` opens a fresh store for the new group and `L-initLocalGroup` writes version 1 into it — the group is usable offline from this moment.
 4. `L-edgeCreate` posts the new group to `L-efCreate`, which registers it and returns an access token.
    - sends `{ group_id, device_user_id, name, currency_label, updated_at }`
    - returns `{ access_token, group }`
-5. `L-accessToken` stores that token in Secure Store and `L-lobbyIds` adds the group to this device's lobby list.
+5. `L-accessToken` writes that token through `L-secureStorage` and `L-lobbyIds` adds the group to this device's lobby list.
 6. `L-wakeSub` subscribes to the group's channel so other devices' changes arrive, asking `L-edgeRtJwt` / `L-efRtJwt` for permission first. If Realtime is unavailable the group still works — only live updates are lost.
 
 ## F-open — Open group
@@ -23,7 +23,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — The person taps a group in the lobby, or the hub screen mounts.  
 **Outcome** — The screen shows the latest group and roster, anything pending has been pushed, and live updates are running.
 
-0. `L-getGroupStore` opens the group's store, loading whatever was saved on this device and running `L-normalizeTimestamps` over it, so a reopened group is the same shape as a freshly synced one before anything reads it.
+0. `L-getGroupStore` opens the group's store, loading whatever `L-persistPlugin` saved on this device and running `L-normalizeTimestamps` over it, so a reopened group is the same shape as a freshly synced one before anything reads it.
 1. `L-hub` calls `L-openGroup` for that group.
 2. `L-wakeSub` subscribes for live updates, as in Create group step 6. A failure here is swallowed: browsing must still work.
 3. `L-syncGroup` runs a full round trip — see Sync one group.
