@@ -258,10 +258,12 @@ class RenderedBoard(unittest.TestCase):
     def markup(page: str) -> str:
         page = re.sub(r"<style>.*?</style>", "<style/>", page, flags=re.S)
         page = re.sub(r"<script[^>]*>.*?</script>", "<script/>", page, flags=re.S)
-        # Editor links carry this checkout's absolute path and this machine's
-        # WSL distro; neither says anything about the render.
+        # Editor links are per-machine: absolute checkout path, and a
+        # cursor://vscode-remote/wsl+<distro> form under WSL that becomes
+        # cursor://file anywhere else. None of it says anything about the
+        # render, and pinning it would make the golden machine-specific.
         page = page.replace(str(ROOT), "<repo>")
-        return re.sub(r"wsl\+[\w.-]+", "wsl+<distro>", page)
+        return re.sub(r"cursor://[^\"&]*", "cursor://&lt;editor&gt;", page)
 
     def render_fixture(self) -> str:
         real = (board.ROOT, board.STATE, sourcemap.ROOT, board.git_state)
