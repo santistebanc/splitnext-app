@@ -42,7 +42,8 @@ const flagValue = (name) => {
   const i = argv.indexOf(name);
   return i === -1 ? null : argv[i + 1];
 };
-const BASE = flagValue('--url') ?? 'http://127.0.0.1:8099';
+// `npm run web` serves on 8081; override with --url when it is elsewhere.
+const BASE = flagValue('--url') ?? 'http://127.0.0.1:8081';
 const SLICE = flagValue('--slice');
 const only = argv.filter((a) => a.startsWith('F-'));
 

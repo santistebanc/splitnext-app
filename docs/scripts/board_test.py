@@ -12,6 +12,8 @@ which piece a hunk belongs to.
 from __future__ import annotations
 
 import importlib.util
+import os
+import re
 import sys
 import tempfile
 import unittest
@@ -235,6 +237,74 @@ class ReviewBlock(unittest.TestCase):
     def test_an_archive_with_no_review_block_reads_as_empty(self):
         rep = g.parse_report("# Slice 0009 — x\n\n## Report\n\n### Headline\nA thing.\n")
         self.assertEqual(rep["review"], [])
+
+
+class RenderedBoard(unittest.TestCase):
+    """The renderer, against a fixture repo, compared to a committed golden file.
+
+    Everything else here tests a function with a right answer. This one tests
+    the 2000-line pass that turns those answers into a page: that every section
+    still renders, that ids stay out of the copy, that a slice in flight and a
+    closed archive both come out. The golden holds the markup only — the inline
+    CSS and script are stripped, or a colour tweak would rewrite the fixture.
+
+        UPDATE_GOLDEN=1 npm run test:board     # after an intended change
+    """
+
+    FIXTURE = ROOT / "docs/scripts/fixtures"
+    GOLDEN = ROOT / "docs/scripts/fixtures/board.golden.html"
+
+    @staticmethod
+    def markup(page: str) -> str:
+        page = re.sub(r"<style>.*?</style>", "<style/>", page, flags=re.S)
+        page = re.sub(r"<script[^>]*>.*?</script>", "<script/>", page, flags=re.S)
+        # Editor links are per-machine: absolute checkout path, and a
+        # cursor://vscode-remote/wsl+<distro> form under WSL that becomes
+        # cursor://file anywhere else. None of it says anything about the
+        # render, and pinning it would make the golden machine-specific.
+        page = page.replace(str(ROOT), "<repo>")
+        return re.sub(r"cursor://[^\"&]*", "cursor://&lt;editor&gt;", page)
+
+    def render_fixture(self) -> str:
+        real = (board.ROOT, board.STATE, sourcemap.ROOT, board.git_state)
+        board.ROOT = self.FIXTURE
+        board.STATE = self.FIXTURE / "state"
+        sourcemap.ROOT = self.FIXTURE
+        # The fixture sits inside this repo, so a real `git status` would make
+        # the golden depend on whatever is uncommitted right now. The
+        # in-flight page renders from NEXT.md alone here, which is the
+        # not-a-repo path the board already has to handle.
+        board.git_state = lambda: None
+        try:
+            return self.markup(board.render())
+        finally:
+            board.ROOT, board.STATE, sourcemap.ROOT, board.git_state = real
+
+    def test_it_matches_the_golden_file(self):
+        out = self.render_fixture()
+        if os.environ.get("UPDATE_GOLDEN"):
+            self.GOLDEN.write_text(out, encoding="utf-8")
+        expected = self.GOLDEN.read_text(encoding="utf-8")
+        self.assertEqual(
+            out,
+            expected,
+            "the rendered board changed — if that was the point, "
+            "re-run with UPDATE_GOLDEN=1 and read the diff",
+        )
+
+    def test_every_page_and_both_slices_render(self):
+        out = self.render_fixture()
+        for page in ["overview", "symbols", "flows", "newest", "steering"]:
+            self.assertIn(f'id="{page}"', out)
+        self.assertIn("second fixture slice", out)  # the slice in flight
+        self.assertIn("The list exists.", out)  # the closed archive's headline
+
+    def test_ids_never_reach_the_copy(self):
+        out = self.render_fixture()
+        # ids live in anchors, tooltips and data-search — never as visible text
+        visible = re.sub(r"<[^>]+>", " ", out)
+        for ident in ["L-add", "L-screen", "F-add", "D-001"]:
+            self.assertNotIn(ident, visible, f"{ident} is visible copy, not plumbing")
 
 
 class AuditRuns(unittest.TestCase):

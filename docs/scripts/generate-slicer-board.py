@@ -2150,6 +2150,9 @@ document.addEventListener('click',e=>{
     line:a.dataset.line||'',
     end:a.dataset.end||'',
     mode:a.dataset.mode||'',
+    // the local server injects this per run; /open refuses without it, so a
+    // board someone else loaded over the network cannot drive this editor
+    token:document.querySelector('meta[name=slicer-token]')?.content||'',
   });
   // if the helper is not there (plain static server), fall back to the scheme
   // No helper (a plain static server on localhost)? Try the cursor:// scheme,

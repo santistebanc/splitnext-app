@@ -21,7 +21,7 @@ The short version:
 1. Pick the next slice risk-first (foundation-risk > core value > breadth > polish) from `docs/state/PARKING.md`, proposing candidates rather than choosing silently.
 2. Interview only about that slice. Everything further out goes to `PARKING.md` verbatim — recorded, not resolved.
 3. Write `docs/state/NEXT.md` (Now → After, plan, acceptance, seams under test, out of scope) and get a yes before building.
-4. Build to the quality bar: seams first, tests on the seams (`.claude/skills/tdd/SKILL.md`), small interfaces over fat orchestrators, self-review written into `NEXT.md` under `## Edge paths`.
+4. Build to the quality bar (reviewed at close by this repo's own `/code-review`, in `.claude/skills/code-review/`): seams first, tests on the seams (`.claude/skills/tdd/SKILL.md`), small interfaces over fat orchestrators, self-review written into `NEXT.md` under `## Edge paths`.
 5. Demo it, capture it (`npm run capture`), then close: review, update `OVERVIEW.md` / `LOGIC.md` / `FLOWS.md`, archive to `docs/state/slices/NNNN-name.md`, append `D-NNN` decisions, groom parking, regenerate the board.
 
 **Minimize scope, not quality.** Slices stay thin so the app can be steered; inside a slice, correctness and design matter more than speed.
@@ -48,9 +48,10 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 | `npm run audit` | Audits `docs/state/` against the code and git: dangling ids, moved paths, missing captures, stale flow clips, missing tags, thin archives. Findings fail; notes do not. |
 | `npm start` | Expo dev server (phone via Expo Go). |
 | `npm run web` | Runs the whole app in a browser — the target headless runs and captures use. |
-| `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. |
+| `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. Add flow ids to record only those. |
+| `npm run capture:board` | Still-shoots the board itself for a slice that changed it. Needs `npm run board:serve` already serving. |
 | `npm run board` | Regenerates `docs/slicer.html` from `docs/state/`. |
-| `npm run board:serve` | Regenerates, then serves the board at http://127.0.0.1:8777/slicer.html, where a path chip opens the file in the editor instead of on GitHub. |
+| `npm run board:serve` | Regenerates, then serves the board at http://127.0.0.1:8777/slicer.html, where a path chip opens the file in the editor instead of on GitHub. Localhost-only and token-gated; `-- --lan` binds wider. |
 | `npx expo export -p web` | The static build CI publishes to `/app` on Pages. |
 
 ## Setup

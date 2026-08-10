@@ -6,14 +6,16 @@
  * prose otherwise — a table has never caught a layout that broke.
  *
  * Usage:
- *   node docs/scripts/capture-board.mjs --slice 0009
- *   node docs/scripts/capture-board.mjs --slice 0009 --url http://127.0.0.1:8777
+ *   npm run capture:board                     (the slice NEXT.md names)
+ *   npm run capture:board -- --slice 0009
+ *   npm run capture:board -- --slice 0009 --url http://127.0.0.1:8777
  *
  * Needs the board already serving:
- *   python3 docs/scripts/serve-slicer-board.py
+ *   npm run board:serve
  */
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,10 +27,19 @@ const flag = (name, fallback) => {
   const i = argv.indexOf(`--${name}`);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : fallback;
 };
-const slice = flag('slice', '');
+// The slice being built, so `npm run capture:board` needs no argument. NEXT.md
+// names it while it is open; pass --slice to shoot for any other number.
+const sliceFromNext = () => {
+  const next = readFileSync(join(ROOT, 'docs', 'state', 'NEXT.md'), 'utf8');
+  const m = next.match(/^#\s*Slice\s*(\d{4})/m);
+  return m ? m[1] : '';
+};
+const slice = flag('slice', '') || sliceFromNext();
 const base = flag('url', 'http://127.0.0.1:8777');
 if (!slice) {
-  console.error('need --slice NNNN — the stills are named for it');
+  console.error(
+    'no slice: NEXT.md names none, so pass --slice NNNN — the stills are named for it',
+  );
   process.exit(1);
 }
 
