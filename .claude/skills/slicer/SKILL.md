@@ -89,7 +89,7 @@ Implement the slice to the quality bar above.
 3. **Shape the modules.** Put new behaviour behind a small interface; do not pile orchestration into an existing fat file when a deeper module would clarify the design.
 4. Typecheck and run the relevant tests as you go; full suite before demo.
 5. **Self-review before demo, and write down what you found.** Races, sticky errors, empty-queue / offline paths, failed deploys, hydration gaps. Fix what you find; do not leave "the user will notice" as the QA plan. Keep the running list in `NEXT.md` under **`## Edge paths`** — surface, non-happy state, what happens in it — so the board shows the review while the slice is still open; it moves into the archive's `### Edge paths` at close. An unwritten review is indistinguishable from no review, and this is the one part of the process nothing else records.
-6. **Keep the board current while building.** Whenever behaviour lands (new/changed modules, routes, or Edge paths), update `LOGIC.md` / `FLOWS.md` to match **today’s code**, regenerate the board (`npm run board`), and **open it** for the user (see Board open below). Do not wait until close to refresh the map.
+6. **Keep the map current while building.** Whenever behaviour lands (new/changed modules, routes, or Edge paths), update `LOGIC.md` / `FLOWS.md` to match **today’s code**, then run **`npm run delta`** — it reports which mapped pieces the working tree actually moved, which flows run through them, and what `NEXT.md` says each change is for. A piece it cannot explain is either a gap in the plan or a row `LOGIC.md` owes. Regenerate the board (`npm run board`) and **open it** for the user when the *map* changed; the board describes the system, not the slice in flight (D-051).
 
 Do not build anything in `NEXT.md`'s out-of-scope list, however tempting or however small.
 
@@ -149,7 +149,9 @@ After every regenerate of `docs/slicer.html` during a `/slicer` session:
 
 1. Open the board for the user in the IDE browser, served by `npm run board:serve` → `http://127.0.0.1:8777/slicer.html` (side panel when they want it visible). That command regenerates before it serves. Serve it, never `file://`: the helper is what makes a path chip open the file in the **running** editor window (`cursor -r -g`), including inside the IDE's own browser.
 2. Tell them briefly what refreshed (e.g. “Board updated — logic map + flows; newest closed slice still 0003”).
-3. Do this at: end of a build chunk that changed behaviour, demo gate, and slice close. Skipping the open is a process bug.
+3. Do this at: end of a build chunk that changed the map, demo gate, and slice close. Skipping the open is a process bug.
+
+The slice in flight is **not** on the board. `npm run delta` is the live view while you build, and CI posts the same report on the PR — measured from the merge base, so it says what the branch did rather than what is dirty right now.
 
 The **published** board is https://santistebanc.github.io/splitnext-app/ — regenerated from `docs/state/` by CI on every merge to `main`, so it always shows closed slices, never work in progress. During a session use the local server: it is the only copy that shows the slice being built, and the only one whose path chips open files in the editor.
 

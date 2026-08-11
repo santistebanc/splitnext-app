@@ -81,6 +81,74 @@ def symbol_change_ranges(
     return [(s, e) for s, e in file_hunks if s <= end_of and e >= mine]
 
 
+def _run(*args: str) -> str:
+    """Raw stdout, never stripped: porcelain's status codes are column-positioned."""
+    try:
+        out = subprocess.run(
+            ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=30
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout if out.returncode == 0 else ""
+
+
+def parse_hunks(diff: str) -> dict[str, list[tuple[int, int]]]:
+    """`git diff -U0` output → the new-side line ranges it touched, per file."""
+    hunks: dict[str, list[tuple[int, int]]] = {}
+    current: str | None = None
+    for line in diff.splitlines():
+        if line.startswith("+++ b/"):
+            current = line[6:].strip()
+            hunks.setdefault(current, [])
+        elif line.startswith("@@") and current:
+            m = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))?", line)
+            if not m:
+                continue
+            start = int(m.group(1))
+            count = int(m.group(2)) if m.group(2) is not None else 1
+            # A pure deletion reports zero new lines; it still happened *at*
+            # that point, so give it the line it collapsed to.
+            hunks[current].append((start, start + max(count, 1) - 1))
+    return hunks
+
+
+def range_state(base: str, head: str = "HEAD") -> dict | None:
+    """What `base...head` changed — the committed twin of `git_state`.
+
+    Three dots: the comparison is against the merge base, so a slice branch is
+    measured by what it did, not by what `main` did underneath it.
+    """
+    merge_base = _run("merge-base", base, head).strip()
+    if not merge_base:
+        return None
+    spec = f"{merge_base}..{head}"
+
+    changes = []
+    for line in _run("diff", "--name-status", spec).splitlines():
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        code, path = parts[0].strip(), parts[-1].strip()
+        state = "new" if code.startswith("A") else "gone" if code.startswith("D") else "changed"
+        changes.append({"code": code, "path": path, "state": state})
+
+    churn = {}
+    for line in _run("diff", "--numstat", spec).splitlines():
+        parts = line.split("\t")
+        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+            churn[parts[2]] = (int(parts[0]), int(parts[1]))
+
+    return {
+        "churn": churn,
+        "hunks": parse_hunks(_run("diff", "-U0", spec)),
+        "branch": _run("rev-parse", "--abbrev-ref", head).strip(),
+        "last_commit": _run("log", "-1", "--pretty=%h %s", head).strip(),
+        "changes": sorted(changes, key=lambda c: (c["state"] != "new", c["path"])),
+        "stat": _run("diff", "--shortstat", spec).strip(),
+        "base": merge_base[:9],
+    }
+
+
 def git_state() -> dict | None:
     """Working-tree truth: what is uncommitted right now. None when not a repo."""
     def raw(*args: str) -> str:
@@ -120,21 +188,7 @@ def git_state() -> dict | None:
     # only say "something in this file moved", so every symbol sharing a file
     # with the real edit gets reported as touched — nine wrong rows for six
     # right ones, on a page whose whole job is saying what this slice changed.
-    hunks: dict[str, list[tuple[int, int]]] = {}
-    current: str | None = None
-    for line in raw("diff", "-U0", "HEAD").splitlines():
-        if line.startswith("+++ b/"):
-            current = line[6:].strip()
-            hunks.setdefault(current, [])
-        elif line.startswith("@@") and current:
-            m = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))?", line)
-            if not m:
-                continue
-            start = int(m.group(1))
-            count = int(m.group(2)) if m.group(2) is not None else 1
-            # A pure deletion reports zero new lines; it still happened *at*
-            # that point, so give it the line it collapsed to.
-            hunks[current].append((start, start + max(count, 1) - 1))
+    hunks = parse_hunks(raw("diff", "-U0", "HEAD"))
 
     # Untracked files never appear in `diff HEAD`, so treat the whole file as
     # the change — otherwise the board can say *what* changed but not *where*.

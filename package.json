@@ -42,6 +42,7 @@
     "test:board": "python3 -m unittest discover -s docs/scripts -p '*_test.py' -t docs/scripts",
     "typecheck": "tsc --noEmit",
     "audit": "python3 docs/scripts/audit-state.py",
+    "delta": "python3 docs/scripts/delta.py",
     "board": "python3 docs/scripts/generate-slicer-board.py",
     "board:serve": "python3 docs/scripts/serve-slicer-board.py",
     "capture": "node docs/scripts/capture-flows.mjs",

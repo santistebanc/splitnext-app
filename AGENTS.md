@@ -50,6 +50,7 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 | `npm run web` | Runs the whole app in a browser — the target headless runs and captures use. |
 | `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. Add flow ids to record only those. |
 | `npm run capture:board` | Still-shoots the board itself for a slice that changed it. Needs `npm run board:serve` already serving. |
+| `npm run delta` | What the working tree changed, in map vocabulary — symbols touched, flows through them, what `NEXT.md` says each is for. `-- --range main` for the branch; CI posts that on every PR. |
 | `npm run board` | Regenerates `docs/slicer.html` from `docs/state/`. |
 | `npm run board:serve` | Regenerates, then serves the board at http://127.0.0.1:8777/slicer.html, where a path chip opens the file in the editor instead of on GitHub. Localhost-only and token-gated; `-- --lan` binds wider. |
 | `npx expo export -p web` | The static build CI publishes to `/app` on Pages. |

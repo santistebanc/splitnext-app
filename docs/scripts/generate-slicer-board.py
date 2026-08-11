@@ -26,12 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from callgraph import plan_tree, resolve  # noqa: E402
-from sourcemap import (  # noqa: E402
-    git_state,
-    symbol_change_ranges,
-    symbol_extent,
-    symbol_line,
-)
+from sourcemap import symbol_line  # noqa: E402
 from state_files import (  # noqa: E402
     parse_delta,
     parse_flows,
@@ -161,53 +156,6 @@ def source_ref(rel_path: str, name: str = "") -> str:
     )
 
 
-def _range_label(start: int, end: int) -> str:
-    return f"{start}" if start == end else f"{start}–{end}"
-
-
-def change_ref(
-    entry: dict, hunks_by_path: dict[str, list[tuple[int, int]]]
-) -> str:
-    """Chip linking to the lines this slice actually edited on this piece."""
-    where = entry["where"]
-    path = ROOT / where
-    if path.is_dir():
-        path = path / "index.ts"
-    if not path.exists():
-        return ""
-
-    ranges = symbol_change_ranges(entry, hunks_by_path)
-    short = where.rsplit("/", 1)[-1]
-    end: int | None = None
-    if ranges:
-        # Prefer the largest hunk as the jump — a one-line import change is
-        # real, but landing there hides the meat of the edit.
-        primary = max(ranges, key=lambda r: (r[1] - r[0], -r[0]))
-        line, end = primary
-        bits = [_range_label(s, e) for s, e in ranges]
-        primary_bit = _range_label(*primary)
-        if len(bits) == 1:
-            label = f"{short}:{primary_bit}"
-        elif len(bits) <= 3:
-            label = f"{short}:{', '.join(bits)}"
-        else:
-            label = f"{short}:{primary_bit} +{len(bits) - 1}"
-        tip = f"Diff changed lines ({', '.join(bits)})"
-    else:
-        # No line data left — land on the declaration so the link still works.
-        line = symbol_line(where, entry["name"])
-        label = f"{short}:{line}" if line else short
-        tip = "Diff against HEAD"
-
-    end_attr = f' data-end="{end}"' if end and line and end > line else ""
-    return (
-        f'<a class="ref src change-loc" href="{esc(repo_url(where, line, end))}" '
-        f'data-path="{esc(where)}" data-line="{line or ""}"{end_attr} '
-        f'data-editor="{esc(editor_uri(where, line))}" data-mode="diff" '
-        f'title="{esc(tip)}">{esc(label)}</a>'
-    )
-
-
 def kind_icon(kind: str, colour: str = "") -> str:
     body = KIND_ICON.get(kind, '<rect x="3" y="3" width="10" height="10"/>')
     style = f' style="--sc:{colour}"' if colour else ""
@@ -283,11 +231,6 @@ def chipify_logic_ids(text: str) -> str:
     return "".join(out)
 
 
-def strip_md(text: str) -> str:
-    """Quote a line of NEXT.md inline: keep its code spans, drop its bold marks."""
-    return re.sub(r"\*\*(.+?)\*\*", r"\1", chipify_logic_ids(text))
-
-
 def rich(text: str) -> str:
     """Escaped markdown-ish inline: code spans, refs, **bold**, [links](url)."""
     h = chipify_logic_ids(text)
@@ -331,16 +274,6 @@ def callers_badge(ref: str) -> str:
 
 def short_area(area: str) -> str:
     return area.split("/")[0].split("(")[0].strip()
-
-
-def step_layer(step: str) -> tuple[str, str]:
-    """(kind, colour) for the first symbol a step names — the same category, glyph
-    and colour the Symbols page browses by. Blank when the step names none."""
-    for ref in re.findall(r"\b(L-[\w]+)\b", step):
-        kind = (LOGIC_BY_ID.get(ref) or {}).get("kind")
-        if kind:
-            return kind, KIND_SLOT.get(kind, "var(--line-strong)")
-    return "", "var(--line-strong)"
 
 
 def step_area(step: str) -> str:
@@ -499,20 +432,6 @@ def flow_clip_html(flow_id: str) -> str:
         f'<figure class="fclip"><video src="state/shots/flows/{esc(flow_id)}.webm" '
         f'autoplay muted loop playsinline preload="metadata"></video></figure>'
     )
-
-
-def shots_on_disk(number: str) -> list[dict]:
-    """Shots for a slice in flight: they land at the demo gate, before any archive."""
-    if not number:
-        return []
-    folder = STATE / "shots"
-    if not folder.is_dir():
-        return []
-    return [
-        {"file": p.name, "caption": ""}
-        for p in sorted(folder.glob(f"{number}-*"))
-        if p.suffix.lower() in SHOT_SUFFIXES
-    ]
 
 
 def edge_paths_html(rows: list[dict]) -> str:
@@ -829,219 +748,6 @@ def render() -> str:
         for f in flows
     ]
 
-    # --- the slice being worked on right now ---
-    git = git_state()
-    archived_numbers = {
-        m.group(1)
-        for m in (re.match(r"(\d{4})", pth.name) for pth in (STATE / "slices").glob("*.md"))
-        if m
-    }
-    in_progress = bool(nxt["number"]) and nxt["number"] not in archived_numbers
-
-    # what the working tree has actually touched, mapped onto the map:
-    # a changed file lands on the symbols that live in it
-    changed_paths = {c["path"]: c["state"] for c in (git["changes"] if git else [])}
-
-    def path_state(where: str) -> str | None:
-        if where in changed_paths:
-            return changed_paths[where]
-        for path, state in changed_paths.items():
-            if path.endswith("/") and where.startswith(path):
-                return state
-            if where.startswith(path.rstrip("/") + "/"):
-                return state
-        return None
-
-    # A changed file is not a changed symbol. Map each diff hunk onto the
-    # symbol whose declaration it falls under, so a file holding ten pieces
-    # reports the one that actually moved.
-    #
-    # Ownership runs declaration-to-next-declaration: crude next to a real
-    # parser, but it fails in the safe direction — a hunk above the first
-    # declaration (imports, types) belongs to no symbol and is reported as
-    # nothing rather than blamed on the piece below it. Entries whose "name"
-    # is not a code symbol (a route file, a function directory) stand for the
-    # whole file, so any change in it is theirs.
-    hunks_by_path = (git or {}).get("hunks", {})
-
-    def hunk_touches(entry: dict) -> bool:
-        where = entry["where"]
-        file_hunks = hunks_by_path.get(where)
-        if not file_hunks:
-            # No line data (a new or untracked file, a directory entry): fall
-            # back to the file-level answer rather than dropping the row.
-            return True
-
-        mine = symbol_line(where, entry["name"])
-        if not mine:
-            return True
-
-        # Bounded by the next declaration in the *source*, not the next one
-        # the map happens to know about. A file usually holds more exports
-        # than LOGIC.md lists, and stretching a symbol's ownership down to
-        # the next mapped piece hands it every unmapped edit in between.
-        end_of = symbol_extent(where, mine)
-        return any(start <= end_of and end >= mine for start, end in file_hunks)
-
-    touched = [
-        (e, path_state(e["where"]))
-        for _, rws in logic_areas
-        for e in rws
-        if path_state(e["where"]) and hunk_touches(e)
-    ]
-    touched_ids = {e["id"] for e, _ in touched}
-
-    # The explanation of a change is authored, not counted: NEXT.md already
-    # says what each piece is becoming. Match the symbol against its
-    # Before → After row, plan step, seam, or edge-path row and quote that.
-    def why_touched(e: dict) -> str:
-        names = [n.strip() for n in e["name"].split("/")] + [
-            e["where"].rsplit("/", 1)[-1],
-            e["where"],
-        ]
-
-        def mentions(text: str) -> bool:
-            # an id is an exact join; prose matching is the fallback, and it
-            # is why NEXT.md should cite ids the way FLOWS.md does
-            if e["id"] in re.findall(r"\bL-[\w]+", text):
-                return True
-            low = text.lower()
-            return any(n and n.lower() in low for n in names)
-
-        for row in nxt["now_after"]:
-            if mentions(row["aspect"]) or mentions(row["after"]):
-                return (
-                    f"{strip_md(row['before'])} → <b>{strip_md(row['after'])}</b>"
-                )
-        for step in nxt["plan"]:
-            if mentions(step):
-                return strip_md(step)
-        for seam in nxt["seams"]:
-            if mentions(seam["seam"]):
-                return f"under test — {strip_md(seam['behavior'])}"
-        for edge in nxt["edge_paths"]:
-            if mentions(edge["surface"]) or mentions(edge["what"]):
-                return strip_md(edge["what"])
-        return ""
-
-    def touched_symbol_rows() -> str:
-        if not touched:
-            return '<p class="empty">No mapped file has been touched yet.</p>'
-        word = {"new": "New file", "changed": "Changed", "gone": "Deleted"}
-        tone = {"new": "ok", "changed": "warn", "gone": "open"}
-        churn = (git or {}).get("churn", {})
-
-        def churn_note(e: dict, st: str) -> str:
-            loc = change_ref(e, hunks_by_path)
-            loc_html = f" {loc}" if loc else ""
-            if st == "new":
-                text = why_touched(e) or "New file this slice"
-                return f'<p class="dnote fresh">{text}{loc_html}</p>'
-            text = why_touched(e)
-            if text:
-                return f'<p class="dnote change">{text}{loc_html}</p>'
-            # The row is here because a hunk landed on *this* piece, so the
-            # change is real — what is missing is the reason, and that is a
-            # gap in NEXT.md rather than a caveat about the mapping.
-            n = churn.get(e["where"])
-            hint = f"+{n[0]} −{n[1]} in its file" if n else "edited"
-            return (
-                f'<p class="dnote change">Changed ({esc(hint)}), but nothing in '
-                f"<code>NEXT.md</code> says why{loc_html}</p>"
-            )
-
-        rows = "".join(
-            f'<div class="row"><div class="rmain"><div class="rhead">'
-            f'{kind_icon(e["kind"])}'
-            f'<h4><a class="self" href="#{esc(e["id"])}">{esc(e["name"])}</a></h4>'
-            f'{source_ref(e["where"], e["name"])}'
-            f'<span class="pill {tone[st]}">{esc(word[st])}</span></div>'
-            f'<p class="one">{chipify_logic_ids(e["what"])}</p>'
-            f"{churn_note(e, st)}</div></div>"
-            for e, st in sorted(touched, key=lambda t: -len(USED_BY.get(t[0]["id"], ())))
-        )
-        return f'<div class="rows">{rows}</div>'
-
-    def touched_flow_cases() -> str:
-        # Same authored reasons the symbol rows use — never "moving X", which
-        # only named the piece without saying what changed about it.
-        by_id = {e["id"]: e for e, _ in touched}
-        out = []
-        for f in flows:
-            marks = {
-                n
-                for n, step in enumerate(f["steps"], 1)
-                if touched_ids & set(re.findall(r"\b(L-[\w]+)\b", step))
-            }
-            if not marks:
-                continue
-            step_notes = {}
-            for n, step in enumerate(f["steps"], 1):
-                refs = [
-                    ref
-                    for ref in dict.fromkeys(re.findall(r"\b(L-[\w]+)\b", step))
-                    if ref in touched_ids
-                ]
-                if not refs:
-                    continue
-                # Keep one note per reason, but attach every symbol's change
-                # link — two pieces can share a why and still need two jumps.
-                by_reason: dict[str, list[dict]] = {}
-                order: list[str] = []
-                for ref in refs:
-                    entry = by_id.get(ref)
-                    reason = why_touched(entry) if entry else ""
-                    if not reason:
-                        reason = (
-                            f"edited {esc(label_for(ref))}, but nothing in "
-                            f"<code>NEXT.md</code> says why"
-                        )
-                    if reason not in by_reason:
-                        by_reason[reason] = []
-                        order.append(reason)
-                    if entry:
-                        by_reason[reason].append(entry)
-                parts = []
-                for reason in order:
-                    locs = " ".join(
-                        change_ref(e, hunks_by_path) for e in by_reason[reason]
-                    )
-                    parts.append(f"{reason} {locs}".strip() if locs else reason)
-                step_notes[n] = " · ".join(parts)
-
-            out.append(
-                flow_case(
-                    f,
-                    node_id=f"w-{f['id']}",
-                    badge='<span class="pill warn">In flight</span>',
-                    marks=marks,
-                    mark_word="touched",
-                    step_notes=step_notes,
-                    title_href=f"#{f['id']}",
-                )
-            )
-        return "".join(out) or '<p class="empty">No flow runs through the changed files yet.</p>'
-
-    na_now = "".join(
-        f"<tr><th>{rich(r['aspect'])}</th><td class='before'>{rich(r['before'])}</td>"
-        f"<td class='after'>{rich(r['after'])}</td></tr>"
-        for r in nxt["now_after"]
-    )
-    plan_items = "".join(f"<li>{rich(x)}</li>" for x in nxt["plan"])
-    seam_rows = "".join(
-        f"<tr><td>{rich(x['seam'])}</td><td>{rich(x['behavior'])}</td></tr>"
-        for x in nxt["seams"]
-    )
-    accept_items = "".join(f"<li>{rich(x)}</li>" for x in nxt["acceptance"])
-    scope_chips = "".join(
-        f'<span class="chip chip-dec">{esc(x)}</span>' for x in nxt["out_of_scope"]
-    )
-
-    changed_count = len(git["changes"]) if git else 0
-    stat = git["stat"] if git else ""
-    branch = git["branch"] if git else ""
-    last_commit = git["last_commit"] if git else ""
-
     # --- newest ---
     if report:
         hl = "".join(f"<li>{chipify_logic_ids(h)}</li>" for h in report["highlights"])
@@ -1149,36 +855,14 @@ def render() -> str:
         newest_body = f"""
   <h4 class="closed-title">{esc(report['title'])}</h4>
   <p class="lede">{esc(report['headline'])}</p>
-  <p class="why">{esc(report['meta'])} · archive <code class="ref">{esc(arch_name)}</code></p>
+  <p class="why">{esc(report['meta'])} · archive <code class="ref">{esc(arch_name)}</code> · the plan, the review and the decisions are in it</p>
   {closed_shots}
 
-  <h3 id="n-highlights">Highlights</h3>
-  <ul class="bullets">{hl}</ul>
-
-  <h3 id="n-delta">Before → After</h3>
-  <div class="scroll"><table class="delta-table">
-    <thead><tr><th>Aspect</th><th>Before</th><th>After</th></tr></thead>
-    <tbody>{na_rows}</tbody>
-  </table></div>
-
-  <h3 id="n-symbols">Symbols that slice touched</h3>
+  <h3 id="n-symbols">Symbols it touched</h3>
   {logic_d}
 
-  <h3 id="n-flows">Flows that slice touched</h3>
-  {flow_d}
-
-  {closed_edge}
-
-  {closed_review}
-
-  <h3 id="n-surfaces">Surfaces touched</h3>
-  <div class="rows swrows">{surf}</div>
-
-  <h3 id="n-decisions">Decisions</h3>
-  <div>{dec}</div>
-
-  <h3 id="n-diff">Diff pulse</h3>
-  <p class="mono diff">{esc(report['pulse'])}</p>"""
+  <h3 id="n-flows">Flows it touched</h3>
+  {flow_d}"""
         closed_html = f'<section class="closed">{newest_body}</section>'
     else:
         closed_html = """
@@ -1186,83 +870,15 @@ def render() -> str:
   <p class="empty">No closed slices yet.</p>"""
         newest_search = ""
 
-    if in_progress:
-        # Shots for a slice in flight come off disk: they land at the demo gate,
-        # before there is an archive to caption them.
-        live_edge = edge_paths_html(nxt["edge_paths"])
-        live_edge = (
-            f'<h3 id="p-edge">Edge paths checked</h3>'
-            f'<p class="why">The self-review so far — each row is a non-happy state that '
-            f'was actually walked. Moves into the archive at close.</p>{live_edge}'
-            if live_edge
-            else ""
-        )
-        live_shots = shots_html(shots_on_disk(nxt["number"]))
-        live_shots = (
-            f'<h3 id="p-shots">What it looks like</h3>'
-            f'<p class="why">Captured at the demo gate — regenerate after a new capture.</p>'
-            f"{live_shots}"
-            if live_shots
-            else ""
-        )
-        newest_html = f"""
-<section class="page" id="newest" data-title="This slice" tabindex="-1"
-         data-search="{esc((nxt['title'] + ' ' + nxt['goal'] + ' ' + newest_search).lower())}">
-  <p class="kicker">In progress</p>
-  <h1>{esc(nxt['title'])}</h1>
-  <p class="lede">{rich(nxt['goal'])}</p>
-
-  <div class="statbar">
-    <div style="--sc:var(--s3)"><b>{changed_count}</b><span>Uncommitted files</span></div>
-    <div style="--sc:var(--s1)"><b>{esc(nxt['tier'])}</b><span>Tier</span></div>
-    <div style="--sc:var(--s2)"><b>{esc(branch or '—')}</b><span>Branch</span></div>
-    <div style="--sc:var(--s5)"><b>{len(nxt['acceptance'])}</b><span>Acceptance checks</span></div>
-  </div>
-
-  {live_shots}
-
-  <h3 id="p-touched">Symbols in the changed files</h3>
-  <p class="why">Mapped from the working tree — {esc(stat or 'no tracked edits yet')} since <code class="ref">{esc(last_commit)}</code>.</p>
-  {touched_symbol_rows()}
-
-  <h3 id="p-flows">Flows running through them</h3>
-  <p class="why">Steps naming a touched symbol are marked; each tag quotes what <code>NEXT.md</code> says that piece is becoming, and links the changed lines.</p>
-  {touched_flow_cases()}
-
-  <h3 id="p-delta">Before → After</h3>
-  <div class="scroll"><table class="delta-table">
-    <thead><tr><th>Aspect</th><th>Before</th><th>After</th></tr></thead>
-    <tbody>{na_now}</tbody>
-  </table></div>
-
-  <h3 id="p-plan">Plan</h3>
-  <ol class="bullets">{plan_items}</ol>
-
-  <h3 id="p-seams">Seams under test</h3>
-  <div class="scroll"><table>
-    <thead><tr><th>Seam</th><th>Behaviour</th></tr></thead>
-    <tbody>{seam_rows}</tbody>
-  </table></div>
-
-  <h3 id="p-accept">Acceptance</h3>
-  <ul class="bullets">{accept_items}</ul>
-
-  {live_edge}
-
-  <h3 id="p-scope">Out of scope</h3>
-  <div>{scope_chips}</div>
-
-  <h3 id="p-closed">Previously</h3>
-  <details class="closedwrap">
-    <summary>Last closed slice — {esc(report['title'] if report else 'none yet')}</summary>
-    {closed_html}
-  </details>
-</section>"""
-    else:
-        newest_html = (
-            f'<section class="page" id="newest" data-title="Newest slice" tabindex="-1"'
-            f' data-search="{esc(newest_search)}">{closed_html}</section>'
-        )
+    # One page, always the last closed slice. What the slice *in flight* is
+    # changing is not here any more: it was rendered from the author's
+    # uncommitted working tree, so nobody but the author could ever see it and
+    # the published board never could. That reading now runs on the PR, where
+    # review happens, from `npm run delta` (D-051).
+    newest_html = (
+        f'<section class="page" id="newest" data-title="Latest slice" tabindex="-1"'
+        f' data-search="{esc(newest_search)}">{closed_html}</section>'
+    )
 
     # Between slices NEXT.md carries no slice, and the board says so rather
     # than rendering an empty row that reads like a slice with no name.
@@ -2209,7 +1825,7 @@ apply();
       <a href="#overview" style="--nc:var(--s6)"><i>01</i>Overview<u></u></a>
       <a href="#symbols" style="--nc:var(--s1)"><i>02</i>Symbols<u id="n-logic">{logic_count}</u></a>
       <a href="#flows" style="--nc:var(--s5)"><i>03</i>Flows<u id="n-flow">{flow_count}</u></a>
-      <a href="#newest" style="--nc:var(--s3)"><i>04</i>{'This slice' if in_progress else 'Newest slice'}<u>{esc(nxt['number'] if in_progress else (arch_name.split('-')[0] if arch_name else '—'))}</u></a>
+      <a href="#newest" style="--nc:var(--s3)"><i>04</i>Latest slice<u>{esc(arch_name.split('-')[0] if arch_name else '—')}</u></a>
       <a href="#steering" style="--nc:var(--s2)"><i>05</i>Steering<u>{park_count}</u></a>
     </nav>
     <div class="side-tools">
