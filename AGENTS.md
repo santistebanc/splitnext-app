@@ -35,6 +35,8 @@ A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` o
 - **One slice opens one PR.** Squash-only enforces one commit per PR, not per slice; two PRs under one slice number is two commits on `main` and a slice you can no longer revert.
 - **`docs/slicer.html` is generated and gitignored** — regenerate it, never hand-edit or hand-merge it.
 
+Every PR gets one comment saying what it changed **on the map** — symbols touched, flows running through them, what `NEXT.md` says each is for — posted by CI and updated in place on each push (D-051). Read it before the file diff: it is the one view that says which *pieces* moved.
+
 Merging `main` republishes the board and the web app to GitHub Pages.
 
 ## Commands
