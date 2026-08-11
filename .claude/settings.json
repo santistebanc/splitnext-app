@@ -1,4 +1,11 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git check-ignore *)",
+      "Bash(git checkout *)",
+      "Bash(python3 docs/scripts/test_board.py)"
+    ]
+  },
   "enabledPlugins": {
     "expo@claude-plugins-official": true
   }

@@ -266,19 +266,17 @@ class RenderedBoard(unittest.TestCase):
         return re.sub(r"cursor://[^\"&]*", "cursor://&lt;editor&gt;", page)
 
     def render_fixture(self) -> str:
-        real = (board.ROOT, board.STATE, sourcemap.ROOT, board.git_state)
+        # No git stub needed: since the delta moved to the PR (D-051) the
+        # renderer reads the state files and nothing else, so the page cannot
+        # depend on what happens to be uncommitted.
+        real = (board.ROOT, board.STATE, sourcemap.ROOT)
         board.ROOT = self.FIXTURE
         board.STATE = self.FIXTURE / "state"
         sourcemap.ROOT = self.FIXTURE
-        # The fixture sits inside this repo, so a real `git status` would make
-        # the golden depend on whatever is uncommitted right now. The
-        # in-flight page renders from NEXT.md alone here, which is the
-        # not-a-repo path the board already has to handle.
-        board.git_state = lambda: None
         try:
             return self.markup(board.render())
         finally:
-            board.ROOT, board.STATE, sourcemap.ROOT, board.git_state = real
+            board.ROOT, board.STATE, sourcemap.ROOT = real
 
     def test_it_matches_the_golden_file(self):
         out = self.render_fixture()
@@ -292,12 +290,15 @@ class RenderedBoard(unittest.TestCase):
             "re-run with UPDATE_GOLDEN=1 and read the diff",
         )
 
-    def test_every_page_and_both_slices_render(self):
+    def test_every_page_renders_and_latest_is_the_closed_slice(self):
         out = self.render_fixture()
         for page in ["overview", "symbols", "flows", "newest", "steering"]:
             self.assertIn(f'id="{page}"', out)
-        self.assertIn("second fixture slice", out)  # the slice in flight
         self.assertIn("The list exists.", out)  # the closed archive's headline
+        self.assertIn("Latest slice", out)
+        # the slice in flight belongs to the PR now, not to this page
+        self.assertNotIn("Uncommitted files", out)
+        self.assertNotIn("Seams under test", out)
 
     def test_ids_never_reach_the_copy(self):
         out = self.render_fixture()

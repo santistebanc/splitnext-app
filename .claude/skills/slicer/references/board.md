@@ -14,7 +14,8 @@ The generator already implements the design. **The reasoning behind it lives in 
 - **Nothing leaves the machine.** Inline CSS and one inline script for search/filter. No CDN, no external fonts, no fetches. Captures are the one exception and ride as **relative sibling paths** (`state/shots/…`), never data URIs — inlining them would add hundreds of KB per slice to a file that is regenerated constantly.
 - **Ids are plumbing.** `L-` / `F-` / `D-` ids live in the state files, in anchors, tooltips and `data-search`. A reader never sees one; every reference renders as its human label.
 - **The Symbols call graph is derived from source at generation time, never authored in `LOGIC.md`.** A `uses` column is stale within a slice. It lives in `callgraph.py` and is tested (D-037).
-- **Changes are attributed by hunk, not by file** — a file-level delta reports every symbol that merely shares a file with the edit. It lives in `sourcemap.py` and is tested; keep it that way.
+- **Changes are attributed by hunk, not by file** — a file-level delta reports every symbol that merely shares a file with the edit. It lives in `sourcemap.py`, is used by `delta.py`, and is tested; keep it that way.
+- **The renderer reads the state files and nothing else.** No git, no working tree: the board is a render of `docs/state/`, so what it shows cannot depend on what happens to be uncommitted on one machine.
 - **Light and dark**, square edges, full-width rows, one spacing scale. Same structure in every project so the board stays recognizable.
 
 ## Pages
@@ -24,7 +25,7 @@ The generator already implements the design. **The reasoning behind it lives in 
 | 01 | Overview | `OVERVIEW.md` | What the product is |
 | 02 | Symbols | `LOGIC.md` | What exists — **Flat** (by area, by weight) and **Tree** (what leans on what) |
 | 03 | Flows | `FLOWS.md` | How it runs end to end, with each flow's clip |
-| 04 | This slice | `NEXT.md` + working tree, or the newest archive | What is changing right now |
+| 04 | Latest slice | the newest archive's `## Report` | What the last closed slice changed |
 | 05 | Steering | `NEXT.md`, `PARKING.md`, `slices/` | What is next and what is parked |
 
-**One question per page** — never stack them. *This slice* is the slice in flight (delta derived from the working tree at render time, so regenerate to refresh); the last closed report sits at the bottom behind a collapsed disclosure. Once the slice closes, the page falls back to that report.
+**One question per page** — never stack them. The board describes the system as it stands, so *Latest slice* is the last **closed** slice: headline, captures, symbol and flow deltas, archive link. **The slice in flight is not on the board** — that is `npm run delta`, in the terminal while you build and on the PR from CI (D-051).
