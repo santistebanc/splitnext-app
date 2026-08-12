@@ -136,3 +136,12 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-wakeSub` receives a wake naming only what changed — `{ group_id, entity_type, id, version }`, never the data itself.
 2. `L-applyRemoteFetch` fetches that single entity and commits it if its version wins.
+
+## F-wake-reconnect — Catch up after a dropped socket
+
+**Trigger** — The Realtime channel drops while the hub is still open, then comes back.  
+**Outcome** — This group matches the server again, without waiting for a foreground.
+
+1. `L-wakeSub` sees the channel leave `SUBSCRIBED` — `CHANNEL_ERROR`, `TIMED_OUT`, or `CLOSED`.
+2. When it returns to `SUBSCRIBED`, `L-wakeCatchUp` says this group missed wakes. The first `SUBSCRIBED` does not, because `L-openGroup` already ran `L-syncGroup`.
+3. `L-wakeSub` runs `L-syncGroup` for that group only — flush, fetch the group, pull the roster — the same catch-up as Open group.

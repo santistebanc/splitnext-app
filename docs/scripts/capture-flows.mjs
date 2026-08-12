@@ -194,6 +194,8 @@ const UNRECORDED = {
     'needs mint-invite on the server, which this slice adds and D-052 only deploys on merge',
   'F-join':
     'needs join-group on the server plus a second device; both the function and a live two-context capture wait on this slice merging (D-052)',
+  'F-wake-reconnect':
+    'needs the Realtime socket to drop and return while the hub stays open, and a second device to have written in between',
 };
 
 // ── Setup ──────────────────────────────────────────────────────────────────

@@ -63,7 +63,8 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-commitRemote | `commitRemoteEntity` | State | `src/sync/inbound.ts` | Writes the accepted result of that decision into the store. |
 | L-applyRemoteFetch | `applyRemoteFetch` | Job | `src/sync/inbound.ts` | Fetches one entity from the server and commits it, clearing or setting the group's error. |
 | L-pullRoster | `pullRoster` | Job | `src/sync/inbound.ts` | Fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call. |
-| L-wakeSub | `startWakeSubscription` | Network | `src/sync/wake.ts` | Listens on the group's Realtime channel; a wake says only what changed, and this fetches that one entity. One subscription per group. |
+| L-wakeCatchUp | `shouldCatchUpOnStatus` | Pure | `src/sync/wakePolicy.ts` | Answers whether a Realtime status change means this group missed wakes — only when the channel is `SUBSCRIBED` again after a drop, not on the first subscribe. |
+| L-wakeSub | `startWakeSubscription` | Network | `src/sync/wake.ts` | Listens on the group's Realtime channel; a wake says only what changed, and this fetches that one entity. If the channel drops and returns, it runs that group's full catch-up. One subscription per group. |
 | L-foreground | `useLobbyForegroundSync` | Job | `src/sync/appForegroundSync.ts` | Runs the lobby-wide catch-up on mount and every time the app returns to the foreground. |
 | L-syncError | `syncError` / `coerceSyncError` | Pure | `src/sync/syncErrors.ts` | Gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape. |
 | L-getGroupStore | `getGroupStore` | State | `src/store/groupStore.ts` | Hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by `L-normalizeTimestamps`. |
