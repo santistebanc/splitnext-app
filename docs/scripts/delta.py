@@ -9,7 +9,11 @@ reading a reviewer needs and the one a file list cannot give.
 Two callers, one attribution:
 
     npm run delta                  the working tree, while you build
-    npm run delta -- --range main  what the branch did, which CI posts on the PR
+    npm run delta -- --range main  what the branch did (text form)
+
+The PR's slicer frontend is `generate-slicer-board.py --slice-page`, not this
+report. This is the same attribution, as markdown, folded under that page's
+link on the PR comment.
 
 Attribution rule: a hunk belongs to the symbol whose declaration it falls
 under, bounded by the next declaration in the *source* — not the next one the

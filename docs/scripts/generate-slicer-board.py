@@ -15,6 +15,7 @@ forbids in app code. Tests: board_test.py, callgraph_test.py.
 
 from __future__ import annotations
 
+import argparse
 import html
 import json
 import os
@@ -26,7 +27,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from callgraph import plan_tree, resolve  # noqa: E402
-from sourcemap import symbol_line  # noqa: E402
+import delta  # noqa: E402
+from sourcemap import added_files, git_state, range_state, symbol_line  # noqa: E402
 from state_files import (  # noqa: E402
     parse_delta,
     parse_flows,
@@ -452,13 +454,23 @@ def newest_archive() -> Path | None:
     return files[0] if files else None
 
 
-def render() -> str:
+def render(*, slice_page: bool = False, diff_range: str | None = None) -> str:
     logic_areas = parse_logic(read(STATE / "LOGIC.md"))
     flows = parse_flows(read(STATE / "FLOWS.md"))
     direction = parse_overview_direction(read(STATE / "OVERVIEW.md"))
     nxt = parse_next(read(STATE / "NEXT.md"))
     parking = parse_parking(read(STATE / "PARKING.md"))
     arch = newest_archive()
+    # A PR board should show the archive *this branch* closed, not whatever
+    # happens to be newest in the tree (a stacked branch can have two).
+    if slice_page and diff_range:
+        added = [
+            ROOT / p
+            for p in added_files(diff_range, "docs/state/slices")
+            if p.endswith(".md")
+        ]
+        if added:
+            arch = sorted(added, key=lambda p: p.name, reverse=True)[0]
     report = parse_report(read(arch)) if arch else None
     arch_name = arch.name if arch else ""
 
@@ -870,15 +882,116 @@ def render() -> str:
   <p class="empty">No closed slices yet.</p>"""
         newest_search = ""
 
-    # One page, always the last closed slice. What the slice *in flight* is
-    # changing is not here any more: it was rendered from the author's
-    # uncommitted working tree, so nobody but the author could ever see it and
-    # the published board never could. That reading now runs on the PR, where
-    # review happens, from `npm run delta` (D-051).
+    # The slice view does not live on the published board (D-055). It is
+    # generated per PR: in flight from NEXT.md + the branch diff, or closed
+    # from the archive this branch added.
+    archived_numbers = {
+        m.group(1)
+        for m in (
+            re.match(r"(\d{4})", pth.name)
+            for pth in (STATE / "slices").glob("*.md")
+        )
+        if m
+    }
+    in_progress = bool(nxt["number"]) and nxt["number"] not in archived_numbers
     newest_html = (
-        f'<section class="page" id="newest" data-title="Latest slice" tabindex="-1"'
+        f'<section class="page" id="newest" data-title="This slice" tabindex="-1"'
         f' data-search="{esc(newest_search)}">{closed_html}</section>'
     )
+    if slice_page and in_progress:
+        git = range_state(diff_range) if diff_range else git_state()
+        rows_flat = [
+            {**e, "area": area} for area, rws in logic_areas for e in rws
+        ]
+        touched = delta.touched_symbols(git, rows_flat) if git else []
+        ids = {e["id"] for e, _ in touched}
+        word = {"new": "New", "changed": "Changed", "gone": "Removed"}
+        tone = {"new": "ok", "changed": "warn", "gone": "open"}
+        sym_rows = []
+        for e, st in touched:
+            why = delta.why(e, nxt)
+            note = (
+                f'<p class="dnote change">{rich(why)}</p>'
+                if why
+                else (
+                    '<p class="dnote change">Changed, but nothing in '
+                    "<code>NEXT.md</code> says why</p>"
+                )
+            )
+            sym_rows.append(
+                f'<div class="row"><div class="rmain"><div class="rhead">'
+                f'{kind_icon(e["kind"])}'
+                f"<h4>{esc(e['name'])}</h4>"
+                f'{source_ref(e["where"], e["name"])}'
+                f'<span class="pill {tone.get(st, "warn")}">'
+                f'{esc(word.get(st, st or "changed"))}</span>'
+                f'</div><p class="one">{chipify_logic_ids(e["what"])}</p>{note}'
+                f"</div></div>"
+            )
+        flow_html = []
+        for f, steps in delta.touched_flows(flows, ids):
+            flow_html.append(
+                flow_case(
+                    f,
+                    node_id=f"w-{f['id']}",
+                    badge='<span class="pill warn">In flight</span>',
+                    marks=set(steps),
+                    mark_word="touched",
+                    title_href=f"#{f['id']}",
+                )
+            )
+        na_now = "".join(
+            f"<tr><th>{rich(r['aspect'])}</th>"
+            f"<td class='before'>{rich(r['before'])}</td>"
+            f"<td class='after'>{rich(r['after'])}</td></tr>"
+            for r in nxt["now_after"]
+        )
+        plan_items = "".join(f"<li>{rich(s)}</li>" for s in nxt["plan"])
+        seam_rows = "".join(
+            f"<tr><td>{rich(s['seam'])}</td><td>{rich(s['behavior'])}</td></tr>"
+            for s in nxt["seams"]
+        )
+        accept_items = "".join(f"<li>{rich(s)}</li>" for s in nxt["acceptance"])
+        scope_chips = "".join(
+            f'<span class="chip">{rich(s)}</span>' for s in nxt["out_of_scope"]
+        )
+        live_edge = edge_paths_html(nxt["edge_paths"])
+        live_edge = (
+            f'<h3 id="p-edge">Edge paths checked</h3>{live_edge}'
+            if live_edge
+            else ""
+        )
+        stat = (git or {}).get("stat") or "no tracked edits yet"
+        newest_html = f"""
+<section class="page" id="newest" data-title="This slice" tabindex="-1">
+  <p class="kicker">In progress</p>
+  <h1>{esc(nxt['title'])}</h1>
+  <p class="lede">{rich(nxt['goal'])}</p>
+  <p class="why">{esc(stat)} · {esc(nxt['tier'])}</p>
+  <h3 id="p-touched">Symbols this branch touched</h3>
+  <div class="rows">{''.join(sym_rows) or '<p class="empty">No mapped file has been touched yet.</p>'}</div>
+  <h3 id="p-flows">Flows running through them</h3>
+  {''.join(flow_html) or '<p class="empty">No flow names a changed piece.</p>'}
+  <h3 id="p-delta">Before → After</h3>
+  <div class="scroll"><table class="delta-table">
+    <thead><tr><th>Aspect</th><th>Before</th><th>After</th></tr></thead>
+    <tbody>{na_now}</tbody>
+  </table></div>
+  <h3 id="p-plan">Plan</h3>
+  <ol class="bullets">{plan_items}</ol>
+  <h3 id="p-seams">Seams under test</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Seam</th><th>Behaviour</th></tr></thead>
+    <tbody>{seam_rows}</tbody>
+  </table></div>
+  <h3 id="p-accept">Acceptance</h3>
+  <ul class="bullets">{accept_items}</ul>
+  {live_edge}
+  <h3 id="p-scope">Out of scope</h3>
+  <div>{scope_chips}</div>
+</section>"""
+    if not slice_page:
+        newest_html = ""
 
     # Between slices NEXT.md carries no slice, and the board says so rather
     # than rendering an empty row that reads like a slice with no name.
@@ -1486,7 +1599,8 @@ function show(id,anchor){
   navlinks.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+page.id));
   $('#here').textContent=page.dataset.title||page.id;
   document.title=(page.dataset.title?page.dataset.title+' — ':'')+baseTitle;
-  $('#filterbar').hidden=page.id!=='symbols';
+  const filterbar=$('#filterbar');
+  if(filterbar)filterbar.hidden=page.id!=='symbols';
   const settle=()=>{
     const t=anchor&&document.getElementById(anchor);
     if(t)t.scrollIntoView({block:'start',behavior:'auto'});
@@ -1581,10 +1695,12 @@ function apply(){
   const newestHit=!newest||!newest.dataset.search||!query||
     (newest.dataset.search||'').includes(query);
 
-  $('#logic-empty').classList.toggle('is-hidden',logicHits>0);
-  $('#flow-empty').classList.toggle('is-hidden',flowHits>0);
-  $('#n-logic').textContent=logicHits;
-  $('#n-flow').textContent=flowHits;
+  const logicEmpty=$('#logic-empty'), flowEmpty=$('#flow-empty');
+  if(logicEmpty)logicEmpty.classList.toggle('is-hidden',logicHits>0);
+  if(flowEmpty)flowEmpty.classList.toggle('is-hidden',flowHits>0);
+  const nLogic=$('#n-logic'), nFlow=$('#n-flow');
+  if(nLogic)nLogic.textContent=logicHits;
+  if(nFlow)nFlow.textContent=flowHits;
   navlinks.forEach(a=>{
     if(!query){a.classList.remove('no-hit');return;}
     const id=a.getAttribute('href').slice(1);
@@ -1646,7 +1762,8 @@ function openTreePathTo(el){
 
 function setView(v){
   view=v;
-  $('#symbols').dataset.view=v;
+  const sym=$('#symbols');
+  if(sym)sym.dataset.view=v;
   viewBtns.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===v)));
   localStorage.setItem('slicer-view',v);
 }
@@ -1723,8 +1840,14 @@ function openPop(a){
     ? (d.steps+' step'+(d.steps===1?'':'s')+(d.outcome?' · ends with '+d.outcome:''))
     : (d.used?('named by '+d.used+' flow'+(d.used===1?'':'s')):'no flow names it');
   const go=$('#pop-go');
-  go.href='#'+id;
-  go.textContent=(isFlow?'Open in Flows':'Open in Symbols')+' \u2192';
+  const dest=isFlow?'flows':'symbols';
+  if($('#'+dest)){
+    go.hidden=false;
+    go.href='#'+id;
+    go.textContent=(isFlow?'Open in Flows':'Open in Symbols')+' \u2192';
+  } else {
+    go.hidden=true;
+  }
 
   pop.hidden=false;
   if(popAnchor)popAnchor.classList.remove('pop-on');
@@ -1787,7 +1910,7 @@ addEventListener('keydown',e=>{
   if(e.key==='Escape'&&!pop.hidden){closePop();return;}
   if(e.key==='/'&&!typing){e.preventDefault();q.focus();q.select();}
   else if(e.key==='Escape'&&document.activeElement===q){q.value='';apply();q.blur();}
-  else if(!typing&&/^[1-5]$/.test(e.key)){
+  else if(!typing&&/^[1-9]$/.test(e.key)){
     const a=navlinks[+e.key-1];
     if(a)location.hash=a.getAttribute('href');
   }
@@ -1797,13 +1920,46 @@ route();
 apply();
 """
 
-    return f"""<!DOCTYPE html>
+    slice_label = (
+        nxt["title"]
+        if in_progress
+        else (report["title"] if report else "This slice")
+    )
+    if slice_page:
+        nav_html = (
+            '<a href="#newest" style="--nc:var(--s3)">'
+            f'<i>01</i>This slice<u>'
+            f'{esc((arch_name.split("-")[0] if arch_name else current_slice) or "—")}'
+            f"</u></a>"
+        )
+        brand_sub = esc(slice_label)
+        kbd_hint = "<b>1</b> this slice"
+        doc_title = f"{slice_label} — SplitNext slicer"
+        crumb_root = "this slice"
+        here_default = "This slice"
+    else:
+        nav_html = (
+            f'<a href="#overview" style="--nc:var(--s6)"><i>01</i>Overview<u></u></a>\n'
+            f'      <a href="#symbols" style="--nc:var(--s1)"><i>02</i>Symbols'
+            f'<u id="n-logic">{logic_count}</u></a>\n'
+            f'      <a href="#flows" style="--nc:var(--s5)"><i>03</i>Flows'
+            f'<u id="n-flow">{flow_count}</u></a>\n'
+            f'      <a href="#steering" style="--nc:var(--s2)"><i>04</i>Steering'
+            f'<u>{park_count}</u></a>'
+        )
+        brand_sub = f"{shipped} slices · slice {esc(current_slice)} open"
+        kbd_hint = "<b>1–4</b> jump"
+        doc_title = "SplitNext — Slicer board"
+        crumb_root = "slicer board"
+        here_default = "Overview"
+
+    html_out = f"""<!DOCTYPE html>
 <!-- generated by /slicer — edit docs/state/*.md, not this file -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SplitNext — Slicer board</title>
+  <title>{esc(doc_title)}</title>
   <style>{css}</style>
 </head>
 <body>
@@ -1812,7 +1968,7 @@ apply();
   <aside class="side">
     <div class="brand">
       <b>SplitNext — Slicer</b>
-      <span>{shipped} slices · slice {esc(current_slice)} open</span>
+      <span>{brand_sub}</span>
     </div>
     <div class="searchwrap" id="searchwrap">
       <label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search</label>
@@ -1822,26 +1978,22 @@ apply();
       <div class="hits" id="hits" aria-live="polite"></div>
     </div>
     <nav class="nav" id="nav" aria-label="Board sections">
-      <a href="#overview" style="--nc:var(--s6)"><i>01</i>Overview<u></u></a>
-      <a href="#symbols" style="--nc:var(--s1)"><i>02</i>Symbols<u id="n-logic">{logic_count}</u></a>
-      <a href="#flows" style="--nc:var(--s5)"><i>03</i>Flows<u id="n-flow">{flow_count}</u></a>
-      <a href="#newest" style="--nc:var(--s3)"><i>04</i>Latest slice<u>{esc(arch_name.split('-')[0] if arch_name else '—')}</u></a>
-      <a href="#steering" style="--nc:var(--s2)"><i>05</i>Steering<u>{park_count}</u></a>
+      {nav_html}
     </nav>
     <div class="side-tools">
       <button class="btn" id="theme">◐ Theme</button>
     </div>
     <div class="kbd">
-<b>/</b> search · <b>Esc</b> clear · <b>1–5</b> jump
+<b>/</b> search · <b>Esc</b> clear · {kbd_hint}
       <br>generated by /slicer — edit <code>docs/state/*.md</code>
     </div>
   </aside>
 
   <main>
     <div class="topbar">
-      <span class="crumb">slicer board / <b id="here">Overview</b></span>
+      <span class="crumb">{crumb_root} / <b id="here">{here_default}</b></span>
       <a class="livelink" href="{LIVE_APP_URL}" target="_blank" rel="noopener">Open the app ↗</a>
-      <div class="filterbar" id="filterbar">
+      <div class="filterbar" id="filterbar"{' hidden' if slice_page else ''}>
         <b>View</b>
         <button type="button" class="btn view-btn" data-view="flat" aria-pressed="true">Flat</button>
         <button type="button" class="btn view-btn" data-view="tree" aria-pressed="false">Tree</button>
@@ -1950,12 +2102,40 @@ apply();
 </body>
 </html>
 """
+    if slice_page:
+        # A PR board is this slice, not the whole map. Drop the system pages
+        # after render so their interpolations stay in one template.
+        html_out = re.sub(
+            r'\n      <section class="page" id="(?:overview|symbols|flows|steering)".*?\n      </section>',
+            "",
+            html_out,
+            flags=re.S,
+        )
+    return html_out
 
 
 def main() -> None:
-    html_out = render()
-    OUT.write_text(html_out, encoding="utf-8")
-    print(f"Wrote {OUT} ({len(html_out)} bytes)")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--slice-page",
+        action="store_true",
+        help="render only this slice (the PR board), not the published map",
+    )
+    ap.add_argument(
+        "--range",
+        metavar="BASE",
+        help="attribute in-flight edits against BASE...HEAD (CI uses origin/main)",
+    )
+    ap.add_argument(
+        "--out",
+        metavar="PATH",
+        help="write here instead of docs/slicer.html",
+    )
+    args = ap.parse_args()
+    html_out = render(slice_page=args.slice_page, diff_range=args.range)
+    dest = Path(args.out) if args.out else (ROOT / "docs" / "slice.html" if args.slice_page else OUT)
+    dest.write_text(html_out, encoding="utf-8")
+    print(f"Wrote {dest} ({len(html_out)} bytes)")
 
 
 if __name__ == "__main__":

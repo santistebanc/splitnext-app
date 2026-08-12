@@ -49,3 +49,4 @@ __pycache__/
 # The slicer board is generated from docs/state/ — regenerated locally by
 # docs/scripts/serve-slicer-board.py and by CI for the published site.
 docs/slicer.html
+docs/slice.html

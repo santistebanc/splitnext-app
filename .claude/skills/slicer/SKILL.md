@@ -89,7 +89,7 @@ Implement the slice to the quality bar above.
 3. **Shape the modules.** Put new behaviour behind a small interface; do not pile orchestration into an existing fat file when a deeper module would clarify the design.
 4. Typecheck and run the relevant tests as you go; full suite before demo.
 5. **Self-review before demo, and write down what you found.** Races, sticky errors, empty-queue / offline paths, failed deploys, hydration gaps. Fix what you find; do not leave "the user will notice" as the QA plan. Keep the running list in `NEXT.md` under **`## Edge paths`** — surface, non-happy state, what happens in it — so the board shows the review while the slice is still open; it moves into the archive's `### Edge paths` at close. An unwritten review is indistinguishable from no review, and this is the one part of the process nothing else records.
-6. **Keep the map current while building.** Whenever behaviour lands (new/changed modules, routes, or Edge paths), update `LOGIC.md` / `FLOWS.md` to match **today’s code**, then run **`npm run delta`** — it reports which mapped pieces the working tree actually moved, which flows run through them, and what `NEXT.md` says each change is for. A piece it cannot explain is either a gap in the plan or a row `LOGIC.md` owes. Regenerate the board (`npm run board`) and **open it** for the user when the *map* changed; the board describes the system, not the slice in flight (D-051).
+6. **Keep the map current while building.** Whenever behaviour lands (new/changed modules, routes, or Edge paths), update `LOGIC.md` / `FLOWS.md` to match **today’s code**, then run **`npm run delta`** — it reports which mapped pieces the working tree actually moved, which flows run through them, and what `NEXT.md` says each change is for. A piece it cannot explain is either a gap in the plan or a row `LOGIC.md` owes. Regenerate the published board (`npm run board`) and **open it** for the user when the *map* changed. The current slice is a separate page (`npm run board -- --slice-page`, served at `/slice.html`); the published board does not carry it (D-055).
 
 Do not build anything in `NEXT.md`'s out-of-scope list, however tempting or however small.
 
@@ -101,7 +101,7 @@ A slice that turns out bigger than its `NEXT.md`, or one the user rejects at the
 - **Rejected at the demo gate** — ask what is wrong before touching code, then either fix inside the current scope (still slice N) or park the whole approach and pick again from Phase 1. Do not close a slice the user said no to.
 - **Abandoned** — leave `main` alone; delete the branch or leave it unmerged, and record what was learned in `PARKING.md` so the next pick is not the same mistake. Nothing is archived: an archive describes shipped behaviour.
 
-**Resuming a half-built slice** (new session, lost context): `NEXT.md` names the slice, `git status` and the branch say how far it got, and *This slice* on the board renders both. Read those three before writing code — re-deriving the plan from the diff is how scope grows silently.
+**Resuming a half-built slice** (new session, lost context): `NEXT.md` names the slice, `git status` and the branch say how far it got, and `/slice.html` (or the PR's slice board) renders both. Read those three before writing code — re-deriving the plan from the diff is how scope grows silently.
 
 ### Phase 5 — Demo gate
 
@@ -138,7 +138,7 @@ This pause is where parked items get re-prioritized against what the user just s
 6. Append any decisions made to `DECISIONS.md` as `D-NNN`, one line each, naming the slice that made them.
 7. Groom `PARKING.md`: prune delivered or obsolete items, re-score tiers.
 8. Re-run `npm run check` — the doc edits above are exactly what the audit reads.
-9. Regenerate the board (`npm run board`) — see [references/board.md](references/board.md). It must show **Overview**, **Symbols**, **Flows**, **This slice** and **Steering**. **Open the board** for the user.
+9. Regenerate the board (`npm run board`) — see [references/board.md](references/board.md). It must show **Overview**, **Symbols**, **Flows**, and **Steering**. The current slice is `/slice.html`, not a tab. **Open the board** for the user.
 10. **Squash the slice to one commit and tag it** (see Git) — the tag is part of closing, not an afterthought: `npm run audit` fails on an archive whose claimed tag does not exist. Then reset `NEXT.md` to the no-slice-picked stub, so the board stops presenting a closed slice as the one in flight. Commit freely while building — work in progress is the point of a slice — then collapse it at close so history reads one line per slice.
 
 Then back to Phase 1.
@@ -151,9 +151,9 @@ After every regenerate of `docs/slicer.html` during a `/slicer` session:
 2. Tell them briefly what refreshed (e.g. “Board updated — logic map + flows; newest closed slice still 0003”).
 3. Do this at: end of a build chunk that changed the map, demo gate, and slice close. Skipping the open is a process bug.
 
-The slice in flight is **not** on the board. `npm run delta` is the live view while you build, and CI posts the same report on the PR — measured from the merge base, so it says what the branch did rather than what is dirty right now.
+The current slice is **not** on the published board. Locally it is `/slice.html` (`npm run board -- --slice-page`); CI generates the same page per PR and comments the URL (D-055). `npm run delta` is the same attribution as text.
 
-The **published** board is https://santistebanc.github.io/splitnext-app/ — regenerated from `docs/state/` by CI on every merge to `main`, so it always shows closed slices, never work in progress. During a session use the local server: it is the only copy that shows the slice being built, and the only one whose path chips open files in the editor.
+The **published** board is https://santistebanc.github.io/splitnext-app/ — regenerated from `docs/state/` by CI on every merge to `main`, so it always shows the system as it stands, never the slice in flight. During a session use the local server: it is the only copy whose path chips open files in the editor.
 
 ## State
 
@@ -171,6 +171,7 @@ docs/state/
   shots/flows/F-add-expense.webm  # one clip per drivable flow, keyed by F- id
   slices/0007-auth-session.md   # archive; never loaded unless asked for
 docs/slicer.html # generated living page — gitignored; regenerate, never edit
+docs/slice.html  # per-PR slice page — also gitignored; `npm run board -- --slice-page`
 ```
 
 **At session start, read `OVERVIEW.md`, `NEXT.md`, `PARKING.md`, and skim `LOGIC.md` / `FLOWS.md` if the work touches sync or routes.** The archive stays closed unless you are closing a slice or answering a history question.
@@ -210,11 +211,11 @@ The archive carries the detail; the squashed commit carries the headline and the
 
 Never `--merge` or `--rebase` a slice PR, and never push to `main` directly: one slice must stay one commit, or `git log main` stops being the list of slices and `git revert <slice>` stops being a whole slice.
 
-Merging `main` deploys `docs/slicer.html` to GitHub Pages, so the board a PR produces is public the moment the slice closes.
+Merging `main` deploys `docs/slicer.html` to GitHub Pages. The slice page for a PR is generated by CI on that PR (D-055), not by the merge.
 
 **Never put a commit sha in the archive** — the archive is inside the commit, so writing its own hash is impossible to keep true across an amend or a squash. Reference the **tag** instead.
 
-**`docs/slicer.html` is not committed.** It is a render of `docs/state/`, so a tracked copy only ever produced rebase conflicts and stale boards. It is gitignored, rebuilt locally by `npm run board` / `npm run board:serve`, and rebuilt by CI for the published site.
+**`docs/slicer.html` and `docs/slice.html` are not committed.** They are renders of `docs/state/`, so a tracked copy only ever produced rebase conflicts and stale boards. They are gitignored, rebuilt locally by `npm run board` / `npm run board:serve`, and rebuilt by CI — the map for Pages, the slice page for each PR.
 
 Commit freely inside a slice; the squash happens at the merge.
 

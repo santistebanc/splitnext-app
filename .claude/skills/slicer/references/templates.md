@@ -189,7 +189,7 @@ Ids are stable and never renumbered. Slices, ADRs, and code comments cite them b
 
 ## `slices/NNNN-<name>.md` — archive
 
-Written once at close, then never read unless someone asks about that slice. It carries the detail `OVERVIEW.md` deliberately drops. The **`## Report`** block is what `docs/slicer.html` renders in the Latest slice report band — keep it scannable and concrete.
+Written once at close, then never read unless someone asks about that slice. It carries the detail `OVERVIEW.md` deliberately drops. The **`## Report`** block is what the per-PR slice page renders when the slice is closed — keep it scannable and concrete.
 
 ```markdown
 # Slice 0007 — <short name>

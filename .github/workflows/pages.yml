@@ -6,8 +6,10 @@ name: pages
 #
 # One site rather than a second host: no extra account, no deploy token beyond
 # the two EXPO_PUBLIC_ values the client ships anyway, and the board's "Open
-# the app" link is same-origin. The trade is no per-PR preview URL; a Vercel or
-# Cloudflare project would give that if it ever earns its keep.
+# the app" link is same-origin. The trade is no per-PR *app* URL; a Vercel or
+# Cloudflare project would give that if it ever earns its keep. The slice
+# board is different: each PR gets its own page under /pr/N/, copied from the
+# `pr-boards` branch (D-055).
 #
 # The board is generated, not committed: docs/slicer.html is gitignored and
 # built here from docs/state/, so the published board can never be a stale
@@ -66,6 +68,12 @@ jobs:
           cp docs/slicer.html _site/index.html
           rm -rf _site/scripts/__pycache__
           mv dist _site/app
+          # Per-PR slice boards live on the pr-boards branch so a reviewer can
+          # open one before merge. Copy them under /pr/N/ without replacing /app.
+          if git fetch origin pr-boards:pr-boards 2>/dev/null; then
+            mkdir -p _site/pr
+            git archive pr-boards | tar -x -C _site/pr
+          fi
           # Expo emits underscore-prefixed paths (_expo/…), which Jekyll drops.
           touch _site/.nojekyll
           # Pages has no rewrite rule, so a reload on /app/group/<id> — a route

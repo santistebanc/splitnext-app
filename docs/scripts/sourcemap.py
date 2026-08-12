@@ -112,6 +112,19 @@ def parse_hunks(diff: str) -> dict[str, list[tuple[int, int]]]:
     return hunks
 
 
+def added_files(base: str, under: str, head: str = "HEAD") -> list[str]:
+    """Paths `base...head` added under `under` — used to find the archive a PR closed."""
+    merge_base = _run("merge-base", base, head).strip()
+    if not merge_base:
+        return []
+    spec = f"{merge_base}..{head}"
+    return [
+        p
+        for p in _run("diff", "--name-only", "--diff-filter=A", spec, "--", under).splitlines()
+        if p
+    ]
+
+
 def range_state(base: str, head: str = "HEAD") -> dict | None:
     """What `base...head` changed — the committed twin of `git_state`.
 

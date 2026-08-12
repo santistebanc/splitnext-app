@@ -8,7 +8,7 @@
  * Usage:
  *   npm run capture:board                     (the slice NEXT.md names)
  *   npm run capture:board -- --slice 0009
- *   npm run capture:board -- --slice 0011 --only latest-slice
+ *   npm run capture:board -- --slice 0011 --only this-slice
  *   npm run capture:board -- --slice 0009 --url http://127.0.0.1:8777
  *
  * Needs the board already serving:
@@ -94,9 +94,9 @@ await mkdir(SHOTS, { recursive: true });
 
 const want = (name) => !only || only === name;
 
-// The slice-only page: headline, symbols it touched, flows it touched.
-// This is the still that belongs in a PR — slicer.html itself is gitignored.
-if (want('latest-slice')) {
+// The slice-only page lives at /slice.html, generated per PR, not on the
+// published board. Shoot it when the slice changed the board chrome.
+if (want('this-slice') || want('latest-slice')) {
   const context = await browser.newContext({ viewport: VIEWPORT });
   const page = await context.newPage();
   page.on('console', (m) => {
@@ -105,10 +105,10 @@ if (want('latest-slice')) {
     }
   });
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-  await page.goto(`${base}/slicer.html#newest`);
-  await page.waitForSelector('#newest .closed-title');
+  await page.goto(`${base}/slice.html`);
+  await page.waitForSelector('#newest');
   await page.waitForTimeout(200);
-  const file = join(SHOTS, `${slice}-latest-slice.png`);
+  const file = join(SHOTS, `${slice}-this-slice.png`);
   await page.screenshot({ path: file, fullPage: true });
   console.log(`  ${file}`);
   await context.close();

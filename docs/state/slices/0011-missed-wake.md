@@ -56,7 +56,7 @@ A dropped Realtime socket, while the hub stays up, now catches up the same way o
 
 ### Shots
 
-- `0011-latest-slice.png` — Latest slice page: the symbols and flows this slice touched, which is the slicer frontend that belongs in the PR (`slicer.html` itself is gitignored).
+- `0011-latest-slice.png` — still of the old Latest slice tab, taken before D-055 moved that view off the published board and onto a per-PR page.
 
 Captured with `node docs/scripts/capture-board.mjs --slice 0011 --only latest-slice`. No app stills — no new screen. `F-wake-reconnect` is named in `capture-flows.mjs` as unrecorded rather than silently absent.
 
@@ -69,6 +69,7 @@ Captured with `node docs/scripts/capture-board.mjs --slice 0011 --only latest-sl
 ### Decisions this slice
 
 - D-054 — On Realtime `SUBSCRIBED` after a drop, run the same `syncGroup` as open for that group; no cursor
+- D-055 — Current slice is a per-PR slicer page, not a tab on the published board
 
 ### Diff pulse
 

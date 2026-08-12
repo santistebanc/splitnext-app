@@ -265,16 +265,16 @@ class RenderedBoard(unittest.TestCase):
         page = page.replace(str(ROOT), "<repo>")
         return re.sub(r"cursor://[^\"&]*", "cursor://&lt;editor&gt;", page)
 
-    def render_fixture(self) -> str:
-        # No git stub needed: since the delta moved to the PR (D-051) the
-        # renderer reads the state files and nothing else, so the page cannot
-        # depend on what happens to be uncommitted.
+    def render_fixture(self, **kwargs) -> str:
+        # The published board reads the state files and nothing else. The
+        # per-PR slice page may also read git; the fixture is not a repo, so
+        # that path renders the in-flight plan with no touched symbols.
         real = (board.ROOT, board.STATE, sourcemap.ROOT)
         board.ROOT = self.FIXTURE
         board.STATE = self.FIXTURE / "state"
         sourcemap.ROOT = self.FIXTURE
         try:
-            return self.markup(board.render())
+            return self.markup(board.render(**kwargs))
         finally:
             board.ROOT, board.STATE, sourcemap.ROOT = real
 
@@ -290,15 +290,24 @@ class RenderedBoard(unittest.TestCase):
             "re-run with UPDATE_GOLDEN=1 and read the diff",
         )
 
-    def test_every_page_renders_and_latest_is_the_closed_slice(self):
+    def test_the_published_board_does_not_carry_the_current_slice(self):
         out = self.render_fixture()
-        for page in ["overview", "symbols", "flows", "newest", "steering"]:
+        for page in ["overview", "symbols", "flows", "steering"]:
             self.assertIn(f'id="{page}"', out)
-        self.assertIn("The list exists.", out)  # the closed archive's headline
-        self.assertIn("Latest slice", out)
-        # the slice in flight belongs to the PR now, not to this page
+        self.assertNotIn('id="newest"', out)
+        self.assertNotIn("Latest slice", out)
+        self.assertNotIn("This slice", out)
         self.assertNotIn("Uncommitted files", out)
         self.assertNotIn("Seams under test", out)
+
+    def test_a_slice_page_is_this_slice_not_the_map(self):
+        out = self.render_fixture(slice_page=True)
+        self.assertIn('id="newest"', out)
+        self.assertIn("This slice", out)
+        self.assertIn("Seams under test", out)
+        self.assertIn("Prove the board renders a slice in flight.", out)
+        for page in ["overview", "symbols", "flows", "steering"]:
+            self.assertNotIn(f'id="{page}"', out)
 
     def test_ids_never_reach_the_copy(self):
         out = self.render_fixture()
