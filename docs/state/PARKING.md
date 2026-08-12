@@ -2,7 +2,6 @@
 
 ## Foundation-risk
 
-- **Deploy drift between local and remote** — the remote was missing the whole `expenses` table and carried a stale `fetch-entity`, three slices after 0005 said both shipped. Nothing checks that what is committed is what is deployed; `supabase db dump` needs Docker, which this machine does not have — area: deploy — raised: slice 0007
 - **Contract test against a local Supabase stack** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real `merge` / `fetch-entity` / `list-roster` at close when their shapes change — area: sync — raised: slice 0004
 - **Browser-driven flow tests** — `npm run capture` (slice 0007) commits the Playwright driver and asserts a clean console plus balances surviving a reload, but it is a capture run, not a test suite: it is not in `npm test`, has no failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007*
 - **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002 + roster list in 0003; full protocol still open*
@@ -36,6 +35,8 @@
 
 ## Polish
 
+- **Delta matches symbol names as plain English words** — `merge / mergeOne` was explained by a Before → After row about merging to `main`, because the row contains the word "merge". An `L-` id citation should outrank a bare word match — area: board — raised: slice 0010
+
 - **Import-level dependency view** — a second graph on the board, module to module rather than symbol to symbol; the symbol tree draws call sites only — area: board — raised: slice 0009
 - **Wire-hop edges in the symbol graph** — draw `mergeEntities` → `merge` as a distinct kind of edge so the tree can cross the device/server boundary the way Flows does; today it is not a call and so not an edge — area: board — raised: slice 0009
 - **Lobby index out of Secure Store** — move `lobby_group_ids` to Legend/SQLite; Secure Store for secrets only — area: client — raised: slice 0001
@@ -48,8 +49,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
+- **Deploy drift between local and remote** — delivered in [slice 0010](slices/0010-deploy-pipeline.md); `supabase.yml` pushes migrations + redeploys all five functions and fails unless each reports the merge sha
+
 - **Symbol tree view on the board** — delivered in [slice 0009](slices/0009-symbol-tree.md); Flat and Tree over the same 49 rows, the call graph derived from source and gated by `npm run test:board`
-
-- **Balances list (group hub home)** — delivered in [slice 0007](slices/0007-allocations-balances.md); derived Σ paid − Σ owed, most-negative first, You (Name) marked
-
-- **Symbol-level change attribution on the board** — delivered in slice 0007; the delta now maps diff *hunks* onto the symbol whose declaration they fall under, bounded by the next declaration in the source. 15 reported symbols became 6, all six real

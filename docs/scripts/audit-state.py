@@ -231,6 +231,17 @@ for clip in sorted((STATE / "shots" / "flows").glob("*.webm")):
         report("orphan-clip", f"{clip.name} names {clip.stem}, which FLOWS.md does not define")
 
 # 13. every archive's claimed tag exists, and lands on main
+#
+# The tag is cut on `main` *after* the squash merge (D-028), so an archive that
+# ships inside the slice PR necessarily claims a tag that does not exist yet.
+# On a branch that is a finding-in-waiting — a note. On `main`, it is a finding:
+# the close is not done until the tag is.
+_head_branch = subprocess.run(
+    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+    cwd=ROOT, capture_output=True, text=True, check=False,
+).stdout.strip()
+_on_main = _head_branch in ("main", "master")
+
 for arch in archives:
     text = arch.read_text()
     m = re.search(r"\*\*Tag\*\*\s*—\s*`([^`]+)`", text)
@@ -244,7 +255,11 @@ for arch in archives:
         cwd=ROOT, capture_output=True, text=True, check=False,
     ).returncode == 0
     if not exists:
-        report("missing-tag", f"{arch.name} claims tag {tag}, which does not exist")
+        msg = f"{arch.name} claims tag {tag}, which does not exist"
+        if _on_main:
+            report("missing-tag", msg)
+        else:
+            note("missing-tag", msg + " (ok on a slice branch — tag after merge)")
 
 # 14. one slice, one commit on main
 #
