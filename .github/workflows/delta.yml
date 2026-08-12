@@ -90,7 +90,7 @@ jobs:
           fi
           sha=$(git rev-parse HEAD)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "url=https://cdn.jsdelivr.net/gh/${REPO}@${sha}/${PR}/index.html" >> "$GITHUB_OUTPUT"
+          echo "url=https://rawcdn.githack.com/${REPO}/${sha}/${PR}/index.html" >> "$GITHUB_OUTPUT"
           owner=${REPO%/*}
           name=${REPO#*/}
           echo "pages=https://${owner}.github.io/${name}/pr/${PR}/" >> "$GITHUB_OUTPUT"
