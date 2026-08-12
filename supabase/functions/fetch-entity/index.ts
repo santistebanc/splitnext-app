@@ -1,6 +1,7 @@
 /// <reference path="../types.d.ts" />
 import { resolveAccessToken } from '../_shared/access.ts';
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
+import { healthPayload, isHealthRequest } from '../_shared/health.ts';
 import {
   BIND_SELECT,
   EXPENSE_SELECT,
@@ -12,6 +13,11 @@ import { bearerToken, serviceClient } from '../_shared/supabase.ts';
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+  // The deploy probe, before any auth work: CI asserts every function reports
+  // the merge sha, so a deploy that silently did nothing cannot pass green.
+  if (isHealthRequest(req.method, req.url)) {
+    return jsonResponse(healthPayload('fetch-entity', Deno.env.get('DEPLOY_SHA')));
   }
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'method_not_allowed' }, 405);
