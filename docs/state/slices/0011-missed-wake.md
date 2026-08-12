@@ -56,7 +56,9 @@ A dropped Realtime socket, while the hub stays up, now catches up the same way o
 
 ### Shots
 
-No UI. Demo is `npx vitest run src/sync/wakePolicy.test.ts` (7 passed). `F-wake-reconnect` is named in `capture-flows.mjs` as unrecorded rather than silently absent.
+- `0011-latest-slice.png` — Latest slice page: the symbols and flows this slice touched, which is the slicer frontend that belongs in the PR (`slicer.html` itself is gitignored).
+
+Captured with `node docs/scripts/capture-board.mjs --slice 0011 --only latest-slice`. No app stills — no new screen. `F-wake-reconnect` is named in `capture-flows.mjs` as unrecorded rather than silently absent.
 
 ### Surfaces touched
 

@@ -8,6 +8,7 @@
  * Usage:
  *   npm run capture:board                     (the slice NEXT.md names)
  *   npm run capture:board -- --slice 0009
+ *   npm run capture:board -- --slice 0011 --only latest-slice
  *   npm run capture:board -- --slice 0009 --url http://127.0.0.1:8777
  *
  * Needs the board already serving:
@@ -36,6 +37,7 @@ const sliceFromNext = () => {
 };
 const slice = flag('slice', '') || sliceFromNext();
 const base = flag('url', 'http://127.0.0.1:8777');
+const only = flag('only', '');
 if (!slice) {
   console.error(
     'no slice: NEXT.md names none, so pass --slice NNNN — the stills are named for it',
@@ -90,25 +92,49 @@ async function shoot(name, prepare) {
 
 await mkdir(SHOTS, { recursive: true });
 
-await shoot('symbols-tree', async (page) => {
-  await page.click('.view-btn[data-view="tree"]');
-});
+const want = (name) => !only || only === name;
 
-// Opened one level, because a still of the resting state is ten rows and says
-// nothing about what is behind them.
-await shoot('symbols-tree-open', async (page) => {
-  await page.click('.view-btn[data-view="tree"]');
-  await page.click('#tree-L-hub .tfold');
-});
+// The slice-only page: headline, symbols it touched, flows it touched.
+// This is the still that belongs in a PR — slicer.html itself is gitignored.
+if (want('latest-slice')) {
+  const context = await browser.newContext({ viewport: VIEWPORT });
+  const page = await context.newPage();
+  page.on('console', (m) => {
+    if (m.type() === 'error' && !m.location().url.endsWith('/favicon.ico')) {
+      errors.push(m.text());
+    }
+  });
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  await page.goto(`${base}/slicer.html#newest`);
+  await page.waitForSelector('#newest .closed-title');
+  await page.waitForTimeout(200);
+  const file = join(SHOTS, `${slice}-latest-slice.png`);
+  await page.screenshot({ path: file, fullPage: true });
+  console.log(`  ${file}`);
+  await context.close();
+}
 
-await shoot('symbols-tree-search', async (page) => {
-  await page.click('.view-btn[data-view="tree"]');
-  await page.fill('#q', 'roster');
-});
+if (!only || only === 'symbols') {
+  await shoot('symbols-tree', async (page) => {
+    await page.click('.view-btn[data-view="tree"]');
+  });
 
-await shoot('symbols-flat', async (page) => {
-  await page.click('.view-btn[data-view="flat"]');
-});
+  // Opened one level, because a still of the resting state is ten rows and says
+  // nothing about what is behind them.
+  await shoot('symbols-tree-open', async (page) => {
+    await page.click('.view-btn[data-view="tree"]');
+    await page.click('#tree-L-hub .tfold');
+  });
+
+  await shoot('symbols-tree-search', async (page) => {
+    await page.click('.view-btn[data-view="tree"]');
+    await page.fill('#q', 'roster');
+  });
+
+  await shoot('symbols-flat', async (page) => {
+    await page.click('.view-btn[data-view="flat"]');
+  });
+}
 
 await browser.close();
 
