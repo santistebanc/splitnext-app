@@ -2,8 +2,8 @@
 
 ## Foundation-risk
 
-- **Contract test against a local Worker** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real routes under `wrangler dev` at close when their shapes change — area: sync — raised: slice 0004 / retargeted slice 0014
 - **Browser-driven flow tests** — `npm run capture` (slice 0007) commits the Playwright driver and asserts a clean console plus balances surviving a reload, but it is a capture run, not a test suite: it is not in `npm test`, has no failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007*
+- **Wake socket contract against a local Worker** — HTTP routes are contract-tested in vitest (slice 0020); the hibernating WebSocket at `/wake/:groupId` is not — area: sync — raised: slice 0020
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
@@ -31,6 +31,7 @@
 - **Close / reopen group UI** — capability rules exist; screens deferred — area: groups — raised: bootstrap
 - **Group-wide invite UI** — deferred from MVP chrome — area: invites — raised: bootstrap
 - **Deep link hosting** — `.well-known` + fallback on splitnext.online; needs dev/prod build (not Expo Go) — area: invites — raised: bootstrap
+- **Expo Go against `wrangler dev`** — "would the expo go in my phone work well with local worker?" Phone keeps the deployed URL; tests boot a separate miniflare Worker — area: dev — raised: slice 0020
 
 ## Polish
 
@@ -50,6 +51,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **New expense form** — delivered in [slice 0018](slices/0018-expense-form.md); payer + who shares, equal among selected. Edit-after and uneven stay parked.
-
 - **Settle-up → prefill** — delivered in [slice 0019](slices/0019-settle-prefill.md); tap a row, form is the confirm, save records it. Edit-after stays parked.
+
+- **Contract test against a local Worker** — delivered in [slice 0020](slices/0020-worker-contract.md); `npm test` boots miniflare and drives `src/api/edge.ts`. Wake socket contract and Expo Go → `wrangler dev` stay parked.
