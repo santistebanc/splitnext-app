@@ -3,7 +3,7 @@
 ## Foundation-risk
 
 - **Browser-driven flow tests** — `npm run capture` (slice 0007) commits the Playwright driver and asserts a clean console plus balances surviving a reload, but it is a capture run, not a test suite: it is not in `npm test`, has no failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007*
-- **Wake socket contract against a local Worker** — HTTP routes are contract-tested in vitest (slice 0020); the hibernating WebSocket at `/wake/:groupId` is not — area: sync — raised: slice 0020
+- **Driving `startWakeSubscription` against a local Worker** — the wake *wire* is contract-tested (slice 0021); the client orchestrator (token store, inbound fetch, module Maps) is not — area: sync — raised: slice 0021
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
@@ -51,6 +51,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Settle-up → prefill** — delivered in [slice 0019](slices/0019-settle-prefill.md); tap a row, form is the confirm, save records it. Edit-after stays parked.
+- **Contract test against a local Worker** — delivered in [slice 0020](slices/0020-worker-contract.md); `npm test` boots miniflare and drives `src/api/edge.ts`.
 
-- **Contract test against a local Worker** — delivered in [slice 0020](slices/0020-worker-contract.md); `npm test` boots miniflare and drives `src/api/edge.ts`. Wake socket contract and Expo Go → `wrangler dev` stay parked.
+- **Wake socket contract** — delivered in [slice 0021](slices/0021-wake-contract.md); auth + tip after merge. Driving `startWakeSubscription` stays parked.

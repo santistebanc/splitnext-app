@@ -44,7 +44,7 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 | Command | What it does |
 | --- | --- |
 | `npm run check` | **The merge gate**: `test` + `typecheck` + `test:board` + `audit`, in that order. CI runs exactly this. |
-| `npm test` | Vitest, the seam tests. Boots a local Worker for the HTTP contract (D-070); does not call `workers.dev`. |
+| `npm test` | Vitest, the seam tests. Boots a local Worker for the HTTP contract (D-070) and the wake wire (D-071); does not call `workers.dev`. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:board` | Python tests for the board generator — parsers, call graph, hunk attribution. |
 | `npm run audit` | Audits `docs/state/` against the code and git: dangling ids, moved paths, missing captures, stale flow clips, missing tags, thin archives. Findings fail; notes do not. |
