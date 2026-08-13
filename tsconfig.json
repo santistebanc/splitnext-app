@@ -15,7 +15,6 @@
     "expo-env.d.ts"
   ],
   "exclude": [
-    "supabase/functions",
     "workers",
     "node_modules"
   ]

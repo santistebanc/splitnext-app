@@ -12,7 +12,7 @@ Phase 6 of `/slicer` means this one.
 - **Standards** — is it written the way this repo writes code?
 
 Invariants come first because they are the axis with no judgement in it: money
-in floats or a client talking to Postgres is wrong regardless of how clean the
+in floats or a client talking to D1 or the Durable Object is wrong regardless of how clean the
 code is or how well it matches the plan.
 
 ## Process

@@ -160,6 +160,8 @@ for line in git.stdout.splitlines():
     path = line[3:].strip()
     if not path.startswith("src/") or not path.endswith(".ts"):
         continue
+    if path.endswith(".test.ts"):
+        continue  # tests sit next to the seam; LOGIC.md names the module, not the spec
     if path not in state_text and not any(e["where"] == path for e in rows):
         report("unmapped-file", f"{path} changed but appears in no LOGIC.md row")
 
@@ -300,7 +302,7 @@ for link in re.findall(r"\]\((slices/[\w.-]+\.md)\)", ov_text):
         report("dead-link", f"OVERVIEW.md links {link}, which is not in docs/state/slices/")
 seams_block = re.search(r"\n## Seams\n(.*?)(?=\n## |\Z)", ov_text, re.S)
 for ln in (seams_block.group(1).splitlines() if seams_block else []):
-    for path in re.findall(r"`((?:src|app|docs|supabase|workers)/[\w./\[\]-]+)`", ln):
+    for path in re.findall(r"`((?:src|app|docs|workers)/[\w./\[\]-]+)`", ln):
         if not (ROOT / path).exists():
             report("missing-path", f"OVERVIEW.md names seam file {path} — not on disk")
 routes_block = re.search(r"\n## Routes / surfaces\n(.*?)(?=\n## |\Z)", ov_text, re.S)
@@ -331,7 +333,42 @@ for arch in archives:
     if num >= "0010" and "### Review" not in text:
         report("thin-archive", f"{arch.name} has no ### Review block — /code-review left no trace")
 
-# 17. Delivered parking that has outstayed its welcome
+# 17. live tree must not carry the old host
+#
+# Slice archives and DECISIONS.md are the record of what shipped; they may
+# name it. Everything a clone or an agent would follow today must not.
+if (ROOT / "supabase").exists():
+    report("old-host", "supabase/ is still on disk — the host lives under workers/")
+
+_OLD_HOST = re.compile(r"supabase|splitnext-v3|ycpkguwfxlhpovnsuujr", re.I)
+_LIVE_DOCS = [
+    ROOT / "README.md",
+    ROOT / "AGENTS.md",
+    STATE / "OVERVIEW.md",
+    STATE / "LOGIC.md",
+    STATE / "FLOWS.md",
+    STATE / "PARKING.md",
+]
+for path in _LIVE_DOCS:
+    if _OLD_HOST.search(path.read_text()):
+        report("old-host", f"{path.relative_to(ROOT)} still names the old host")
+
+for folder in ("src", "app", "workers", ".github"):
+    root = ROOT / folder
+    if not root.is_dir():
+        continue
+    for f in root.rglob("*"):
+        if not f.is_file() or f.suffix not in {".ts", ".tsx", ".yml", ".yaml", ".md", ".sql"}:
+            continue
+        try:
+            text = f.read_text()
+        except UnicodeDecodeError:
+            continue
+        if _OLD_HOST.search(text):
+            report("old-host", f"{f.relative_to(ROOT)} still names the old host")
+
+
+# 18. Delivered parking that has outstayed its welcome
 newest_num = max((re.match(r"(\d{4})", a.name).group(1) for a in archives), default="0000")
 delivered = re.search(r"\n## Delivered\n(.*?)(?=\n## |\Z)", (STATE / "PARKING.md").read_text(), re.S)
 for ln in (delivered.group(1).splitlines() if delivered else []):

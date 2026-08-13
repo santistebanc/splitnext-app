@@ -10,15 +10,15 @@ export function shouldCatchUpOnStatus(
 
 /**
  * Whether `startWakeSubscription` should (re)connect.
- * A live `SUBSCRIBED` channel is reused. A missing channel is started.
+ * A live `SUBSCRIBED` socket is reused. A missing socket is started.
  * A dropped one is replaced so a joiner whose first subscribe died on the
  * way to the hub can listen when the hub opens.
  */
 export function shouldReplaceSubscription(
-  hasChannel: boolean,
+  hasSocket: boolean,
   status: string | null | undefined,
 ): boolean {
-  if (!hasChannel) return true;
+  if (!hasSocket) return true;
   if (status == null) return false;
   return DROP_STATUSES.has(status);
 }

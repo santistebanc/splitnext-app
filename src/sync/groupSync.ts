@@ -271,7 +271,7 @@ export async function openGroup(groupId: string): Promise<void> {
   try {
     await startWakeSubscription(groupId, () => syncGroup(groupId));
   } catch {
-    // Opening a group for browse must not crash if Realtime is unavailable.
+    // Opening a group for browse must not crash if the wake socket is down.
   }
   await syncGroup(groupId);
 }
