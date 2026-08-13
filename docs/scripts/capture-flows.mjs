@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 const run = promisify(execFile);
 
 import { installPointerOverlay } from './capture-overlay.mjs';
-import { VIEWPORT, balancesOf, makeDriver, settleOf } from './capture-driver.mjs';
+import { VIEWPORT, balancesOf, makeDriver, settleOf, settleRowOf } from './capture-driver.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SHOTS = join(ROOT, 'docs', 'state', 'shots');
@@ -197,7 +197,45 @@ const FLOWS = [
           `[F-settle] settle-up changed across a reload:\n  before: ${before}\n  after:  ${after}`,
         );
       }
+
+      await d.press(settleRowOf(page));
+      await d.beat(1200);
+      const what = await page.getByPlaceholder('What for').inputValue();
+      if (what !== 'Settlement') {
+        problems.push(`[F-settle] tap did not prefill Settlement (got ${JSON.stringify(what)})`);
+      }
       await d.beat(1500);
+    },
+  },
+  {
+    id: 'F-settle-record',
+    from: 'spent',
+    async run(d, page) {
+      const before = settleOf(await page.innerText('body'));
+      if (!before) problems.push('[F-settle-record] no settle-up section');
+
+      await d.press(settleRowOf(page));
+      await d.beat(800);
+      const what = await page.getByPlaceholder('What for').inputValue();
+      if (what !== 'Settlement') {
+        problems.push(
+          `[F-settle-record] tap did not prefill Settlement (got ${JSON.stringify(what)})`,
+        );
+      }
+      await d.tap('Add expense');
+      await d.beat(2400);
+
+      const hub = await page.innerText('body');
+      if (!/Settlement/.test(hub)) {
+        problems.push('[F-settle-record] no Settlement expense listed');
+      }
+      if (!/split 1 way/.test(hub)) {
+        problems.push('[F-settle-record] settlement was not split 1 way');
+      }
+      const after = settleOf(hub);
+      if (before && after === before) {
+        problems.push('[F-settle-record] settle-up list did not change after save');
+      }
     },
   },
   {
@@ -324,10 +362,10 @@ async function stills(browser, storageState, hubUrl, number) {
   const page = await context.newPage();
   await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
   await page.waitForTimeout(2000);
-  await page.getByText('Add expense', { exact: true }).filter({ visible: true }).first().click();
+  await settleRowOf(page).click();
   await page.waitForTimeout(1500);
-  await page.screenshot({ path: join(SHOTS, `${number}-expense-form.png`) });
-  console.log('still', `${number}-expense-form.png`);
+  await page.screenshot({ path: join(SHOTS, `${number}-settle-prefill.png`) });
+  console.log('still', `${number}-settle-prefill.png`);
   await context.close();
 }
 
@@ -342,7 +380,7 @@ for (const flow of FLOWS) {
 }
 
 if (SLICE) {
-  const { storageState, hubUrl } = await seed(browser, 'bound');
+  const { storageState, hubUrl } = await seed(browser, 'spent');
   await stills(browser, storageState, hubUrl, SLICE);
 }
 

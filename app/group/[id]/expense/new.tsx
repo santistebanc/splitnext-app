@@ -1,5 +1,9 @@
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
+import {
+  expensePrefillFromSearchParams,
+  type ExpensePrefill,
+} from '@/src/domain/expensePrefill';
 import { getGroupStore } from '@/src/store/groupStore';
 import { addExpense, openGroup } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
@@ -15,6 +19,24 @@ import {
   View,
 } from 'react-native';
 
+/** Integer cents → the amount field's decimal text. No float. */
+function formatCents(cents: number): string {
+  const whole = Math.floor(cents / 100);
+  const frac = cents % 100;
+  return `${whole}.${String(frac).padStart(2, '0')}`;
+}
+
+function sharingFromPrefill(
+  memberIds: readonly string[],
+  prefill: ExpensePrefill | null,
+): Record<string, boolean> {
+  if (!prefill) {
+    return Object.fromEntries(memberIds.map((id) => [id, true]));
+  }
+  const want = new Set(prefill.participantIds);
+  return Object.fromEntries(memberIds.map((id) => [id, want.has(id)]));
+}
+
 /** "12,34" and "12.34" both mean 1234 cents; anything else is not money. */
 function parseCents(text: string): number | null {
   const cleaned = text.trim().replace(',', '.');
@@ -23,8 +45,15 @@ function parseCents(text: string): number | null {
 }
 
 export default function NewExpenseScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const groupId = id ?? '';
+  const params = useLocalSearchParams<{
+    id: string;
+    payer?: string;
+    amount?: string;
+    participants?: string;
+    what?: string;
+  }>();
+  const groupId = params.id ?? '';
+  const prefill = expensePrefillFromSearchParams(params);
   const router = useRouter();
   const store$ = getGroupStore(groupId);
   const group = useValue(store$.group);
@@ -33,9 +62,13 @@ export default function NewExpenseScreen() {
   const lastErrorRaw = useValue(store$.lastError);
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
-  const [amount, setAmount] = useState('');
-  const [what, setWhat] = useState('');
-  const [payerId, setPayerId] = useState<string | null>(null);
+  const [amount, setAmount] = useState(() =>
+    prefill ? formatCents(prefill.amountCents) : '',
+  );
+  const [what, setWhat] = useState(() => prefill?.what ?? '');
+  const [payerId, setPayerId] = useState<string | null>(
+    () => prefill?.payerId ?? null,
+  );
   const [sharing, setSharing] = useState<Readonly<Record<string, boolean>> | null>(
     null,
   );
@@ -64,13 +97,14 @@ export default function NewExpenseScreen() {
   );
 
   useEffect(() => {
-    if (payerId == null && assumedMemberId) setPayerId(assumedMemberId);
+    if (payerId != null) return;
+    if (assumedMemberId) setPayerId(assumedMemberId);
   }, [assumedMemberId, payerId]);
 
   useEffect(() => {
     if (sharing != null || memberList.length === 0) return;
-    setSharing(Object.fromEntries(memberList.map((m) => [m.id, true])));
-  }, [memberList, sharing]);
+    setSharing(sharingFromPrefill(memberList.map((m) => m.id), prefill));
+  }, [memberList, sharing, prefill]);
 
   const cents = parseCents(amount);
   const participantIds = Object.entries(sharing ?? {})

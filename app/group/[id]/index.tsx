@@ -4,6 +4,7 @@ import {
   bindingIsOpen,
 } from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
+import { settlementHref } from '@/src/domain/expensePrefill';
 import { suggestSettlements } from '@/src/domain/settle';
 import { getGroupStore } from '@/src/store/groupStore';
 import {
@@ -16,7 +17,7 @@ import { mintInvite } from '@/src/sync/invite';
 import { inviteShareText } from '@/src/sync/inviteShareText';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { useValue } from '@legendapp/state/react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -268,15 +269,18 @@ export default function GroupHubScreen() {
             const from = person(s.from_display_name, fromYou);
             const to = person(s.to_display_name, toYou);
             return (
-              <View
+              <Pressable
                 key={`${s.from_member_id}-${s.to_member_id}-${i}`}
                 style={styles.memberRow}
+                onPress={() => router.push(settlementHref(groupId, s) as Href)}
+                accessibilityRole="button"
+                accessibilityLabel={`${from} → ${to}`}
               >
                 <Text style={fromYou || toYou ? styles.you : styles.value}>
                   {from} → {to}
                 </Text>
                 <Text style={styles.value}>{money(s.amount_cents).text}</Text>
-              </View>
+              </Pressable>
             );
           })}
         </>

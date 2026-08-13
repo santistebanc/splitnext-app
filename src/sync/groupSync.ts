@@ -59,16 +59,19 @@ export async function createGroup(): Promise<string> {
     store$.group.set(group);
     store$.syncStatus.set('on_server');
     store$.lastError.set(null);
-    try {
-      await startWakeSubscription(groupId, () => syncGroup(groupId));
-    } catch (wakeErr) {
-      store$.lastError.set(
-        syncError(
-          'wake_failed',
-          wakeErr instanceof Error ? wakeErr.message : 'wake_failed',
-        ),
-      );
-    }
+    // Create must not wait on the live socket — a hung WebSocket
+    // constructor would leave the lobby spinner running forever.
+    // Wake failure is recorded, not thrown (slice 0004).
+    void startWakeSubscription(groupId, () => syncGroup(groupId)).catch(
+      (wakeErr) => {
+        store$.lastError.set(
+          syncError(
+            'wake_failed',
+            wakeErr instanceof Error ? wakeErr.message : 'wake_failed',
+          ),
+        );
+      },
+    );
     return groupId;
   } catch (err) {
     store$.syncStatus.set('error');
