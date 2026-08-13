@@ -84,7 +84,7 @@ Last updated: slice 0012
 | --- | --- | --- |
 | `/` | Lobby: create group, paste-to-join, list local group ids; root AppState sync | slice 0001 / 0002 / 0012 |
 | `/join` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 |
-| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite per member, You (Name); balances (net per member, signed); expenses list + add, each row saying how many ways it split; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 |
+| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite on members who are not You, You (Name); balances (net per member, signed); expenses list + add, each row saying how many ways it split; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 |
 
 ## Seams
 

@@ -100,10 +100,10 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 ## F-invite — Invite a member
 
-**Trigger** — On the hub, the person taps **Invite** on a member row.  
+**Trigger** — On the hub, the person taps **Invite** on a member who is not You.  
 **Outcome** — A join link for that member is shown (and copied when the platform allows). Another device can redeem it once, within seven days.
 
-1. `L-hub` calls `L-mintInvite` with that member.
+1. `L-hub` shows **Invite** on every live member except You, then calls `L-mintInvite` with the member tapped.
 2. `L-edgeMintInvite` posts to `L-efMintInvite`, which checks this device's access token, refuses a missing or tombstoned member, stores the hash, and returns the plaintext once.
 3. `L-hub` shows the `/join?token=` link (web) or the raw token (native) via `L-inviteShare`. The secret is not kept on the device after that.
 

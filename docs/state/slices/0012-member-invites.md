@@ -14,7 +14,7 @@ A second device can join a group as a named member — mint a one-use link on th
 ### Highlights
 - **`L-efMintInvite` / `L-efJoin`** — hashed invite row names the member; redeem mints an access token and a v1 bind. `member_id` is not a redeem argument.
 - **`L-inviteIsLive` / `L-parseInviteToken`** — 7-day, one-use, live member; paste accepts a raw token or a `/join?token=` URL.
-- **Hub / lobby / `/join`** — **Invite** on each member; lobby paste; join route auto-redeems.
+- **Hub / lobby / `/join`** — **Invite** on every member except You; lobby paste; join route auto-redeems.
 - **`FUNCTIONS`** — `mint-invite` and `join-group` added so CI deploys and health-checks them (D-052).
 - Live redeem waits on merge: the functions 404 until this PR lands. `F-invite` / `F-join` named unrecorded.
 
@@ -24,7 +24,7 @@ A second device can join a group as a named member — mint a one-use link on th
 | --- | --- | --- |
 | Second device | Cannot get in | Redeems a one-use invite into a new access token and a bind |
 | Invite | None | Hashed row: `group_id`, `member_id`, `expires_at`, `redeemed_at` |
-| Hub | Add member / This is me | **Invite** on each member; creator **This is me** unchanged |
+| Hub | Add member / This is me | **Invite** on members who are not You; creator **This is me** unchanged |
 | Lobby | Create only | Paste + **Join group**; `/join?token=` |
 
 ### Logic delta
@@ -51,7 +51,7 @@ A second device can join a group as a named member — mint a one-use link on th
 | `L-efJoin` | This device already has a live token | `already_in_group` 409. Invite not consumed. |
 | `L-efJoin` | Bind insert fails after the invite is claimed | Invite is spent and no bind exists. Rare; not retried. |
 | `L-join` | `/join` with no `token` | Screen shows `invite_invalid`. |
-| `L-hub` | **Invite** fails | `invite_failed` on `lastError`. Previous join link is cleared. |
+| `L-hub` | This device already has an assumed member | **Invite** is hidden on that You row. Other members still offer it. |
 | `F-invite` / `F-join` | Functions not on the remote yet | D-052: they deploy on merge. Named unrecorded. |
 
 ### Review

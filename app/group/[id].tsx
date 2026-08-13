@@ -216,14 +216,16 @@ export default function GroupHubScreen() {
             <View key={m.id} style={styles.memberRow}>
               <Text style={isYou ? styles.you : styles.value}>{label}</Text>
               <View style={styles.memberActions}>
-                <Pressable
-                  style={styles.smallButton}
-                  onPress={() => void onInvite(m.id)}
-                  accessibilityRole="button"
-                  disabled={busy}
-                >
-                  <Text style={styles.smallButtonText}>Invite</Text>
-                </Pressable>
+                {!isYou ? (
+                  <Pressable
+                    style={styles.smallButton}
+                    onPress={() => void onInvite(m.id)}
+                    accessibilityRole="button"
+                    disabled={busy}
+                  >
+                    <Text style={styles.smallButtonText}>Invite</Text>
+                  </Pressable>
+                ) : null}
                 {canChoose && !isYou ? (
                   <Pressable
                     style={styles.smallButton}

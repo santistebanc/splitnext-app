@@ -26,7 +26,7 @@ Screens and routes the person touches.
 | Id | Name | Kind | Where | What it is for |
 | --- | --- | --- | --- | --- |
 | L-lobby | Lobby screen | Screen | `app/index.tsx` | The first screen: lists every group this device knows, offers Create group or Join group (paste a token), and opens one into the hub. |
-| L-hub | Group hub | Screen | `app/group/[id].tsx` | One group's screen: shows its name, member list and everyone's balance, lets you add a member or an expense, claim a member as yourself, invite another device onto a member, rename the group, and surfaces the last sync error. |
+| L-hub | Group hub | Screen | `app/group/[id].tsx` | One group's screen: shows its name, member list and everyone's balance, lets you add a member or an expense, claim a member as yourself, invite another device onto a member who is not You, rename the group, and surfaces the last sync error. |
 | L-join | Join screen | Screen | `app/join.tsx` | Redeems a `/join?token=` invite, stores the new access token, and opens the hub already bound to the named member. |
 | L-rootLayout | Root layout | Screen | `app/_layout.tsx` | The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app. |
 
