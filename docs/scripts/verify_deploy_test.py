@@ -86,6 +86,13 @@ class Evaluate(unittest.TestCase):
         self.assertEqual(len(failures), 1)
         self.assertIn("merge", failures[0])
 
+    def test_a_200_with_non_json_body_fails(self):
+        probes = all_ok()
+        probes[1] = {"fn": "merge", "status": 200, "body": "ok"}
+        failures = evaluate(probes, SHA)
+        self.assertEqual(len(failures), 1)
+        self.assertIn("merge", failures[0])
+
     # A probe list that silently lost a function would otherwise pass by
     # vacuum: nothing reported, nothing wrong.
     def test_a_function_missing_from_the_probes_fails(self):

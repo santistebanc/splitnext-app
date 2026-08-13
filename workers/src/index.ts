@@ -141,11 +141,6 @@ async function requireAccess(
 }
 
 async function handleMerge(request: Request, env: Env): Promise<Response> {
-  const accessToken = bearerToken(request);
-  const deviceUserId = request.headers.get('x-device-user-id');
-  if (!accessToken || !deviceUserId) {
-    return jsonResponse({ error: 'unauthorized' }, 401);
-  }
   const body = (await request.json()) as {
     group_id?: string;
     items?: MergeItem[];

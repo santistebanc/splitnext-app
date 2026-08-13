@@ -50,8 +50,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **One remote, slice branches may deploy** — delivered in [slice 0013](slices/0013-dev-remote.md); `main` and `slice/**` both deploy to the one remote; last green wins; no wipe. Host moved to the Cloudflare Worker in slice 0014.
+- **One remote, slice branches may deploy** — delivered in [slice 0013](slices/0013-dev-remote.md); `main` and `slice/**` both deploy to the one remote; last green wins; no wipe. Host is the Cloudflare Worker as of [slice 0014](slices/0014-cloudflare-do.md).
 
-- **Missed-wake reconnect** — delivered in [slice 0011](slices/0011-missed-wake.md); a dropped wake socket returning to `SUBSCRIBED` runs the same `syncGroup` as open, for that group only. No cursor.
-
-- **Member invites (mint + redeem)** — delivered in [slice 0012](slices/0012-member-invites.md); per-member one-use link, `/join` + lobby paste. App links and joiner picker still parked.
+- **Cloudflare Durable Object server** — delivered in [slice 0014](slices/0014-cloudflare-do.md); Worker + SQLite DO per group + D1 token index; hibernating WebSocket wakes; `splitnext-v3` left unused.

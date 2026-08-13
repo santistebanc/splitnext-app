@@ -191,11 +191,11 @@ const UNRECORDED = {
   'F-foreground': 'needs the app backgrounded and returned to, which a headless page cannot do',
   'F-wake': 'needs a second device changing the group while this one watches',
   'F-invite':
-    'needs mint-invite on the server, which this slice adds and D-052 only deploys on merge',
+    'needs a second device to redeem; mint is demoed by hand, not a one-context clip',
   'F-join':
-    'needs join-group on the server plus a second device; both the function and a live two-context capture wait on this slice merging (D-052)',
+    'needs a second browser profile to redeem while the first stays on the hub',
   'F-wake-reconnect':
-    'needs the Realtime socket to drop and return while the hub stays open, and a second device to have written in between',
+    'needs the wake socket to drop and return while the hub stays open, and a second device to have written in between',
 };
 
 // ── Setup ──────────────────────────────────────────────────────────────────
