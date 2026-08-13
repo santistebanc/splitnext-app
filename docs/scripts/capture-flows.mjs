@@ -195,7 +195,7 @@ const UNRECORDED = {
   'F-join':
     'needs a second browser profile to redeem while the first stays on the hub',
   'F-wake-reconnect':
-    'needs the wake socket to drop and return while the hub stays open, and a second device to have written in between',
+    'needs the wake socket to drop while the hub stays open; the client retries, but a clip cannot force the drop',
 };
 
 // ── Setup ──────────────────────────────────────────────────────────────────

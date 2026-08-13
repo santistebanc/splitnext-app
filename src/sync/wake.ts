@@ -4,6 +4,7 @@ import type { EntityType } from '@/src/domain/version';
 import { getAccessToken } from '@/src/secrets/tokens';
 import { applyRemoteFetch } from '@/src/sync/inbound';
 import {
+  nextReconnectDelayMs,
   shouldCatchUpOnStatus,
   shouldReplaceSubscription,
 } from '@/src/sync/wakePolicy';
@@ -13,6 +14,8 @@ const SUBSCRIBE_WAIT_MS = 8000;
 const sockets = new Map<string, WebSocket>();
 const reconnectByGroup = new Map<string, () => Promise<void>>();
 const lastStatusByGroup = new Map<string, string>();
+const reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const failedAttemptsByGroup = new Map<string, number>();
 
 function wakeUrl(groupId: string, accessToken: string, deviceUserId: string): string {
   const base = env.apiUrl.replace(/^http/i, 'ws');
@@ -22,11 +25,45 @@ function wakeUrl(groupId: string, accessToken: string, deviceUserId: string): st
   return url.toString();
 }
 
+function clearReconnectTimer(groupId: string): void {
+  const timer = reconnectTimers.get(groupId);
+  if (timer != null) clearTimeout(timer);
+  reconnectTimers.delete(groupId);
+}
+
+function scheduleReconnect(groupId: string): void {
+  clearReconnectTimer(groupId);
+  const attempts = failedAttemptsByGroup.get(groupId) ?? 0;
+  failedAttemptsByGroup.set(groupId, attempts + 1);
+  const timer = setTimeout(() => {
+    reconnectTimers.delete(groupId);
+    const catchUp = reconnectByGroup.get(groupId);
+    if (!catchUp) return;
+    void startWakeSubscription(groupId, catchUp).catch(() => {
+      scheduleReconnect(groupId);
+    });
+  }, nextReconnectDelayMs(attempts));
+  reconnectTimers.set(groupId, timer);
+}
+
+/** Drop only the socket that is still current — a replaced one's close is ignored. */
+function dropCurrent(
+  groupId: string,
+  socket: WebSocket,
+  status: 'ERROR' | 'CLOSED',
+): void {
+  if (sockets.get(groupId) !== socket) return;
+  lastStatusByGroup.set(groupId, status);
+  sockets.delete(groupId);
+  scheduleReconnect(groupId);
+}
+
 export async function startWakeSubscription(
   groupId: string,
   onReconnect: () => Promise<void>,
 ): Promise<void> {
   reconnectByGroup.set(groupId, onReconnect);
+  clearReconnectTimer(groupId);
   if (
     !shouldReplaceSubscription(
       sockets.has(groupId),
@@ -39,7 +76,6 @@ export async function startWakeSubscription(
   const stale = sockets.get(groupId);
   if (stale) {
     sockets.delete(groupId);
-    lastStatusByGroup.delete(groupId);
     stale.close();
   }
 
@@ -48,16 +84,26 @@ export async function startWakeSubscription(
   if (!accessToken) return;
 
   await new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, SUBSCRIBE_WAIT_MS);
     const socket = new WebSocket(wakeUrl(groupId, accessToken, deviceUserId));
     sockets.set(groupId, socket);
+    const timer = setTimeout(() => {
+      resolve();
+      if (
+        sockets.get(groupId) === socket &&
+        lastStatusByGroup.get(groupId) !== 'OPEN'
+      ) {
+        dropCurrent(groupId, socket, 'ERROR');
+        socket.close();
+      }
+    }, SUBSCRIBE_WAIT_MS);
 
     socket.onopen = () => {
       const prev = lastStatusByGroup.get(groupId) ?? null;
-      lastStatusByGroup.set(groupId, 'SUBSCRIBED');
+      lastStatusByGroup.set(groupId, 'OPEN');
+      failedAttemptsByGroup.set(groupId, 0);
       clearTimeout(timer);
       resolve();
-      if (!shouldCatchUpOnStatus(prev, 'SUBSCRIBED')) return;
+      if (!shouldCatchUpOnStatus(prev, 'OPEN')) return;
       const catchUp = reconnectByGroup.get(groupId);
       if (!catchUp) return;
       void Promise.resolve(catchUp()).catch(() => {
@@ -96,11 +142,11 @@ export async function startWakeSubscription(
     };
 
     socket.onerror = () => {
-      lastStatusByGroup.set(groupId, 'CHANNEL_ERROR');
+      dropCurrent(groupId, socket, 'ERROR');
     };
 
     socket.onclose = () => {
-      lastStatusByGroup.set(groupId, 'CLOSED');
+      dropCurrent(groupId, socket, 'CLOSED');
     };
   });
 }
