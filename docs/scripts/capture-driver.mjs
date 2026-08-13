@@ -52,4 +52,8 @@ export function makeDriver(page) {
 
 /** The balances block as text — the thing a reload must not change. */
 export const balancesOf = (body) =>
-  body.split('BALANCES')[1]?.split('EXPENSES')[0]?.trim() ?? '';
+  body.split('BALANCES')[1]?.split(/SETTLE UP|EXPENSES/)[0]?.trim() ?? '';
+
+/** The settle-up block as text — derived, so a reload must not change it either. */
+export const settleOf = (body) =>
+  body.split('SETTLE UP')[1]?.split('EXPENSES')[0]?.trim() ?? '';

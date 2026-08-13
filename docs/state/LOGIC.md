@@ -26,7 +26,7 @@ Screens and routes the person touches.
 | Id | Name | Kind | Where | What it is for |
 | --- | --- | --- | --- | --- |
 | L-lobby | Lobby screen | Screen | `app/index.tsx` | The first screen: lists every group this device knows, offers Create group or Join group (paste a token), and opens one into the hub. |
-| L-hub | Group hub | Screen | `app/group/[id].tsx` | One group's screen: shows its name, member list and everyone's balance, lets you add a member or an expense, claim a member as yourself, invite another device onto a member who is not You, rename the group, and surfaces the last sync error. |
+| L-hub | Group hub | Screen | `app/group/[id].tsx` | One group's screen: shows its name, member list and everyone's balance, lists the fewest transfers that settle those nets, lets you add a member or an expense, claim a member as yourself, invite another device onto a member who is not You, rename the group, and surfaces the last sync error. |
 | L-join | Join screen | Screen | `app/join.tsx` | Redeems a `/join?token=` invite, stores the new access token, and opens the hub already bound to the named member. |
 | L-rootLayout | Root layout | Screen | `app/_layout.tsx` | The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app. |
 
@@ -42,6 +42,7 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-bindingOpen | `bindingIsOpen` | Pure | `src/domain/assumedMember.ts` | Answers "can this device still say which member it is?" — yes until the group's first live expense, which is what shows or hides the This is me button. |
 | L-splitEqually | `splitEqually` | Pure | `src/domain/split.ts` | Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. |
 | L-balances | `computeBalances` | Pure | `src/domain/balances.ts` | Works out what each member is up or down overall — what they paid minus what they owe — most-negative first. |
+| L-settle | `suggestSettlements` | Pure | `src/domain/settle.ts` | Turns those nets into the fewest transfers that zero everyone who can be settled, identical on every device. |
 | L-inviteIsLive | `inviteIsLive` | Pure | `src/domain/invite.ts` | Answers whether an invite can still be redeemed — not spent, not past `expires_at`, and the named member still live. |
 | L-parseInviteToken | `parseInviteToken` | Pure | `src/domain/invite.ts` | Pulls the invite secret out of a raw token or a `/join?token=` URL so lobby paste and the join route share one parser. |
 | L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes. |
