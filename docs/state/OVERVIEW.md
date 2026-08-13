@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0016
+Last updated: slice 0017
 
 ## Direction
 
@@ -35,6 +35,7 @@ Last updated: slice 0016
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
 - Split every expense equally across the members live at record time, frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md)
 - See each member's net position on the hub — paid minus owed, most-negative first, You (Name) marked — [slice 0007](slices/0007-allocations-balances.md)
+- See the fewest transfers that zero those nets, listed under Settle up; derived, identical on every device, never moves money — [slice 0017](slices/0017-settle-up.md)
 - Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
 - Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Worker — [slice 0007](slices/0007-allocations-balances.md)
 - Work the repo from any clone: the loop is vendored at `.claude/skills/`, `AGENTS.md` is the entry point, CI enforces the gates — [slice 0008](slices/0008-repo-home.md)
@@ -77,6 +78,8 @@ Last updated: slice 0016
 
 **Balance** (derived, never stored) — per live member, Σ paid − Σ owed across live expenses, sorted most-negative first.
 
+**Settlement** (derived, never stored) — the fewest transfers that zero those nets: `{ from_member_id, to_member_id, amount_cents }`. Zero-sum subgroups, then poorest↔richest inside each; unmatched leftover omitted. Rows on the hub do not move money (D-067).
+
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
 **Invite** — server only, not a merge entity: `token_hash`, `group_id`, `member_id`, `expires_at`, `redeemed_at`. One-use, 7-day. Redeeming mints an access token and a v1 bind for that member. Plaintext is shown once at mint.
@@ -89,7 +92,7 @@ Last updated: slice 0016
 | --- | --- | --- |
 | `/` | Lobby: create group, paste-to-join, list local group ids; root AppState sync | slice 0001 / 0002 / 0012 |
 | `/join` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 |
-| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite on members who are not You, You (Name); balances (net per member, signed); expenses list + add, each row saying how many ways it split; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 |
+| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite on members who are not You, You (Name); balances (net per member, signed); settle-up list (fewest transfers, You marked, hidden when square); expenses list + add, each row saying how many ways it split; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 / 0017 |
 
 ## Seams
 
@@ -102,6 +105,7 @@ Last updated: slice 0016
 - `persistPlugin` — `src/store/persistPlugin.ts` — the platform split for durability
 - `splitEqually` — `src/domain/split.ts` — vitest
 - `computeBalances` — `src/domain/balances.ts` — vitest
+- `suggestSettlements` — `src/domain/settle.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload
 - `isHealthRequest` / `healthPayload` — `workers/src/health.ts` — vitest — the deploy provenance probe

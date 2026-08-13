@@ -4,6 +4,7 @@ import {
   bindingIsOpen,
 } from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
+import { suggestSettlements } from '@/src/domain/settle';
 import { getGroupStore } from '@/src/store/groupStore';
 import {
   addExpense,
@@ -91,6 +92,7 @@ export default function GroupHubScreen() {
     () => computeBalances(members ?? {}, expenses ?? {}),
     [members, expenses],
   );
+  const settlements = useMemo(() => suggestSettlements(balances), [balances]);
 
   const nameOf = (memberId: string) =>
     (members ?? {})[memberId]?.display_name || '(unnamed)';
@@ -278,6 +280,34 @@ export default function GroupHubScreen() {
           );
         })
       )}
+
+      {settlements.length > 0 ? (
+        <>
+          <Text style={styles.label}>Settle up</Text>
+          {settlements.map((s, i) => {
+            const fromYou = s.from_member_id === assumedMemberId;
+            const toYou = s.to_member_id === assumedMemberId;
+            const person = (name: string, isYou: boolean) => {
+              const shown = name === '' ? '(unnamed)' : name;
+              if (!isYou) return shown;
+              return name === '' ? 'You (unnamed)' : `You (${name})`;
+            };
+            const from = person(s.from_display_name, fromYou);
+            const to = person(s.to_display_name, toYou);
+            return (
+              <View
+                key={`${s.from_member_id}-${s.to_member_id}-${i}`}
+                style={styles.memberRow}
+              >
+                <Text style={fromYou || toYou ? styles.you : styles.value}>
+                  {from} → {to}
+                </Text>
+                <Text style={styles.value}>{money(s.amount_cents).text}</Text>
+              </View>
+            );
+          })}
+        </>
+      ) : null}
 
       <Text style={styles.label}>Expenses</Text>
       {expenseList.length === 0 ? (

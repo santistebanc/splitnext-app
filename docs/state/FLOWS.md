@@ -73,7 +73,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 3. `L-splitEqually` divides the cost across everyone in the group at this moment, and `L-addExpense` refuses to store a split that does not add up to the total. The split is frozen into the expense: a member added later joins the next expense, not this one.
 4. The expense is written into the store at version 1, split and all, and queued — the list updates before any network call.
 5. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
-6. `L-balances` refolds and the hub's balances move — the payer up by what they paid, everyone down by their share.
+6. `L-balances` refolds and the hub's balances move — the payer up by what they paid, everyone down by their share. `L-settle` refolds the transfer list from those nets.
 
 ## F-balances — See who owes what
 
@@ -84,6 +84,16 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 2. `L-balances` credits each payer the full amount and debits each member their share. Because a split always sums to its expense, the nets cancel out across the group.
 3. `L-assumedMember` marks which row is yours; the hub colours a negative red and a positive green.
 4. Anything arriving later — a wake, a roster pull — lands in the store and the list refolds on its own.
+
+## F-settle — See who should pay whom
+
+**Trigger** — The hub is on screen and at least one member is not square.  
+**Outcome** — The fewest transfers that zero every net that can be settled, with this device's own member marked. The list does not move money.
+
+1. `L-hub` already has the nets from `L-balances`, so settle-up needs no network of its own.
+2. `L-settle` drops members at zero, partitions the rest into as many zero-sum subgroups as exist, and pairs poorest with richest inside each. Two devices holding the same nets list the same transfers.
+3. `L-hub` shows each transfer under **Settle up**, marking You the same way the balances do. Rows do nothing.
+4. When every net is already 0 — or nothing has been spent — the section is absent.
 
 ## F-bind — This is me
 

@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 const run = promisify(execFile);
 
 import { installPointerOverlay } from './capture-overlay.mjs';
-import { VIEWPORT, balancesOf, makeDriver } from './capture-driver.mjs';
+import { VIEWPORT, balancesOf, makeDriver, settleOf } from './capture-driver.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SHOTS = join(ROOT, 'docs', 'state', 'shots');
@@ -176,6 +176,29 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-settle',
+    from: 'spent',
+    async run(d, page) {
+      const heading = page.getByText(/settle up/i).first();
+      await heading.scrollIntoViewIfNeeded();
+      await d.press(heading);
+      await d.beat(1600);
+
+      const before = settleOf(await page.innerText('body'));
+      if (!before) problems.push('[F-settle] no settle-up section');
+      await page.goto(page.url(), { waitUntil: 'networkidle', timeout: 120000 });
+      await page.waitForTimeout(4000);
+      const after = settleOf(await page.innerText('body'));
+      if (!after) problems.push('[F-settle] no settle-up after reload');
+      if (before !== after) {
+        problems.push(
+          `[F-settle] settle-up changed across a reload:\n  before: ${before}\n  after:  ${after}`,
+        );
+      }
+      await d.beat(1500);
+    },
+  },
+  {
     id: 'F-bump',
     from: 'bound',
     async run(d) {
@@ -297,8 +320,10 @@ async function stills(browser, storageState, hubUrl, number) {
   const page = await context.newPage();
   await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
   await page.waitForTimeout(3000);
-  await page.screenshot({ path: join(SHOTS, `${number}-balances.png`) });
-  console.log('still', `${number}-balances.png`);
+  const heading = page.getByText(/settle up/i).first();
+  if (await heading.count()) await heading.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: join(SHOTS, `${number}-settle.png`) });
+  console.log('still', `${number}-settle.png`);
   await context.close();
 }
 

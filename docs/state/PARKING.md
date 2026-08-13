@@ -15,7 +15,7 @@
 - **Member rename / soft-delete** — rename any assumed member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap
 - **Expense editor + invariants** — edit an existing expense; participant picker; uneven / share-based splits with real largest-remainder ranking; defaults (payer = assumed member, equal shares). Slice 0007 shipped the equal-split half only, at record time, with no way to change it after — area: ledger — raised: bootstrap
 - **Member invites** — HTTPS deep link join; joiner-side picker / add-new; claimed exclusive slot. Slice 0012 shipped mint + redeem for a named member (`/join` + lobby paste); app links and group-wide invite stay parked — area: invites — raised: bootstrap · *partially delivered in 0012*
-- **Settle-up suggestions** — minimise transfer count via group-net flows; prefill settlement expense — area: ledger — raised: bootstrap
+- **Settle-up suggestions** — Slice 0017 shipped the list (min-count transfers on the hub). Prefill a settlement expense from a row stays parked — area: ledger — raised: bootstrap · *partially delivered in 0017*
 - **Leave group** — unbind + revoke this device’s access token; member history remains — area: membership — raised: bootstrap
 
 ## Breadth
@@ -37,6 +37,7 @@
 
 - **Delta matches symbol names as plain English words** — `merge / mergeOne` was explained by a Before → After row about merging to `main`, because the row contains the word "merge". An `L-` id citation should outrank a bare word match — area: board — raised: slice 0010
 - **Reconnecting indicator on the hub** — silent today, same as foreground; a chrome that says the socket dropped — area: ui — raised: slice 0011
+- **Transaction tolerance on settle-up** — "ignore leftovers under $1" — Settle Up's extra; this slice ships exact cents — area: ledger — raised: slice 0017
 
 - **Import-level dependency view** — a second graph on the board, module to module rather than symbol to symbol; the symbol tree draws call sites only — area: board — raised: slice 0009
 - **Wire-hop edges in the symbol graph** — draw `mergeEntities` → `merge` as a distinct kind of edge so the tree can cross the device/server boundary the way Flows does; today it is not a call and so not an edge — area: board — raised: slice 0009
@@ -50,6 +51,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Cloudflare Durable Object server** — delivered in [slice 0014](slices/0014-cloudflare-do.md); Worker + SQLite Durable Object per group + D1 token index; hibernating WebSocket wakes.
-
 - **Wake socket retries itself** — delivered in [slice 0016](slices/0016-wake-reconnect.md); drop while the hub is open is retried with backoff, then the same catch-up as open.
+
+- **Settle-up list** — delivered in [slice 0017](slices/0017-settle-up.md); fewest transfers from the nets, on the hub, inert. Prefill a settlement expense stays parked.
