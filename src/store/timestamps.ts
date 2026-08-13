@@ -5,7 +5,7 @@ import type { GroupStore } from '@/src/types/group';
  *
  * Legend State's parser turns any exact ISO-8601 string back into a `Date`,
  * and does it before the reviver hook can object. Our entities carry
- * `updated_at` / `deleted_at` as strings — the shape the Edge Functions send
+ * `updated_at` / `deleted_at` as strings — the shape the Worker sends
  * and the type the app declares — so a restored store would silently hold a
  * different type from a freshly synced one. Anything doing string work on it
  * breaks, and breaks late: sorting a list of one never calls the comparator,

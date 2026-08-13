@@ -10,13 +10,13 @@ No accounts: a per-device capability token proves access to a group, members are
 
 ## Stack
 
-Expo React Native 57 + Expo Router · Legend State v3 · expo-sqlite (localStorage on web) · Supabase Postgres + Edge Functions + Realtime (wake-only) · TypeScript · Vitest · Playwright for flow capture.
+Expo React Native 57 + Expo Router · Legend State v3 · expo-sqlite (localStorage on web) · Cloudflare Worker + SQLite Durable Object per group + D1 token index · TypeScript · Vitest · Playwright for flow capture.
 
 ## Running it
 
 ```bash
 npm install
-cp .env.example .env      # fill in the Supabase URL + anon key
+cp .env.example .env      # already holds the Worker URL
 npm start                 # phone, via Expo Go
 npm run web               # the whole app in a browser
 ```

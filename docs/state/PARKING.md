@@ -52,4 +52,4 @@
 
 - **One remote, slice branches may deploy** — delivered in [slice 0013](slices/0013-dev-remote.md); `main` and `slice/**` both deploy to the one remote; last green wins; no wipe. Host is the Cloudflare Worker as of [slice 0014](slices/0014-cloudflare-do.md).
 
-- **Cloudflare Durable Object server** — delivered in [slice 0014](slices/0014-cloudflare-do.md); Worker + SQLite DO per group + D1 token index; hibernating WebSocket wakes; `splitnext-v3` left unused.
+- **Cloudflare Durable Object server** — delivered in [slice 0014](slices/0014-cloudflare-do.md); Worker + SQLite Durable Object per group + D1 token index; hibernating WebSocket wakes.

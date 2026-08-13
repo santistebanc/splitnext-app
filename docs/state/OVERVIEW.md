@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0014
+Last updated: slice 0015
 
 ## Direction
 
@@ -45,7 +45,7 @@ Last updated: slice 0014
 - Invite another device onto a named member; they redeem a one-use 7-day link and land already bound — [slice 0012](slices/0012-member-invites.md)
 - Demo an unmerged slice against the same Worker the published app uses: `slice/**` CI deploys there; last green run wins; never a wipe — [slice 0013](slices/0013-dev-remote.md)
 - Scan a Camera QR on the PR comment to open the published web app on a phone — [slice 0013](slices/0013-dev-remote.md)
-- Talk to one Cloudflare Worker instead of `splitnext-v3`: SQLite Durable Object per group, D1 for tokens and invites, hibernating WebSocket wakes — [slice 0014](slices/0014-cloudflare-do.md)
+- Talk to one Cloudflare Worker: SQLite Durable Object per group, D1 for tokens and invites, hibernating WebSocket wakes — [slice 0014](slices/0014-cloudflare-do.md)
 
 ## Stack
 
