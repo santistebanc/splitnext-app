@@ -89,15 +89,15 @@ def evaluate(probes, expected_sha):
     return failures
 
 
-def probe(base_url, fn, anon_key, timeout, retries):
+def probe(base_url, fn, anon_key, timeout, retries, expected_sha=""):
     """Ask one function what it is running. Never raises; a failure is a probe."""
     url = f"{base_url.rstrip('/')}/{fn}?health=1"
     headers = {"User-Agent": "splitnext-verify-deploy"}
 
     last = "no attempt made"
     for attempt in range(retries):
-        # A function is cold right after deploy and the first hit can time out
-        # on boot rather than on being wrong.
+        # A Worker is cold right after deploy: the first hit can time out, 5xx,
+        # or still answer with the previous sha while isolates roll over.
         if attempt:
             time.sleep(2 * attempt)
         try:
@@ -108,10 +108,19 @@ def probe(base_url, fn, anon_key, timeout, retries):
                     body = json.loads(raw)
                 except json.JSONDecodeError:
                     body = raw
+                if (
+                    expected_sha
+                    and isinstance(body, dict)
+                    and body.get("revision") != expected_sha
+                    and attempt + 1 < retries
+                ):
+                    last = f"running {body.get('revision')!r}"
+                    continue
                 return {"fn": fn, "status": res.status, "body": body}
         except urllib.error.HTTPError as err:
-            # A 4xx/5xx is an answer, not a transport failure: report it and
-            # let evaluate say what is wrong, rather than retrying a verdict.
+            if (err.code >= 500 or err.code == 403) and attempt + 1 < retries:
+                last = f"HTTP {err.code}"
+                continue
             return {"fn": fn, "status": err.code, "body": None}
         except Exception as err:  # timeout, DNS, connection reset
             last = f"{type(err).__name__}: {err}"
@@ -129,7 +138,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     probes = [
-        probe(args.base_url, fn, args.anon_key, args.timeout, args.retries)
+        probe(args.base_url, fn, args.anon_key, args.timeout, args.retries, args.sha)
         for fn in FUNCTIONS
     ]
 
