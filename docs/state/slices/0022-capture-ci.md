@@ -54,12 +54,13 @@ A broken Create group (or any other recorded flow) now fails the PR, with no liv
 | `npm run capture -- --assert-only` | console error or balances/settle reload mismatch | Same `problems[]` as a clip run; exits 1; writes no `.webm`. |
 | `capture:ci` | Expo exits before 8081 is ready | Wait aborts on `expoDead` instead of spinning the 180s timeout. |
 | `capture:ci` | process is root (this WSL box) | Expo logs that React Native DevTools cannot start without `--no-sandbox`. Metro still serves; the browser console stays clean. GitHub's runner is not root. |
+| `capture-flows.mjs` | Node 20 (CI) | `fs.promises.glob` does not exist; ffmpeg discovery walks `~/.cache/ms-playwright` with `readdir` instead. |
 | `npm run check` | run on a laptop | Still the four fast gates. Does not start Playwright or Metro. |
 
 ### Review
 
 - **Invariants** — no domain violations. Client still talks HTTP through `edge.ts`; `applyD1Migrations` is local harness setup, not `--remote`. No deploy, no wipe. D-070 holds (vitest unchanged; capture CI refuses `workers.dev`). Fixed after review: D-072 appended so the second CI job does not silently reverse D-046.
-- **Spec** — all three seam rows have tests. Out of scope kept (not in `check`, no clip rewrite, no SQLite-on-web, no wake/join recording). Accepted: boot is `createTestHarness` (same as D-070; `NEXT.md` named it). Playwright install is Chromium-only, matching `chromium.launch()`.
+- **Spec** — all three seam rows have tests. Out of scope kept (not in `check`, no clip rewrite, no SQLite-on-web, no wake/join recording). Accepted: boot is `createTestHarness` (same as D-070; `NEXT.md` named it). Playwright install is Chromium-only, matching `chromium.launch()`. Fixed after CI: `capture-flows.mjs` imported `fs.promises.glob` (Node 22+); CI is Node 20, so ffmpeg discovery now uses `readdir`.
 - **Standards** — extracted `capture-opts`, `local-origin`, and `ci_gates` rather than growing `capture-flows.mjs`. Accepted: `ASSERT_ONLY` branches stay in the recorder; Worker boot is copied from the vitest harness rather than shared (capture-ci is process wiring, not `npm test`); `waitUntilOk` stays in the orchestrator.
 
 ### Shots

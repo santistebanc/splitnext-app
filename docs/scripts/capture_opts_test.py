@@ -9,6 +9,7 @@ Run: `npm run test:board`
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -58,3 +59,13 @@ class ParseCaptureArgv(unittest.TestCase):
         result = call_opts(["--assert-only", "F-create", "F-open"])
         self.assertEqual(result["parsed"]["only"], ["F-create", "F-open"])
         self.assertTrue(result["parsed"]["assertOnly"])
+
+
+class CaptureFlowsLoadsOnCiNode(unittest.TestCase):
+    def test_does_not_import_fs_glob(self):
+        """CI is Node 20; `fs.promises.glob` is Node 22+."""
+        src = (SCRIPTS / "capture-flows.mjs").read_text()
+        self.assertIsNone(
+            re.search(r"\bglob\b[^;]*from 'node:fs/promises'", src),
+            "capture-flows.mjs must load on Node 20",
+        )

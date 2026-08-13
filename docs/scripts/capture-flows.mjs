@@ -23,7 +23,7 @@
  */
 import { chromium } from 'playwright';
 import { execFile } from 'node:child_process';
-import { glob, mkdir, readdir, rename, rm } from 'node:fs/promises';
+import { mkdir, readdir, rename, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
@@ -60,15 +60,36 @@ const problems = [];
  * whole capture.
  */
 let ffmpegPath;
+async function playwrightFfmpegBins() {
+  const root = join(homedir(), '.cache', 'ms-playwright');
+  const out = [];
+  let names;
+  try {
+    names = await readdir(root);
+  } catch {
+    return out;
+  }
+  for (const name of names) {
+    if (!name.startsWith('ffmpeg-')) continue;
+    let bins;
+    try {
+      bins = await readdir(join(root, name));
+    } catch {
+      continue;
+    }
+    for (const bin of bins) {
+      if (bin.startsWith('ffmpeg')) out.push(join(root, name, bin));
+    }
+  }
+  return out;
+}
+
 async function findFfmpeg() {
   if (ffmpegPath !== undefined) return ffmpegPath;
   ffmpegPath = null;
-  const candidates = [process.env.FFMPEG_PATH, 'ffmpeg'].filter(Boolean);
-  for await (const p of glob(
-    join(homedir(), '.cache', 'ms-playwright', 'ffmpeg-*', 'ffmpeg-*'),
-  )) {
-    candidates.push(p);
-  }
+  const candidates = [process.env.FFMPEG_PATH, 'ffmpeg', ...(await playwrightFfmpegBins())].filter(
+    Boolean,
+  );
   for (const candidate of candidates) {
     try {
       await run(candidate, ['-version']);
