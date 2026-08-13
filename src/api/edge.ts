@@ -9,6 +9,8 @@ import type {
 
 type Json = Record<string, unknown>;
 
+const FETCH_MS = 15_000;
+
 async function callFunction<T>(
   name: string,
   body: Json,
@@ -25,11 +27,24 @@ async function callFunction<T>(
   }
 
   const url = `${env.apiUrl}/${name}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), FETCH_MS);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: abort.signal,
+    });
+  } catch (err) {
+    if (abort.signal.aborted) {
+      throw new Error(`edge_${name}_timeout`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const text = await res.text();
   let data: (T & { error?: string; detail?: string }) | null = null;

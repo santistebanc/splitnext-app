@@ -60,3 +60,7 @@ export const balancesOf = (body) =>
 /** The settle-up block as text — derived, so a reload must not change it either. */
 export const settleOf = (body) =>
   body.split('SETTLE UP')[1]?.split('EXPENSES')[0]?.trim() ?? '';
+
+/** First settle-up row — visible text is `Name → Name`. */
+export const settleRowOf = (page) =>
+  page.getByText(/→/).filter({ visible: true }).first();

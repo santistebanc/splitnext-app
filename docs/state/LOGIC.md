@@ -26,8 +26,8 @@ Screens and routes the person touches.
 | Id | Name | Kind | Where | What it is for |
 | --- | --- | --- | --- | --- |
 | L-lobby | Lobby screen | Screen | `app/index.tsx` | The first screen: lists every group this device knows, offers Create group or Join group (paste a token), and opens one into the hub. |
-| L-hub | Group hub | Screen | `app/group/[id]/index.tsx` | One group's screen: shows its name, member list and everyone's balance, lists the fewest transfers that settle those nets, lets you add a member, claim a member as yourself, invite another device onto a member who is not You, You (Name), and opens the new-expense form; bump sync proof; surfaces the last sync error. |
-| L-expenseNew | New expense | Screen | `app/group/[id]/expense/new.tsx` | Records a cost: who paid, how much, what for, and who shares equally among the selected members. Defaults to You paid and everyone shares. |
+| L-hub | Group hub | Screen | `app/group/[id]/index.tsx` | One group's screen: shows its name, member list and everyone's balance, lists the fewest transfers that settle those nets (each row opens the new-expense form for that transfer), lets you add a member, claim a member as yourself, invite another device onto a member who is not You, You (Name), and opens the new-expense form; bump sync proof; surfaces the last sync error. |
+| L-expenseNew | New expense | Screen | `app/group/[id]/expense/new.tsx` | Records a cost: who paid, how much, what for, and who shares equally among the selected members. Defaults to You paid and everyone shares, unless the query names a prefill. |
 | L-join | Join screen | Screen | `app/join.tsx` | Redeems a `/join?token=` invite, stores the new access token, and opens the hub already bound to the named member. |
 | L-rootLayout | Root layout | Screen | `app/_layout.tsx` | The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app. |
 
@@ -45,9 +45,11 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-participantsForSplit | `participantsForSplit` | Pure | `src/domain/split.ts` | Answers who shares an expense: the selected members, but only if every one of them is live and at least one remains. A missing member is refused, not dropped. |
 | L-balances | `computeBalances` | Pure | `src/domain/balances.ts` | Works out what each member is up or down overall — what they paid minus what they owe — most-negative first. |
 | L-settle | `suggestSettlements` | Pure | `src/domain/settle.ts` | Turns those nets into the fewest transfers that zero everyone who can be settled, identical on every device. |
+| L-expensePrefill | `expensePrefillFromSearchParams` | Pure | `src/domain/expensePrefill.ts` | Turns the new-expense query into payer, integer cents, who shares, and what-for — or `null` if a required piece is missing or is not money, so the form can keep its defaults. |
+| L-settlementHref | `settlementHref` | Pure | `src/domain/expensePrefill.ts` | Builds the path a settle-up row opens: same transfer, same href on every device, amount in integer cents, what-for `Settlement`. |
 | L-inviteIsLive | `inviteIsLive` | Pure | `src/domain/invite.ts` | Answers whether an invite can still be redeemed — not spent, not past `expires_at`, and the named member still live. |
 | L-parseInviteToken | `parseInviteToken` | Pure | `src/domain/invite.ts` | Pulls the invite secret out of a raw token or a `/join?token=` URL so lobby paste and the join route share one parser. |
-| L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes. |
+| L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and starts a wake subscription without waiting for the socket to open. |
 | L-openGroup | `openGroup` | Job | `src/sync/groupSync.ts` | Opens a group for viewing — subscribes for wakes, then runs a full sync. The wake socket being down does not block opening. |
 | L-syncGroup | `syncGroup` | Job | `src/sync/groupSync.ts` | One full round trip for a group: push everything pending, pull the group back, then pull its roster. Runs alone per group so nothing races. |
 | L-syncAllLobby | `syncAllLobbyGroups` | Job | `src/sync/groupSync.ts` | Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest. |

@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0018
+Last updated: slice 0019
 
 ## Direction
 
@@ -37,6 +37,7 @@ Last updated: slice 0018
 - Choose who paid and who shares on a dedicated new-expense screen; default is You paid and everyone shares — [slice 0018](slices/0018-expense-form.md)
 - See each member's net position on the hub — paid minus owed, most-negative first, You (Name) marked — [slice 0007](slices/0007-allocations-balances.md)
 - See the fewest transfers that zero those nets, listed under Settle up; derived, identical on every device, never moves money — [slice 0017](slices/0017-settle-up.md)
+- Tap a settle-up row to open the new-expense form already filled for that transfer; saving records it, the tap does not — [slice 0019](slices/0019-settle-prefill.md)
 - Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
 - Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Worker — [slice 0007](slices/0007-allocations-balances.md)
 - Work the repo from any clone: the loop is vendored at `.claude/skills/`, `AGENTS.md` is the entry point, CI enforces the gates — [slice 0008](slices/0008-repo-home.md)
@@ -79,7 +80,7 @@ Last updated: slice 0018
 
 **Balance** (derived, never stored) — per live member, Σ paid − Σ owed across live expenses, sorted most-negative first.
 
-**Settlement** (derived, never stored) — the fewest transfers that zero those nets: `{ from_member_id, to_member_id, amount_cents }`. Zero-sum subgroups, then poorest↔richest inside each; unmatched leftover omitted. Rows on the hub do not move money (D-067).
+**Settlement** (derived, never stored) — the fewest transfers that zero those nets: `{ from_member_id, to_member_id, amount_cents }`. Zero-sum subgroups, then poorest↔richest inside each; unmatched leftover omitted. A hub row opens the new-expense form for that transfer; the tap does not move money (D-067, D-069).
 
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
@@ -93,8 +94,8 @@ Last updated: slice 0018
 | --- | --- | --- |
 | `/` | Lobby: create group, paste-to-join, list local group ids; root AppState sync | slice 0001 / 0002 / 0012 |
 | `/join` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 |
-| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite on members who are not You, You (Name); balances (net per member, signed); settle-up list (fewest transfers, You marked, hidden when square); expenses list + Add expense; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 |
-| `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal among selected; default You paid, everyone shares) | slice 0018 |
+| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite on members who are not You, You (Name); balances (net per member, signed); settle-up list (fewest transfers, You marked, hidden when square, tap opens the form); expenses list + Add expense; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 |
+| `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal among selected; default You paid, everyone shares; query can prefill) | slice 0018 / 0019 |
 
 ## Seams
 
@@ -108,6 +109,7 @@ Last updated: slice 0018
 - `splitEqually` / `participantsForSplit` — `src/domain/split.ts` — vitest
 - `computeBalances` — `src/domain/balances.ts` — vitest
 - `suggestSettlements` — `src/domain/settle.ts` — vitest
+- `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload
 - `isHealthRequest` / `healthPayload` — `workers/src/health.ts` — vitest — the deploy provenance probe

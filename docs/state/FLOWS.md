@@ -90,12 +90,23 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 ## F-settle — See who should pay whom
 
 **Trigger** — The hub is on screen and at least one member is not square.  
-**Outcome** — The fewest transfers that zero every net that can be settled, with this device's own member marked. The list does not move money.
+**Outcome** — The fewest transfers that zero every net that can be settled, with this device's own member marked. The list does not move money; a tap opens the form for that transfer and does not record it.
 
 1. `L-hub` already has the nets from `L-balances`, so settle-up needs no network of its own.
 2. `L-settle` drops members at zero, partitions the rest into as many zero-sum subgroups as exist, and pairs poorest with richest inside each. Two devices holding the same nets list the same transfers.
-3. `L-hub` shows each transfer under **Settle up**, marking You the same way the balances do. Rows do nothing.
+3. `L-hub` shows each transfer under **Settle up**, marking You the same way the balances do. Tapping a row pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
 4. When every net is already 0 — or nothing has been spent — the section is absent.
+
+## F-settle-record — Record a suggested transfer
+
+**Trigger** — On the hub, the person taps a settle-up row, checks the form, and taps **Add expense**.  
+**Outcome** — That transfer is recorded as an ordinary expense: the debtor paid, only the creditor shares, what-for is Settlement. The tap itself did not move money.
+
+1. `L-hub` already has the transfers from `L-settle`.
+2. The row's `L-settlementHref` opens `L-expenseNew` with payer, amount in cents, the creditor as the only participant, and what-for `Settlement`.
+3. `L-expensePrefill` turns that query into the form's starting values; missing or non-money params would have left the You / everyone defaults, which this path does not hit.
+4. **Add expense** calls `L-addExpense` with that payer and the one-person share — the same write as any other expense.
+5. `L-expenseNew` returns to the hub. `L-balances` and `L-settle` refold from the new expense, so that transfer is gone or the list shrinks.
 
 ## F-bind — This is me
 
