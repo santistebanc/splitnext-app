@@ -80,4 +80,4 @@ No capture: no surface changed. Demo is `npm test`. `F-wake` stays unrecorded (s
 
 ## Notes
 
-Node `fetch` (undici) cannot send `Upgrade`; the contract uses the `WebSocket` constructor, same as the app. `createTestHarness` listen URL supports that upgrade.
+Node `fetch` (undici) cannot send `Upgrade`; the contract uses undici's `WebSocket` (CI is Node 20, which has no global `WebSocket`). `createTestHarness` listen URL supports that upgrade.
