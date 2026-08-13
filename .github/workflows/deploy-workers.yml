@@ -50,7 +50,7 @@ jobs:
 
       - name: Apply D1 migrations
         working-directory: workers
-        run: npx wrangler d1 migrations apply splitnext-index --remote --yes
+        run: npx wrangler d1 migrations apply splitnext-index --remote
 
       - name: Deploy the Worker
         working-directory: workers
