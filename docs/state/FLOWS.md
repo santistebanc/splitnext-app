@@ -139,9 +139,10 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 ## F-wake-reconnect — Catch up after a dropped socket
 
-**Trigger** — The wake socket drops while the hub is still open, then comes back.  
+**Trigger** — The wake socket drops while the hub is still open.  
 **Outcome** — This group matches the server again, without waiting for a foreground.
 
-1. `L-wakeSub` sees the socket leave `SUBSCRIBED` — `CHANNEL_ERROR`, `TIMED_OUT`, or `CLOSED`.
-2. When it returns to `SUBSCRIBED`, `L-wakeCatchUp` says this group missed wakes. The first `SUBSCRIBED` does not, because `L-openGroup` already ran `L-syncGroup`.
-3. `L-wakeSub` runs `L-syncGroup` for that group only — flush, fetch the group, pull the roster — the same catch-up as Open group.
+1. `L-wakeSub` sees the socket leave `OPEN` — `ERROR` or `CLOSED`.
+2. It retries after `L-wakeCatchUp`'s backoff (1s, then doubling, capped at 30s). A close of a socket it already replaced is ignored.
+3. When the socket is `OPEN` again, `L-wakeCatchUp` says this group missed wakes. The first `OPEN` does not, because `L-openGroup` already ran `L-syncGroup`.
+4. `L-wakeSub` runs `L-syncGroup` for that group only — flush, fetch the group, pull the roster — the same catch-up as Open group.

@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0015
+Last updated: slice 0016
 
 ## Direction
 
@@ -41,7 +41,7 @@ Last updated: slice 0015
 - Read the board and use the app as URLs, both published by CI on every merge, with code chips linking to GitHub — [slice 0008](slices/0008-repo-home.md)
 - Read the symbol map two ways — flat by area, or as a tree nested under what calls what, derived from the source — [slice 0009](slices/0009-symbol-tree.md)
 - Trust that what is on `main` is what is on the server — merge applies D1 migrations, redeploys the Worker, and fails unless every route answers with that merge's sha — [slice 0010](slices/0010-deploy-pipeline.md)
-- Catch up a group whose wake socket died while the hub stayed open — reconnect runs the same flush + roster pull as open, for that group only — [slice 0011](slices/0011-missed-wake.md)
+- Catch up a group whose wake socket died while the hub stayed open — the client retries the socket, then runs the same flush + roster pull as open, for that group only — [slice 0011](slices/0011-missed-wake.md) / [slice 0016](slices/0016-wake-reconnect.md)
 - Invite another device onto a named member; they redeem a one-use 7-day link and land already bound — [slice 0012](slices/0012-member-invites.md)
 - Demo an unmerged slice against the same Worker the published app uses: `slice/**` CI deploys there; last green run wins; never a wipe — [slice 0013](slices/0013-dev-remote.md)
 - Scan a Camera QR on the PR comment to open the published web app on a phone — [slice 0013](slices/0013-dev-remote.md)
@@ -56,7 +56,7 @@ Last updated: slice 0015
 - Group store — SQLite Durable Object per `group_id` — `groups`, `members`, `binds`, `expenses` (allocations as JSON text); one-threaded merge, no race
 - Token index — D1 `splitnext-index` — `access_tokens`, `invites` only (`token_hash → group_id`)
 - Server API — Worker routes `create-group`, `merge`, `fetch-entity`, `list-roster`, `mint-invite`, `join-group` — capability hash-check then the named Durable Object; each answers `GET ?health=1` with the deploy sha (L-efHealth)
-- Wake channel — hibernating WebSocket on the group Durable Object at `/wake/:groupId`; payload is tip only; a drop then `SUBSCRIBED` runs the same catch-up as open (D-054); joiners subscribe on the hub, not the join spinner
+- Wake channel — hibernating WebSocket on the group Durable Object at `/wake/:groupId`; payload is tip only; a drop is retried with backoff, then `OPEN` after `ERROR` / `CLOSED` runs the same catch-up as open (D-054, D-066); joiners subscribe on the hub, not the join spinner
 - Hosting — Cloudflare Worker `splitnext` (`splitnext.santistebanc94.workers.dev`)
 - Server deploy — `.github/workflows/workers.yml` on push to `main` or `slice/**`: D1 migrations apply, `wrangler deploy` with `DEPLOY_SHA`, verify each health endpoint; last green run wins; never by hand, never a wipe — D-052, D-058
 - Repo — `github.com/santistebanc/splitnext-app`, public; a slice is branch → PR (CI: `npm run check`) → squash merge → tag `slice-NNNN` on `main` — D-028
@@ -109,5 +109,5 @@ Last updated: slice 0015
 - `target_for` / `github_output` — `docs/scripts/deploy_target.py` — unittest via `npm run test:board` — which GitHub event may deploy to Worker `splitnext`, and that it may never wipe
 - `inviteIsLive` / `parseInviteToken` / `joinPathForToken` — `src/domain/invite.ts` — vitest (`src/domain/invite.test.ts`)
 - `inviteShareText` — `src/sync/inviteShareText.ts` / `src/sync/inviteShareText.web.ts` — raw token on native, `/join?token=` URL on web
-- `shouldCatchUpOnStatus` / `shouldReplaceSubscription` — `src/sync/wakePolicy.ts` — vitest — whether a wake-socket status change means this group missed wakes, and whether a dead socket should be replaced
+- `shouldCatchUpOnStatus` / `shouldReplaceSubscription` / `nextReconnectDelayMs` — `src/sync/wakePolicy.ts` — vitest — whether a wake-socket status change means this group missed wakes, whether a dead socket should be replaced, and how long to wait before retrying
 - `phone_section` — `docs/scripts/pr_phone.py` — unittest via `npm run test:board` — the PR comment's Camera QR of the published `/app`

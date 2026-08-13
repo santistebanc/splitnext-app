@@ -1,36 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import {
+  nextReconnectDelayMs,
   shouldCatchUpOnStatus,
   shouldReplaceSubscription,
 } from './wakePolicy';
 
 describe('shouldCatchUpOnStatus', () => {
-  it('does not catch up on the first SUBSCRIBED', () => {
-    expect(shouldCatchUpOnStatus(null, 'SUBSCRIBED')).toBe(false);
+  it('does not catch up on the first OPEN', () => {
+    expect(shouldCatchUpOnStatus(null, 'OPEN')).toBe(false);
   });
 
-  it('catches up when SUBSCRIBED follows CHANNEL_ERROR', () => {
-    expect(shouldCatchUpOnStatus('CHANNEL_ERROR', 'SUBSCRIBED')).toBe(true);
+  it('catches up when OPEN follows ERROR', () => {
+    expect(shouldCatchUpOnStatus('ERROR', 'OPEN')).toBe(true);
   });
 
-  it('catches up when SUBSCRIBED follows TIMED_OUT', () => {
-    expect(shouldCatchUpOnStatus('TIMED_OUT', 'SUBSCRIBED')).toBe(true);
+  it('catches up when OPEN follows CLOSED', () => {
+    expect(shouldCatchUpOnStatus('CLOSED', 'OPEN')).toBe(true);
   });
 
-  it('catches up when SUBSCRIBED follows CLOSED', () => {
-    expect(shouldCatchUpOnStatus('CLOSED', 'SUBSCRIBED')).toBe(true);
+  it('does not catch up on OPEN following OPEN', () => {
+    expect(shouldCatchUpOnStatus('OPEN', 'OPEN')).toBe(false);
   });
 
-  it('does not catch up on SUBSCRIBED following SUBSCRIBED', () => {
-    expect(shouldCatchUpOnStatus('SUBSCRIBED', 'SUBSCRIBED')).toBe(false);
+  it('does not catch up when OPEN follows a non-drop status', () => {
+    expect(shouldCatchUpOnStatus('CONNECTING', 'OPEN')).toBe(false);
   });
 
-  it('does not catch up when SUBSCRIBED follows a non-drop status', () => {
-    expect(shouldCatchUpOnStatus('JOINING', 'SUBSCRIBED')).toBe(false);
-  });
-
-  it('does not catch up until the socket is SUBSCRIBED again', () => {
-    expect(shouldCatchUpOnStatus('CHANNEL_ERROR', 'CLOSED')).toBe(false);
+  it('does not catch up until the socket is OPEN again', () => {
+    expect(shouldCatchUpOnStatus('ERROR', 'CLOSED')).toBe(false);
   });
 });
 
@@ -39,8 +36,8 @@ describe('shouldReplaceSubscription', () => {
     expect(shouldReplaceSubscription(false, undefined)).toBe(true);
   });
 
-  it('keeps a live SUBSCRIBED socket', () => {
-    expect(shouldReplaceSubscription(true, 'SUBSCRIBED')).toBe(false);
+  it('keeps a live OPEN socket', () => {
+    expect(shouldReplaceSubscription(true, 'OPEN')).toBe(false);
   });
 
   it('does not tear down a subscribe still in flight', () => {
@@ -49,8 +46,20 @@ describe('shouldReplaceSubscription', () => {
   });
 
   it('replaces a socket that dropped so the hub can listen', () => {
-    expect(shouldReplaceSubscription(true, 'CHANNEL_ERROR')).toBe(true);
-    expect(shouldReplaceSubscription(true, 'TIMED_OUT')).toBe(true);
+    expect(shouldReplaceSubscription(true, 'ERROR')).toBe(true);
     expect(shouldReplaceSubscription(true, 'CLOSED')).toBe(true);
+  });
+});
+
+describe('nextReconnectDelayMs', () => {
+  it('starts at one second and doubles each failed attempt', () => {
+    expect(nextReconnectDelayMs(0)).toBe(1000);
+    expect(nextReconnectDelayMs(1)).toBe(2000);
+    expect(nextReconnectDelayMs(2)).toBe(4000);
+  });
+
+  it('caps at thirty seconds', () => {
+    expect(nextReconnectDelayMs(5)).toBe(30_000);
+    expect(nextReconnectDelayMs(20)).toBe(30_000);
   });
 });
