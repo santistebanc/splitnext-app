@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0019
+Last updated: slice 0020
 
 ## Direction
 
@@ -49,6 +49,7 @@ Last updated: slice 0019
 - Demo an unmerged slice against the same Worker the published app uses: `slice/**` CI deploys there; last green run wins; never a wipe — [slice 0013](slices/0013-dev-remote.md)
 - Scan a Camera QR on the PR comment to open the published web app on a phone — [slice 0013](slices/0013-dev-remote.md)
 - Talk to one Cloudflare Worker: SQLite Durable Object per group, D1 for tokens and invites, hibernating WebSocket wakes — [slice 0014](slices/0014-cloudflare-do.md)
+- Fail a PR when a Worker HTTP shape drifts: `npm test` boots a local Worker and drives `src/api/edge.ts` through every `FUNCTIONS` route — [slice 0020](slices/0020-worker-contract.md)
 
 ## Stack
 
@@ -58,7 +59,7 @@ Last updated: slice 0019
 - Secrets — `expo-secure-store` behind `src/secrets/secureStorage.ts` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary). Web has no keychain and falls back to `localStorage`
 - Group store — SQLite Durable Object per `group_id` — `groups`, `members`, `binds`, `expenses` (allocations as JSON text); one-threaded merge, no race
 - Token index — D1 `splitnext-index` — `access_tokens`, `invites` only (`token_hash → group_id`)
-- Server API — Worker routes `create-group`, `merge`, `fetch-entity`, `list-roster`, `mint-invite`, `join-group` — capability hash-check then the named Durable Object; each answers `GET ?health=1` with the deploy sha (L-efHealth)
+- Server API — Worker routes `create-group`, `merge`, `fetch-entity`, `list-roster`, `mint-invite`, `join-group` — capability hash-check then the named Durable Object; each answers `GET ?health=1` with the deploy sha (L-efHealth). `npm test` boots the same Worker locally and drives those routes through `src/api/edge.ts` (D-070)
 - Wake channel — hibernating WebSocket on the group Durable Object at `/wake/:groupId`; payload is tip only; a drop is retried with backoff, then `OPEN` after `ERROR` / `CLOSED` runs the same catch-up as open (D-054, D-066); joiners subscribe on the hub, not the join spinner
 - Hosting — Cloudflare Worker `splitnext` (`splitnext.santistebanc94.workers.dev`)
 - Server deploy — `.github/workflows/workers.yml` on push to `main` or `slice/**`: D1 migrations apply, `wrangler deploy` with `DEPLOY_SHA`, verify each health endpoint; last green run wins; never by hand, never a wipe — D-052, D-058
@@ -102,7 +103,7 @@ Last updated: slice 0019
 - `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest
 - `shouldAttemptFlush` / `queueAfterMergeResults` — `src/sync/queuePolicy.ts` — vitest
 - `assumedMemberIdFromBinds` / `bindingIsOpen` — `src/domain/assumedMember.ts` — vitest
-- Worker routes behind `src/api/edge.ts` — the HTTP capability boundary; the place a fake would go if one comes back
+- Worker routes behind `src/api/edge.ts` — vitest against a local Worker (`createTestHarness` + D1 migrations), never `workers.dev` — the HTTP capability boundary
 - `syncError` / `coerceSyncError` — `src/sync/syncErrors.ts` — vitest
 - `getSecret` / `setSecret` — `src/secrets/secureStorage.ts` — the platform split for secrets; a fake here replaces the keychain
 - `persistPlugin` — `src/store/persistPlugin.ts` — the platform split for durability
