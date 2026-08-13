@@ -27,9 +27,17 @@ import time
 import urllib.error
 import urllib.request
 
-# The five, in deploy order. A sixth function that nobody adds here is a
+# The list, in deploy order. A function that nobody adds here is a
 # function nobody verifies, so this list is also the deploy list in CI.
-FUNCTIONS = ["create-group", "merge", "fetch-entity", "list-roster", "rt-jwt"]
+FUNCTIONS = [
+    "create-group",
+    "merge",
+    "fetch-entity",
+    "list-roster",
+    "rt-jwt",
+    "mint-invite",
+    "join-group",
+]
 
 
 def evaluate(probes, expected_sha):

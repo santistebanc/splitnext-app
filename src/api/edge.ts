@@ -147,3 +147,33 @@ export async function mintRealtimeAuth(input: {
     },
   );
 }
+
+export async function mintInviteRemote(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+  member_id: string;
+}): Promise<{ token: string; expires_at: string; member_id: string }> {
+  return callFunction(
+    'mint-invite',
+    { group_id: input.group_id, member_id: input.member_id },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}
+
+export async function joinGroupRemote(input: {
+  token: string;
+  device_user_id: string;
+}): Promise<{
+  access_token: string;
+  group: GroupEntity;
+  bind: BindEntity;
+}> {
+  return callFunction('join-group', {
+    token: input.token,
+    device_user_id: input.device_user_id,
+  });
+}

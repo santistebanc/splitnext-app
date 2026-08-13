@@ -5,16 +5,19 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { listLobbyGroupIds } from '@/src/secrets/tokens';
 import { createGroup } from '@/src/sync/groupSync';
+import { joinGroup } from '@/src/sync/invite';
 
 export default function LobbyScreen() {
   const router = useRouter();
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invitePaste, setInvitePaste] = useState('');
 
   const refresh = useCallback(async () => {
     setGroupIds(await listLobbyGroupIds());
@@ -38,6 +41,21 @@ export default function LobbyScreen() {
     }
   };
 
+  const onJoin = async () => {
+    if (!invitePaste.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const id = await joinGroup(invitePaste);
+      await refresh();
+      router.push(`/group/${id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'join_failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.brand}>SplitNext</Text>
@@ -54,6 +72,24 @@ export default function LobbyScreen() {
         ) : (
           <Text style={styles.buttonText}>Create group</Text>
         )}
+      </Pressable>
+
+      <TextInput
+        style={styles.input}
+        value={invitePaste}
+        onChangeText={setInvitePaste}
+        placeholder="Paste invite token or join link"
+        placeholderTextColor="#8a8d82"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <Pressable
+        style={[styles.secondaryButton, busy && styles.buttonDisabled]}
+        onPress={() => void onJoin()}
+        disabled={busy}
+        accessibilityRole="button"
+      >
+        <Text style={styles.secondaryButtonText}>Join group</Text>
       </Pressable>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -106,6 +142,28 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#f2efe8',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d9d6cc',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#1a1c16',
+    backgroundColor: '#fff',
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#1f6b4a',
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  secondaryButtonText: {
+    color: '#1f6b4a',
     fontSize: 16,
     fontWeight: '600',
   },

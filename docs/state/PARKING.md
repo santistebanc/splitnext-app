@@ -2,6 +2,8 @@
 
 ## Foundation-risk
 
+- **Dev remote, prod still merge-only** — "should we not have a remote postgres db that is just for dev which can be modified for the current slice that has not yet been merged in the pr" — persistent `splitnext-v3-dev`; local `.env` points at it; CI/Pages keep pointing at prod; slice-branch push to *dev* is allowed; D-052 still forbids hand-deploy to prod. Reset dev from the repo's migrations at the start of a server slice. Local `supabase start` stays the contract-test item, not the Expo Go target. — area: deploy — raised: slice 0012
+
 - **Contract test against a local Supabase stack** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real `merge` / `fetch-entity` / `list-roster` at close when their shapes change — area: sync — raised: slice 0004
 - **Browser-driven flow tests** — `npm run capture` (slice 0007) commits the Playwright driver and asserts a clean console plus balances surviving a reload, but it is a capture run, not a test suite: it is not in `npm test`, has no failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007*
 - **Missed-wake detection** — "Reconnect and missed-wake detection — how a client that was offline during a wake learns it missed changes" — area: sync — raised: bootstrap · *partially mitigated by thin fetch-on-open/foreground in 0002 + roster list in 0003; full protocol still open*
@@ -15,7 +17,7 @@
 
 - **Member rename / soft-delete** — rename any assumed member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap
 - **Expense editor + invariants** — edit an existing expense; participant picker; uneven / share-based splits with real largest-remainder ranking; defaults (payer = assumed member, equal shares). Slice 0007 shipped the equal-split half only, at record time, with no way to change it after — area: ledger — raised: bootstrap
-- **Member invites** — HTTPS deep link join; mint access token; preselect / picker / add-new — area: invites — raised: bootstrap
+- **Member invites** — HTTPS deep link join; joiner-side picker / add-new; claimed exclusive slot. Slice 0012 shipped mint + redeem for a named member (`/join` + lobby paste); app links and group-wide invite stay parked — area: invites — raised: bootstrap · *partially delivered in 0012*
 - **Settle-up suggestions** — minimise transfer count via group-net flows; prefill settlement expense — area: ledger — raised: bootstrap
 - **Leave group** — unbind + revoke this device’s access token; member history remains — area: membership — raised: bootstrap
 
@@ -51,4 +53,4 @@
 
 - **Deploy drift between local and remote** — delivered in [slice 0010](slices/0010-deploy-pipeline.md); `supabase.yml` pushes migrations + redeploys all five functions and fails unless each reports the merge sha
 
-- **Symbol tree view on the board** — delivered in [slice 0009](slices/0009-symbol-tree.md); Flat and Tree over the same 49 rows, the call graph derived from source and gated by `npm run test:board`
+- **Member invites (mint + redeem)** — delivered in [slice 0012](slices/0012-member-invites.md); per-member one-use link, `/join` + lobby paste. App links and joiner picker still parked.
