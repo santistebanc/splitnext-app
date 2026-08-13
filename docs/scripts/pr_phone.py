@@ -28,8 +28,8 @@ def phone_section(*, repo: str, sha: str, app_url: str = APP_URL) -> str:
         "\n"
         f"{app_url}\n"
         "\n"
-        "This PR's Edge Functions are on `splitnext-v3` once the supabase job "
-        "is green. The client in that QR is what's on `main` until this merges.\n"
+        "This PR's Worker is live once the workers job is green. The client "
+        "in that QR is what's on `main` until this merges.\n"
     )
 
 

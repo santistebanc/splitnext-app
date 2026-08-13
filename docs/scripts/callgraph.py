@@ -76,7 +76,7 @@ def declarations(source: str) -> dict[str, str]:
 
 
 def _source_of(where: str, read_source) -> str | None:
-    """A function directory (`supabase/functions/merge`) is read as its index."""
+    """A function directory (`workers/src` files, or a folder with index.ts) is read as its index."""
     text = read_source(where)
     if text is not None:
         return text

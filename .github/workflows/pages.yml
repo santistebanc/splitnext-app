@@ -5,9 +5,8 @@ name: pages
 # The board describes the app; visitors should be one click from using it.
 #
 # One site rather than a second host: no extra account, no deploy token beyond
-# the two EXPO_PUBLIC_ values the client ships anyway, and the board's "Open
-# the app" link is same-origin. The trade is no per-PR *app* URL; a Vercel or
-# Cloudflare project would give that if it ever earns its keep. The slice
+# the public Worker URL the client ships anyway, and the board's "Open
+# the app" link is same-origin. The trade is no per-PR *app* URL. The slice
 # board is different: each PR gets its own page under /pr/N/, copied from the
 # `pr-boards` branch (D-055).
 #
@@ -58,8 +57,7 @@ jobs:
       # so the bundle's asset links resolve under the subpath.
       - name: Export the web app
         env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_API_URL: https://splitnext.santistebanc94.workers.dev
         run: npx expo export -p web
 
       - name: Assemble the site

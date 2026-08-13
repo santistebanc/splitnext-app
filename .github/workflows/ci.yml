@@ -3,8 +3,7 @@ name: ci
 # The gates a slice has to pass before it can merge, as `npm run check` — the
 # board and the map are how this repo is steered, so a broken one is a broken
 # build. Capture runs (npm run capture) are deliberately not here — they drive the
-# real deployed Edge Functions and would make CI depend on a live Supabase
-# project.
+# real deployed Worker and would make CI depend on a live Cloudflare account.
 on:
   pull_request:
   push:

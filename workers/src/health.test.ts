@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { healthPayload, isHealthRequest } from './health.ts';
+import { healthPayload, isHealthRequest } from './health';
 
 describe('isHealthRequest', () => {
   const url = (query: string) =>
-    `https://ycpkguwfxlhpovnsuujr.supabase.co/functions/v1/merge${query}`;
+    `https://splitnext.santistebanc94.workers.dev/merge${query}`;
 
   it('accepts a GET carrying health=1', () => {
     expect(isHealthRequest('GET', url('?health=1'))).toBe(true);
@@ -14,9 +14,6 @@ describe('isHealthRequest', () => {
     expect(isHealthRequest('GET', url('?foo=bar&health=1'))).toBe(true);
   });
 
-  // The probe has to stay off the real path: every function's work happens on
-  // POST, so a health check that could ride a POST would be one typo away from
-  // shadowing a merge.
   it('rejects every other method, health param or not', () => {
     for (const method of ['POST', 'OPTIONS', 'PUT', 'DELETE']) {
       expect(isHealthRequest(method, url('?health=1'))).toBe(false);
@@ -34,8 +31,6 @@ describe('isHealthRequest', () => {
     expect(isHealthRequest('get', url('?health=1'))).toBe(true);
   });
 
-  // Deno hands us a real request URL, but the verifier is not the only caller
-  // this will ever have; an unparseable string is a no, not a crash.
   it('says no rather than throwing on a url it cannot parse', () => {
     expect(isHealthRequest('GET', 'not a url')).toBe(false);
   });
@@ -50,9 +45,6 @@ describe('healthPayload', () => {
     });
   });
 
-  // Liveness and provenance are separate answers. A function that is up but
-  // cannot say what it is running is still up — and the verifier fails it,
-  // because 'unknown' never equals the merge sha.
   it('is still ok, with an unknown revision, when DEPLOY_SHA is unset', () => {
     expect(healthPayload('merge', undefined)).toEqual({
       ok: true,

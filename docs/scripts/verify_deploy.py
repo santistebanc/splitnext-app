@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """Post-deploy verification: is the deployed server the commit CI just merged?
 
-`supabase functions deploy` reporting success is not evidence. The failure this
+`wrangler deploy` reporting success is not evidence. The failure this
 guards against is the one that happened: the remote ran a stale `fetch-entity`
 for three slices while every archive said it had shipped, answering 200 to
 anything a liveness check could have asked.
 
-So each function is asked what it is running (`?health=1`, see
-supabase/functions/_shared/health.ts) and every answer has to be the merge sha.
+So each Worker route is asked what it is running (`?health=1`, see
+workers/src/health.ts) and every answer has to be the deploy sha.
 
 `evaluate` holds the whole decision and touches no network, which is what makes
 the stale / missing / timed-out cases testable — see verify_deploy_test.py.
 
 Usage:
-    verify_deploy.py --base-url https://<ref>.supabase.co --sha $GITHUB_SHA
-                     [--anon-key $KEY] [--timeout 10] [--retries 5]
+    verify_deploy.py --base-url https://splitnext.<subdomain>.workers.dev --sha $GITHUB_SHA
+                     [--timeout 10] [--retries 5]
 
 Exit code 0 when every function reports the sha, 1 otherwise, with each
 offending function named on stderr.
@@ -34,7 +34,6 @@ FUNCTIONS = [
     "merge",
     "fetch-entity",
     "list-roster",
-    "rt-jwt",
     "mint-invite",
     "join-group",
 ]
@@ -92,13 +91,8 @@ def evaluate(probes, expected_sha):
 
 def probe(base_url, fn, anon_key, timeout, retries):
     """Ask one function what it is running. Never raises; a failure is a probe."""
-    url = f"{base_url.rstrip('/')}/functions/v1/{fn}?health=1"
+    url = f"{base_url.rstrip('/')}/{fn}?health=1"
     headers = {}
-    # verify_jwt is off for these functions, but the gateway in front of them
-    # still wants an apikey.
-    if anon_key:
-        headers["apikey"] = anon_key
-        headers["Authorization"] = f"Bearer {anon_key}"
 
     last = "no attempt made"
     for attempt in range(retries):
@@ -127,9 +121,9 @@ def probe(base_url, fn, anon_key, timeout, retries):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", required=True, help="https://<ref>.supabase.co")
+    parser.add_argument("--base-url", required=True, help="https://splitnext.<subdomain>.workers.dev")
     parser.add_argument("--sha", required=True, help="the commit CI just deployed")
-    parser.add_argument("--anon-key", default="", help="apikey for the gateway")
+    parser.add_argument("--anon-key", default="", help="unused; kept so old callers do not break")
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--retries", type=int, default=5)
     args = parser.parse_args(argv)

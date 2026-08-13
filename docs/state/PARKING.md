@@ -2,10 +2,9 @@
 
 ## Foundation-risk
 
-- **Contract test against a local Supabase stack** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real `merge` / `fetch-entity` / `list-roster` at close when their shapes change — area: sync — raised: slice 0004
+- **Contract test against a local Worker** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real routes under `wrangler dev` at close when their shapes change — area: sync — raised: slice 0004 / retargeted slice 0014
 - **Browser-driven flow tests** — `npm run capture` (slice 0007) commits the Playwright driver and asserts a clean console plus balances surviving a reload, but it is a capture run, not a test suite: it is not in `npm test`, has no failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007*
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
-- **Realtime JWT signing secret** — leave `anon_channel` fallback; mint short-lived JWT for private channel auth (D-006) — area: sync — raised: slice 0001
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
 
@@ -21,7 +20,8 @@
 
 ## Breadth
 
-- **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a Vercel or Cloudflare project would give a URL per branch — area: deploy — raised: slice 0008
+- **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
+- **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — area: invites — raised: bootstrap
 - **Activity feed** — twelve event types; client-authored; flushed last — area: activity — raised: bootstrap
 - **Member detail** — paid-for / owes-for buckets; leave group — area: membership — raised: bootstrap
@@ -50,8 +50,8 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **One remote, slice branches may deploy** — delivered in [slice 0013](slices/0013-dev-remote.md); `main` and `slice/**` both deploy to `splitnext-v3`; last green wins; no wipe. A separate `splitnext-v3-dev` was declined.
+- **One remote, slice branches may deploy** — delivered in [slice 0013](slices/0013-dev-remote.md); `main` and `slice/**` both deploy to the one remote; last green wins; no wipe. Host moved to the Cloudflare Worker in slice 0014.
 
-- **Missed-wake reconnect** — delivered in [slice 0011](slices/0011-missed-wake.md); a dropped Realtime socket returning to `SUBSCRIBED` runs the same `syncGroup` as open, for that group only. No cursor.
+- **Missed-wake reconnect** — delivered in [slice 0011](slices/0011-missed-wake.md); a dropped wake socket returning to `SUBSCRIBED` runs the same `syncGroup` as open, for that group only. No cursor.
 
 - **Member invites (mint + redeem)** — delivered in [slice 0012](slices/0012-member-invites.md); per-member one-use link, `/join` + lobby paste. App links and joiner picker still parked.

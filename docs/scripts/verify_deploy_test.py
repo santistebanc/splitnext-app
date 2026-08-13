@@ -35,7 +35,6 @@ class Evaluate(unittest.TestCase):
                 "merge",
                 "fetch-entity",
                 "list-roster",
-                "rt-jwt",
                 "mint-invite",
                 "join-group",
             ],

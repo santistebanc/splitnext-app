@@ -1,4 +1,4 @@
-"""Which GitHub Actions runs may deploy to splitnext-v3.
+"""Which GitHub Actions runs may deploy the Cloudflare Worker.
 
 `target_for` is the whole decision: given the event name and git ref, return
 whether this run may deploy to the one remote (`prod`) and it may never wipe.
@@ -14,9 +14,9 @@ import argparse
 import sys
 from dataclasses import dataclass
 
-# Not a secret: it is in every client bundle and in supabase.yml already.
-PROJECT_REF = "ycpkguwfxlhpovnsuujr"
-PROJECTS = {"prod": PROJECT_REF}
+WORKER_NAME = "splitnext"
+WORKER_HOST = "splitnext.santistebanc94.workers.dev"
+PROJECTS = {"prod": WORKER_NAME}
 
 
 @dataclass(frozen=True)
@@ -37,11 +37,12 @@ def github_output(decision: Decision) -> str:
         raise ValueError("this event+ref may not touch the remote")
     if decision.reset:
         raise ValueError("reset is never allowed")
-    project_ref = PROJECTS[decision.target]
+    worker_name = PROJECTS[decision.target]
     return (
         f"target={decision.target}\n"
         f"reset=false\n"
-        f"project_ref={project_ref}\n"
+        f"worker_name={worker_name}\n"
+        f"base_url=https://{WORKER_HOST}\n"
     )
 
 

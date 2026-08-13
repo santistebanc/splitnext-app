@@ -1,0 +1,32 @@
+{
+  "name": "splitnext",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-13",
+  "account_id": "ba802095c02bf88c8749c761b8245466",
+  "workers_dev": true,
+  "vars": {
+    "DEPLOY_SHA": "unknown"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GROUP",
+        "class_name": "GroupObject"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["GroupObject"]
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "INDEX",
+      "database_name": "splitnext-index",
+      "database_id": "dd117f7b-8096-4dad-8a97-ac9c03026262",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

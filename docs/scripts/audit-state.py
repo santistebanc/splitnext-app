@@ -300,7 +300,7 @@ for link in re.findall(r"\]\((slices/[\w.-]+\.md)\)", ov_text):
         report("dead-link", f"OVERVIEW.md links {link}, which is not in docs/state/slices/")
 seams_block = re.search(r"\n## Seams\n(.*?)(?=\n## |\Z)", ov_text, re.S)
 for ln in (seams_block.group(1).splitlines() if seams_block else []):
-    for path in re.findall(r"`((?:src|app|docs|supabase)/[\w./\[\]-]+)`", ln):
+    for path in re.findall(r"`((?:src|app|docs|supabase|workers)/[\w./\[\]-]+)`", ln):
         if not (ROOT / path).exists():
             report("missing-path", f"OVERVIEW.md names seam file {path} — not on disk")
 routes_block = re.search(r"\n## Routes / surfaces\n(.*?)(?=\n## |\Z)", ov_text, re.S)

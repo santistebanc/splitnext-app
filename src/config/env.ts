@@ -1,13 +1,9 @@
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const url = process.env.EXPO_PUBLIC_API_URL;
 
-if (!url || !anonKey) {
-  throw new Error(
-    'Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY',
-  );
+if (!url) {
+  throw new Error('Missing EXPO_PUBLIC_API_URL');
 }
 
 export const env = {
-  supabaseUrl: url,
-  supabaseAnonKey: anonKey,
+  apiUrl: url.replace(/\/$/, ''),
 };

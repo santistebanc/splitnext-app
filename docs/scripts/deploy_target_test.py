@@ -1,4 +1,4 @@
-"""Seam tests for which GitHub event may deploy to splitnext-v3.
+"""Seam tests for which GitHub event may deploy the Cloudflare Worker.
 
 `target_for` is the whole decision: given the event name and git ref, may this
 run deploy to the one remote, and it may never wipe. The workflows call this;
@@ -10,7 +10,8 @@ Run: `npm run test:board`
 import unittest
 
 from deploy_target import (
-    PROJECT_REF,
+    WORKER_HOST,
+    WORKER_NAME,
     Decision,
     github_output,
     target_for,
@@ -50,18 +51,20 @@ class TargetFor(unittest.TestCase):
 
 
 class GitHubOutput(unittest.TestCase):
-    def test_a_deploy_names_splitnext_v3(self):
+    def test_a_deploy_names_the_worker(self):
         text = github_output(target_for("push", "refs/heads/main"))
         self.assertEqual(
             text,
-            f"target=prod\nreset=false\nproject_ref={PROJECT_REF}\n",
+            f"target=prod\nreset=false\nworker_name={WORKER_NAME}\n"
+            f"base_url=https://{WORKER_HOST}\n",
         )
 
-    def test_a_slice_push_names_the_same_project(self):
-        text = github_output(target_for("push", "refs/heads/slice/0013-dev-remote"))
+    def test_a_slice_push_names_the_same_worker(self):
+        text = github_output(target_for("push", "refs/heads/slice/0014-cloudflare-do"))
         self.assertEqual(
             text,
-            f"target=prod\nreset=false\nproject_ref={PROJECT_REF}\n",
+            f"target=prod\nreset=false\nworker_name={WORKER_NAME}\n"
+            f"base_url=https://{WORKER_HOST}\n",
         )
 
     def test_none_is_refused(self):

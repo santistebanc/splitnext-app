@@ -59,26 +59,26 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 
 ## Setup
 
-`cp .env.example .env`. That file already holds the `splitnext-v3` URL and anon key (public; they also ship in the Pages bundle). Never commit `.env`; never put a service-role key anywhere in the client — Edge Functions hold it server-side.
+`cp .env.example .env`. That file already holds the Worker URL (public; it also ships in the Pages bundle). Never commit `.env`.
 
 ## The server deploys itself — never by hand
 
-Pushing to `main` or to a `slice/**` branch runs `.github/workflows/supabase.yml`: `supabase db push`, then `functions deploy` for every name in `docs/scripts/verify_deploy.py` (`FUNCTIONS`), then a verification tail that fails the run unless every function reports that commit's sha at `?health=1` (D-052, D-058). Last green run wins on the one remote. **Do not run `db push` or `functions deploy` from your machine**, and do not reset the remote — a hand-deploy or a wipe makes the server something no commit describes. A migration is additive; abandoning a slice does not undo it.
+Pushing to `main` or to a `slice/**` branch runs `.github/workflows/workers.yml`: `wrangler d1 migrations apply` for `splitnext-index`, then `wrangler deploy` stamped with `DEPLOY_SHA`, then a verification tail that fails the run unless every route in `docs/scripts/verify_deploy.py` (`FUNCTIONS`) reports that commit's sha at `?health=1` (D-052, D-058). Last green run wins on the one Worker. **Do not run `wrangler deploy` or `d1 migrations apply --remote` from your machine**, and do not wipe D1 — a hand-deploy or a wipe makes the server something no commit describes. A migration is additive; abandoning a slice does not undo it.
 
-Ask any deployed function what it is running:
+Ask any deployed route what it is running:
 
 ```
-curl 'https://ycpkguwfxlhpovnsuujr.supabase.co/functions/v1/fetch-entity?health=1' -H "apikey: $EXPO_PUBLIC_SUPABASE_ANON_KEY"
+curl 'https://splitnext.santistebanc94.workers.dev/fetch-entity?health=1'
 ```
 
-The list of functions lives in `docs/scripts/verify_deploy.py` (`FUNCTIONS`) and the workflow reads it from there — a function not on that list is neither deployed nor verified.
+The list of routes lives in `docs/scripts/verify_deploy.py` (`FUNCTIONS`) and the workflow reads it from there — a route not on that list is neither the deploy list nor verified.
 
 ## Invariants that are not negotiable
 
 - **Money is integer cents.** No floats, anywhere, ever.
 - **Conflicts resolve by `version`, not timestamps.** Incoming wins only when strictly newer.
 - **Soft-delete only** (`deleted_at`); nothing referenced is ever hard-deleted.
-- **Clients never talk to Postgres.** Deny-all RLS; Edge Functions use the service role after a capability hash-check.
+- **Clients never talk to D1 or the Durable Object.** The Worker is the only door, after a capability hash-check.
 - **An expense's allocations live inside the expense**, so one version covers the whole split (D-024).
 - **Splits are deterministic across devices** — dedupe, sort by member id, remainder cents in that order (D-025).
 - Decisions are append-only in `docs/state/DECISIONS.md`. If you contradict a `D-NNN`, say so and add a new one; do not quietly reverse it.

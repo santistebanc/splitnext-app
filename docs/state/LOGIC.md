@@ -45,7 +45,7 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-inviteIsLive | `inviteIsLive` | Pure | `src/domain/invite.ts` | Answers whether an invite can still be redeemed — not spent, not past `expires_at`, and the named member still live. |
 | L-parseInviteToken | `parseInviteToken` | Pure | `src/domain/invite.ts` | Pulls the invite secret out of a raw token or a `/join?token=` URL so lobby paste and the join route share one parser. |
 | L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and subscribes for wakes. |
-| L-openGroup | `openGroup` | Job | `src/sync/groupSync.ts` | Opens a group for viewing — subscribes for wakes, then runs a full sync. Realtime being down does not block opening. |
+| L-openGroup | `openGroup` | Job | `src/sync/groupSync.ts` | Opens a group for viewing — subscribes for wakes, then runs a full sync. The wake socket being down does not block opening. |
 | L-syncGroup | `syncGroup` | Job | `src/sync/groupSync.ts` | One full round trip for a group: push everything pending, pull the group back, then pull its roster. Runs alone per group so nothing races. |
 | L-syncAllLobby | `syncAllLobbyGroups` | Job | `src/sync/groupSync.ts` | Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest. |
 | L-bumpName | `bumpGroupName` | Job | `src/sync/groupSync.ts` | Renames a group: the new name shows immediately, then goes to the server as the next version. |
@@ -63,8 +63,8 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-commitRemote | `commitRemoteEntity` | State | `src/sync/inbound.ts` | Writes the accepted result of that decision into the store. |
 | L-applyRemoteFetch | `applyRemoteFetch` | Job | `src/sync/inbound.ts` | Fetches one entity from the server and commits it, clearing or setting the group's error. |
 | L-pullRoster | `pullRoster` | Job | `src/sync/inbound.ts` | Fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call. |
-| L-wakeCatchUp | `shouldCatchUpOnStatus` / `shouldReplaceSubscription` | Pure | `src/sync/wakePolicy.ts` | Answers whether a Realtime status change means this group missed wakes — only when the channel is `SUBSCRIBED` again after a drop, not on the first subscribe — and whether a dead channel should be replaced so the hub can listen. |
-| L-wakeSub | `startWakeSubscription` | Network | `src/sync/wake.ts` | Listens on the group's Realtime channel; a wake says only what changed, and this fetches that one entity. If the channel drops and returns, it runs that group's full catch-up. A dropped channel is replaced rather than reused, so a joiner whose first subscribe died still listens on the hub. One live subscription per group. |
+| L-wakeCatchUp | `shouldCatchUpOnStatus` / `shouldReplaceSubscription` | Pure | `src/sync/wakePolicy.ts` | Answers whether a wake-socket status change means this group missed wakes — only when the socket is `SUBSCRIBED` again after a drop, not on the first connect — and whether a dead socket should be replaced so the hub can listen. |
+| L-wakeSub | `startWakeSubscription` | Network | `src/sync/wake.ts` | Opens a hibernating WebSocket on the group's Durable Object; a wake says only what changed, and this fetches that one entity. If the socket drops and returns, it runs that group's full catch-up. A dropped socket is replaced rather than reused, so a joiner whose first connect died still listens on the hub. One live socket per group. |
 | L-foreground | `useLobbyForegroundSync` | Job | `src/sync/appForegroundSync.ts` | Runs the lobby-wide catch-up on mount and every time the app returns to the foreground. |
 | L-syncError | `syncError` / `coerceSyncError` | Pure | `src/sync/syncErrors.ts` | Gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape. |
 | L-getGroupStore | `getGroupStore` | State | `src/store/groupStore.ts` | Hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by `L-normalizeTimestamps`. |
@@ -86,26 +86,24 @@ The client side of the wire — HTTP calls out of the device.
 | L-edgeMerge | `mergeEntities` | Network | `src/api/edge.ts` | Pushes a batch of pending changes and reports per item whether the server accepted them. |
 | L-edgeFetch | `fetchEntity` | Network | `src/api/edge.ts` | Asks for one entity by type and id — the call a wake triggers. |
 | L-edgeRoster | `listRoster` | Network | `src/api/edge.ts` | Asks for a group's whole roster — members, binds and expenses — in one request. |
-| L-edgeRtJwt | `mintRealtimeAuth` | Network | `src/api/edge.ts` | Trades the group's access token for permission to listen on its Realtime channel. |
 | L-edgeMintInvite | `mintInviteRemote` | Network | `src/api/edge.ts` | Asks the server to mint a one-use invite for one member of a group this device already belongs to. |
 | L-edgeJoin | `joinGroupRemote` | Network | `src/api/edge.ts` | Redeems an invite secret for a new access token and the bind that names who this device is. |
 
 ## Server
 
-Edge Functions and their shared helpers.
+The Cloudflare Worker and the group Durable Object.
 
 | Id | Name | Kind | Where | What it is for |
 | --- | --- | --- | --- | --- |
-| L-efCreate | `create-group` | Endpoint | `supabase/functions/create-group` | Creates the group row and issues an access token, storing only its hash. |
-| L-efMintInvite | `mint-invite` | Endpoint | `supabase/functions/mint-invite` | Issues a 7-day one-use invite for one member, storing only the hash, after a capability check. |
-| L-efJoin | `join-group` | Endpoint | `supabase/functions/join-group` | Redeems a live invite into a new access token and a v1 bind for the named member, then wakes the group. |
-| L-efMerge | `merge` / `mergeOne` | Endpoint | `supabase/functions/merge` | The write path: applies each pushed item if its version wins, reports accepted or rejected per item, and wakes the group's other devices. |
-| L-efFetch | `fetch-entity` | Endpoint | `supabase/functions/fetch-entity` | Returns one entity to a caller whose token proves access to that group. |
-| L-efRoster | `list-roster` | Endpoint | `supabase/functions/list-roster` | Returns every member, bind and expense of a group in one response. |
-| L-efRtJwt | `rt-jwt` | Endpoint | `supabase/functions/rt-jwt` | Issues a short-lived Realtime token, falling back to a shared anonymous channel when it cannot. |
-| L-efAccess | `resolveAccessToken` | Endpoint | `supabase/functions/_shared/access.ts` | The door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device. |
-| L-efWake | `publishWake` | Network | `supabase/functions/_shared/wake.ts` | Tells the group's other devices that something changed, naming only what — never the data itself. A failed wake never undoes the write. |
-| L-efHealth | `isHealthRequest` / `healthPayload` | Pure | `supabase/functions/_shared/health.ts` | Lets anyone ask a deployed function which commit it is running, so a server that silently lagged behind the repo can be caught instead of assumed. |
-| L-deployTarget | `target_for` | Pure | `docs/scripts/deploy_target.py` | Answers whether a GitHub event and ref may deploy to `splitnext-v3`, and refuses a wipe — `push` to `main` or `slice/**` is yes, everything else is no. |
+| L-efCreate | `handleCreateGroup` | Endpoint | `workers/src/index.ts` | Creates the group row in that group's Durable Object and issues an access token, storing only its hash in D1. |
+| L-efMintInvite | `handleMintInvite` | Endpoint | `workers/src/index.ts` | Issues a 7-day one-use invite for one member, storing only the hash in D1, after a capability check. |
+| L-efJoin | `handleJoin` | Endpoint | `workers/src/index.ts` | Redeems a live invite into a new access token and a v1 bind for the named member, then wakes the group. |
+| L-efMerge | `mergeOne` | Endpoint | `workers/src/merge.ts` | The write path: applies each pushed item if its version wins, reports accepted or rejected per item; the Durable Object then wakes the group's other devices. |
+| L-efFetch | `fetchEntity` | Endpoint | `workers/src/groupObject.ts` | Returns one entity to a caller whose token proves access to that group. |
+| L-efRoster | `listRoster` | Endpoint | `workers/src/groupObject.ts` | Returns every member, bind and expense of a group in one response. |
+| L-efAccess | `resolveAccessToken` | Endpoint | `workers/src/indexDb.ts` | The door: hashes the presented token and only lets it through if it is unrevoked and belongs to this group and this device. |
+| L-efWake | `broadcastWake` | Network | `workers/src/groupObject.ts` | Tells the group's other devices that something changed, naming only what — never the data itself. A failed wake never undoes the write. |
+| L-efHealth | `isHealthRequest` / `healthPayload` | Pure | `workers/src/health.ts` | Lets anyone ask a deployed route which commit it is running, so a server that silently lagged behind the repo can be caught instead of assumed. |
+| L-deployTarget | `target_for` | Pure | `docs/scripts/deploy_target.py` | Answers whether a GitHub event and ref may deploy to Worker `splitnext`, and refuses a wipe — `push` to `main` or `slice/**` is yes, everything else is no. |
 | L-prPhone | `phone_section` | Pure | `docs/scripts/pr_phone.py` | The PR comment's scan code: a QR of the published web app, so a phone camera opens it without a Metro bundler. |
-| L-efShouldAccept | `shouldAccept` | Pure | `supabase/functions/_shared/entities.ts` | The server's copy of the version rule, deliberately identical to the client's so both sides agree on who wins. |
+| L-efShouldAccept | `shouldAccept` | Pure | `workers/src/entities.ts` | The server's name for the version rule, imported from the same module the client tests, so both sides agree on who wins. |
