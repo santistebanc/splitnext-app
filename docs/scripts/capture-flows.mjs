@@ -17,6 +17,7 @@
  *   node docs/scripts/capture-flows.mjs F-add-expense       # one flow
  *   node docs/scripts/capture-flows.mjs --slice 0007        # + slice stills
  *   node docs/scripts/capture-flows.mjs --url http://…      # non-default port
+ *   node docs/scripts/capture-flows.mjs --assert-only       # drive, write no clip
  *
  * Needs the web target already serving (`npm run web`).
  */
@@ -30,22 +31,18 @@ import { fileURLToPath } from 'node:url';
 
 const run = promisify(execFile);
 
+import { parseCaptureArgv, contextOptions } from './capture-opts.mjs';
 import { installPointerOverlay } from './capture-overlay.mjs';
 import { VIEWPORT, balancesOf, makeDriver, settleOf, settleRowOf } from './capture-driver.mjs';
+import { isDeployedWorkerUrl } from './local-origin.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SHOTS = join(ROOT, 'docs', 'state', 'shots');
 const FLOW_SHOTS = join(SHOTS, 'flows');
 
-const argv = process.argv.slice(2);
-const flagValue = (name) => {
-  const i = argv.indexOf(name);
-  return i === -1 ? null : argv[i + 1];
-};
-// `npm run web` serves on 8081; override with --url when it is elsewhere.
-const BASE = flagValue('--url') ?? 'http://127.0.0.1:8081';
-const SLICE = flagValue('--slice');
-const only = argv.filter((a) => a.startsWith('F-'));
+const { base: BASE, slice: SLICE, only, assertOnly: ASSERT_ONLY } = parseCaptureArgv(
+  process.argv.slice(2),
+);
 
 const problems = [];
 
@@ -315,22 +312,33 @@ async function seed(browser, stage) {
 // ── Record ─────────────────────────────────────────────────────────────────
 async function record(browser, flow, storageState, hubUrl) {
   const dir = join(FLOW_SHOTS, `.tmp-${flow.id}`);
-  await rm(dir, { recursive: true, force: true });
+  if (!ASSERT_ONLY) {
+    await rm(dir, { recursive: true, force: true });
+  }
 
   // Recording begins with the context, so this is frame zero of the clip.
   const startedAt = Date.now();
-  const context = await browser.newContext({
-    viewport: VIEWPORT,
-    deviceScaleFactor: 2,
-    storageState,
-    recordVideo: { dir, size: VIEWPORT },
-  });
+  const context = await browser.newContext(
+    contextOptions({
+      assertOnly: ASSERT_ONLY,
+      viewport: VIEWPORT,
+      videoDir: dir,
+      storageState,
+    }),
+  );
   await context.addInitScript(installPointerOverlay);
   const page = await context.newPage();
   page.on('console', (m) => {
     if (m.type() === 'error') problems.push(`[${flow.id}] ${m.text()}`);
   });
   page.on('pageerror', (e) => problems.push(`[${flow.id}] ${e.message}`));
+  if (ASSERT_ONLY) {
+    page.on('request', (req) => {
+      if (isDeployedWorkerUrl(req.url())) {
+        problems.push(`[${flow.id}] request to deployed Worker: ${req.url()}`);
+      }
+    });
+  }
 
   const target = flow.at === '/' ? BASE : hubUrl;
   await page.goto(target, { waitUntil: 'networkidle', timeout: 120000 });
@@ -344,6 +352,10 @@ async function record(browser, flow, storageState, hubUrl) {
   await flow.run(d, page);
 
   await context.close();
+  if (ASSERT_ONLY) {
+    console.log('assert', flow.id);
+    return;
+  }
   const [recorded] = await readdir(dir);
   const out = join(FLOW_SHOTS, `${flow.id}.webm`);
   await rename(join(dir, recorded), out);
@@ -379,7 +391,7 @@ for (const flow of FLOWS) {
   await record(browser, flow, storageState, hubUrl);
 }
 
-if (SLICE) {
+if (SLICE && !ASSERT_ONLY) {
   const { storageState, hubUrl } = await seed(browser, 'spent');
   await stills(browser, storageState, hubUrl, SLICE);
 }

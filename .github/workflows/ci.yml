@@ -1,9 +1,9 @@
 name: ci
 
-# The gates a slice has to pass before it can merge, as `npm run check` — the
-# board and the map are how this repo is steered, so a broken one is a broken
-# build. Capture runs (npm run capture) are deliberately not here — they drive the
-# real deployed Worker and would make CI depend on a live Cloudflare account.
+# Two required jobs. `check` is `npm run check` — the four fast gates, the
+# laptop list (D-046, D-072). `capture` drives the recorded flows against a
+# local Worker; it is not in `check` because Playwright + Metro are too slow
+# for every save, and it needs no Cloudflare account.
 on:
   pull_request:
   push:
@@ -43,3 +43,22 @@ jobs:
       # fail, notes do not.
       - name: Gates
         run: npm run check
+
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Assert recorded flows
+        run: npm run capture:ci

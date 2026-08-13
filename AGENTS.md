@@ -31,7 +31,7 @@ The short version:
 A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` on `main`. Commit freely on the branch; `main` reads one line per slice. The full rules — what goes in the PR body, why the tag lands after the merge — are in the [slicer skill](.claude/skills/slicer/SKILL.md#git--pr-per-slice-this-repo); three things are non-negotiable here:
 
 - **Never push to `main` directly**, and never merge a slice PR with `--merge` or `--rebase`. Squash is the only enabled merge method and the repo enforces it.
-- **CI is the gate**: `npm run check` — run it before you push, not after CI tells you.
+- **CI is two required jobs**: `npm run check` (the laptop list; CI's `check` job) and `npm run capture:ci` (CI's `capture` job, D-072). Run `check` before you push.
 - **One slice opens one PR.** Squash-only enforces one commit per PR, not per slice; two PRs under one slice number is two commits on `main` and a slice you can no longer revert.
 - **`docs/slicer.html` is generated and gitignored** — regenerate it, never hand-edit or hand-merge it. Same for `docs/slice.html`, the per-PR slice page.
 
@@ -43,14 +43,15 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 
 | Command | What it does |
 | --- | --- |
-| `npm run check` | **The merge gate**: `test` + `typecheck` + `test:board` + `audit`, in that order. CI runs exactly this. |
+| `npm run check` | **The laptop gate**: `test` + `typecheck` + `test:board` + `audit`, in that order. CI's `check` job runs exactly this. |
 | `npm test` | Vitest, the seam tests. Boots a local Worker for the HTTP contract (D-070) and the wake wire (D-071); does not call `workers.dev`. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:board` | Python tests for the board generator — parsers, call graph, hunk attribution. |
 | `npm run audit` | Audits `docs/state/` against the code and git: dangling ids, moved paths, missing captures, stale flow clips, missing tags, thin archives. Findings fail; notes do not. |
 | `npm start` | Expo dev server (phone via Expo Go). |
 | `npm run web` | Runs the whole app in a browser — the target headless runs and captures use. |
-| `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. Add flow ids to record only those. |
+| `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. Add flow ids to record only those. `--assert-only` drives without writing clips. |
+| `npm run capture:ci` | Boots a local Worker, starts `npm run web` against it, runs capture `--assert-only`. CI's `capture` job. No Cloudflare account. |
 | `npm run capture:board` | Still-shoots the board itself for a slice that changed it. Needs `npm run board:serve` already serving. |
 | `npm run delta` | What the working tree changed, in map vocabulary — symbols touched, flows through them, what `NEXT.md` says each is for. `-- --range main` for the branch. The PR's slice *page* is `npm run board -- --slice-page`. |
 | `npm run board` | Regenerates `docs/slicer.html` (the published map). `-- --slice-page` writes the per-PR slice view. |

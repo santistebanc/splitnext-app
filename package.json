@@ -46,6 +46,7 @@
     "board": "python3 docs/scripts/generate-slicer-board.py",
     "board:serve": "python3 docs/scripts/serve-slicer-board.py",
     "capture": "node docs/scripts/capture-flows.mjs",
+    "capture:ci": "node docs/scripts/capture-ci.mjs",
     "capture:board": "node docs/scripts/capture-board.mjs"
   },
   "private": true
