@@ -41,7 +41,11 @@ An unmerged slice can be demoed on a phone against the same `splitnext-v3` the p
 
 | Surface | State | What happens |
 | --- | --- | --- |
-| | | |
+| `L-deployTarget` `target_for` | `workflow_dispatch` / a PR / a non-`slice/**` branch | Decision is none. `github_output` raises; the reusable workflow never links or pushes. `supabase.yml` has no dispatch trigger, so this is belt-and-braces. |
+| `L-deployTarget` `github_output` | `reset=true` even if a caller forced it | Raises `"reset is never allowed"`. There is no reset step in the workflow. |
+| Two pushes at once | `main` and a `slice/**` (or two slices) both green | Concurrency group `supabase`, `cancel-in-progress: false`. The second waits. Last green run's sha is what `?health=1` reports. A cancelled `db push` would be a half-applied migration; we queue instead. |
+| Slice abandoned after CI deployed | PR closed unmerged | Functions stay at that sha until the next green `main` or `slice/**` deploy. Additive migrations stay on `splitnext-v3`; they are not undone. |
+| Published `/app` while a slice is in flight | Slice CI already deployed | Pages still serves `main`'s client. Edge Functions and schema are the slice's until `main` deploys again. That is the trade this slice accepted. |
 
 ## Out of scope
 
