@@ -98,6 +98,27 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 6. `L-assumedMember` now resolves this device to that member, which is what puts You (Name) on the hub.
 7. The first expense closes it: `L-bindingOpen` turns false, every remaining button disappears, and the choice is fixed until some future slice offers a deliberate way to change it.
 
+## F-invite — Invite a member
+
+**Trigger** — On the hub, the person taps **Invite** on a member who is not You.  
+**Outcome** — A join link for that member is shown (and copied when the platform allows). Another device can redeem it once, within seven days.
+
+1. `L-hub` shows **Invite** on every live member except You, then calls `L-mintInvite` with the member tapped.
+2. `L-edgeMintInvite` posts to `L-efMintInvite`, which checks this device's access token, refuses a missing or tombstoned member, stores the hash, and returns the plaintext once.
+3. `L-hub` shows the `/join?token=` link (web) or the raw token (native) via `L-inviteShare`. The secret is not kept on the device after that.
+
+## F-join — Join from an invite
+
+**Trigger** — On another device, the person opens the join link, or pastes the token on the lobby and taps **Join group**.  
+**Outcome** — The group is on this device, this device is already that member, and **This is me** does not appear for them.
+
+1. `L-join` (from the URL) or `L-lobby` (from paste) calls `L-joinGroup`. `L-parseInviteToken` accepts either a raw token or a `/join?token=` URL.
+2. `L-edgeJoin` posts the secret and this install's `device_user_id` to `L-efJoin`.
+3. `L-efJoin` looks up the hash. `L-inviteIsLive` (the same three checks, on the server) refuses a spent, expired, or tombstoned-member invite. A device that already has a live token for the group is refused without consuming the invite.
+4. On success it mints an access token, inserts a v1 bind for the named member, marks the invite redeemed, and `L-efWake` tells the group's other devices.
+5. `L-joinGroup` stores the token, adds the group to the lobby, commits the bind, and `L-openGroup` pulls the roster.
+6. `L-assumedMember` already resolves, so `L-hub` shows You (Name) and no **This is me** for this device.
+
 ## F-bump — Bump group name
 
 **Trigger** — On the hub, the person renames the group.  

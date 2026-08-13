@@ -9,7 +9,8 @@ name: supabase
 #
 # Deploying is only half the fix — a deploy step that quietly did nothing would
 # still pass green. So each function is asked what commit it is running
-# (`?health=1`) and the run fails unless all five answer with this merge's sha.
+# (`?health=1`) and the run fails unless every name in FUNCTIONS answers
+# with this merge's sha.
 #
 # Independent of pages.yml on purpose: the board is documentation and should
 # never be held hostage to a Supabase outage — and it is also where you go to

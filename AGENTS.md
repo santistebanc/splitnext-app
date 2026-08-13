@@ -63,7 +63,7 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 
 ## The server deploys itself — never by hand
 
-Merging to `main` runs `.github/workflows/supabase.yml`: `supabase db push`, then `functions deploy` for all five Edge Functions, then a verification tail that fails the run unless every function reports the merge sha at `?health=1` (D-052). **Do not run `db push` or `functions deploy` from your machine** — a hand-deploy makes the server something no commit describes, which is exactly the drift that raised slice 0010. A migration or function is "shipped" when its PR merged green, and not before.
+Merging to `main` runs `.github/workflows/supabase.yml`: `supabase db push`, then `functions deploy` for every name in `docs/scripts/verify_deploy.py` (`FUNCTIONS`), then a verification tail that fails the run unless every function reports the merge sha at `?health=1` (D-052). **Do not run `db push` or `functions deploy` from your machine** — a hand-deploy makes the server something no commit describes, which is exactly the drift that raised slice 0010. A migration or function is "shipped" when its PR merged green, and not before.
 
 Ask any deployed function what it is running:
 
@@ -71,7 +71,7 @@ Ask any deployed function what it is running:
 curl 'https://ycpkguwfxlhpovnsuujr.supabase.co/functions/v1/fetch-entity?health=1' -H "apikey: $EXPO_PUBLIC_SUPABASE_ANON_KEY"
 ```
 
-The list of functions lives in `docs/scripts/verify_deploy.py` (`FUNCTIONS`) and the workflow reads it from there — a sixth function is added to that list, or it is neither deployed nor verified.
+The list of functions lives in `docs/scripts/verify_deploy.py` (`FUNCTIONS`) and the workflow reads it from there — a function not on that list is neither deployed nor verified.
 
 ## Invariants that are not negotiable
 

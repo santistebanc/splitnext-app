@@ -6,7 +6,8 @@
 // could ask, so liveness is not the question — provenance is.
 //
 // Every function answers `GET ...?health=1` with the sha it was deployed from.
-// CI asserts all five report the merge sha (docs/scripts/verify_deploy.py), so
+// CI asserts every name in FUNCTIONS reports the merge sha
+// (docs/scripts/verify_deploy.py), so
 // a deploy that silently did nothing goes red instead of green.
 //
 // Deno-free on purpose: `DEPLOY_SHA` is read by the caller and passed in, which

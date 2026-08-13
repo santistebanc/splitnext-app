@@ -12,6 +12,8 @@ import {
   bumpGroupName,
   openGroup,
 } from '@/src/sync/groupSync';
+import { mintInvite } from '@/src/sync/invite';
+import { inviteShareText } from '@/src/sync/inviteShareText';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams } from 'expo-router';
@@ -24,6 +26,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+async function copyText(text: string): Promise<void> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    }
+  } catch {
+    // The visible join link is the fallback.
+  }
+}
 
 export default function GroupHubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,6 +53,7 @@ export default function GroupHubScreen() {
   const [amount, setAmount] = useState('');
   const [what, setWhat] = useState('');
   const [busy, setBusy] = useState(false);
+  const [joinLink, setJoinLink] = useState<string | null>(null);
 
   useEffect(() => {
     if (!groupId) return;
@@ -141,6 +154,23 @@ export default function GroupHubScreen() {
     }
   };
 
+  const onInvite = async (memberId: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const token = await mintInvite(groupId, memberId);
+      if (!token) {
+        setJoinLink(null);
+        return;
+      }
+      const link = inviteShareText(token);
+      setJoinLink(link);
+      await copyText(link);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.label}>Group id</Text>
@@ -161,6 +191,16 @@ export default function GroupHubScreen() {
       ) : null}
 
       <Text style={styles.label}>Members</Text>
+      {joinLink ? (
+        <>
+          <Text style={styles.hint}>
+            Join link copied — paste it on the other device, or open it there.
+          </Text>
+          <Text selectable style={styles.mono} accessibilityLabel="Join link">
+            {joinLink}
+          </Text>
+        </>
+      ) : null}
       {memberList.length === 0 ? (
         <Text style={styles.hint}>No members yet — add yourself first.</Text>
       ) : (
@@ -175,15 +215,27 @@ export default function GroupHubScreen() {
           return (
             <View key={m.id} style={styles.memberRow}>
               <Text style={isYou ? styles.you : styles.value}>{label}</Text>
-              {canChoose && !isYou ? (
-                <Pressable
-                  style={styles.smallButton}
-                  onPress={() => void onBind(m.id)}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.smallButtonText}>This is me</Text>
-                </Pressable>
-              ) : null}
+              <View style={styles.memberActions}>
+                {!isYou ? (
+                  <Pressable
+                    style={styles.smallButton}
+                    onPress={() => void onInvite(m.id)}
+                    accessibilityRole="button"
+                    disabled={busy}
+                  >
+                    <Text style={styles.smallButtonText}>Invite</Text>
+                  </Pressable>
+                ) : null}
+                {canChoose && !isYou ? (
+                  <Pressable
+                    style={styles.smallButton}
+                    onPress={() => void onBind(m.id)}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.smallButtonText}>This is me</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
           );
         })
@@ -289,9 +341,8 @@ export default function GroupHubScreen() {
       </Pressable>
 
       <Text style={styles.hint}>
-        Add a member, tap This is me, then record an expense. Kill and reopen —
-        You (Name) and the expense should stick. Another device with this group
-        pulls both on open.
+        Add a member, tap This is me, then record an expense. Invite on a
+        member copies a join link for another device.
       </Text>
     </ScrollView>
   );
@@ -349,6 +400,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     paddingVertical: 6,
+  },
+  memberActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   input: {
     marginTop: 8,

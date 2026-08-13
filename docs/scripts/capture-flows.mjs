@@ -190,6 +190,10 @@ const UNRECORDED = {
   'F-sync': 'no surface of its own; it runs inside F-open and F-foreground',
   'F-foreground': 'needs the app backgrounded and returned to, which a headless page cannot do',
   'F-wake': 'needs a second device changing the group while this one watches',
+  'F-invite':
+    'needs mint-invite on the server, which this slice adds and D-052 only deploys on merge',
+  'F-join':
+    'needs join-group on the server plus a second device; both the function and a live two-context capture wait on this slice merging (D-052)',
 };
 
 // ── Setup ──────────────────────────────────────────────────────────────────

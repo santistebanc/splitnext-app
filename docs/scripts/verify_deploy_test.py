@@ -27,10 +27,18 @@ class Evaluate(unittest.TestCase):
     def test_every_function_reporting_the_deploy_sha_passes(self):
         self.assertEqual(evaluate(all_ok(), SHA), [])
 
-    def test_covers_all_five_functions(self):
+    def test_covers_every_deployed_function(self):
         self.assertEqual(
             FUNCTIONS,
-            ["create-group", "merge", "fetch-entity", "list-roster", "rt-jwt"],
+            [
+                "create-group",
+                "merge",
+                "fetch-entity",
+                "list-roster",
+                "rt-jwt",
+                "mint-invite",
+                "join-group",
+            ],
         )
 
     # The failure this slice exists to catch: a deploy that no-ops leaves one
@@ -48,10 +56,11 @@ class Evaluate(unittest.TestCase):
         self.assertEqual(len(failures), len(FUNCTIONS))
 
     def test_a_function_that_did_not_answer_fails(self):
-        probes = all_ok()[:-1] + [{"fn": "rt-jwt", "error": "timed out after 10s"}]
+        last = FUNCTIONS[-1]
+        probes = all_ok()[:-1] + [{"fn": last, "error": "timed out after 10s"}]
         failures = evaluate(probes, SHA)
         self.assertEqual(len(failures), 1)
-        self.assertIn("rt-jwt", failures[0])
+        self.assertIn(last, failures[0])
         self.assertIn("timed out", failures[0])
 
     def test_a_non_200_fails_with_its_status(self):
@@ -83,7 +92,7 @@ class Evaluate(unittest.TestCase):
     def test_a_function_missing_from_the_probes_fails(self):
         failures = evaluate(all_ok()[:-1], SHA)
         self.assertEqual(len(failures), 1)
-        self.assertIn("rt-jwt", failures[0])
+        self.assertIn(FUNCTIONS[-1], failures[0])
 
     def test_no_probes_at_all_fails_for_every_function(self):
         self.assertEqual(len(evaluate([], SHA)), len(FUNCTIONS))
