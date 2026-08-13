@@ -2,8 +2,6 @@
 
 ## Foundation-risk
 
-- **Dev remote, prod still merge-only** — "should we not have a remote postgres db that is just for dev which can be modified for the current slice that has not yet been merged in the pr" — persistent `splitnext-v3-dev`; local `.env` points at it; CI/Pages keep pointing at prod; slice-branch push to *dev* is allowed; D-052 still forbids hand-deploy to prod. Reset dev from the repo's migrations at the start of a server slice. Local `supabase start` stays the contract-test item, not the Expo Go target. — area: deploy — raised: slice 0012
-
 - **Contract test against a local Supabase stack** — the flow tests fake `src/api/edge.ts` and import the server's real `shouldAccept`, but response shapes can still drift; run the real `merge` / `fetch-entity` / `list-roster` at close when their shapes change — area: sync — raised: slice 0004
 - **Browser-driven flow tests** — `npm run capture` (slice 0007) commits the Playwright driver and asserts a clean console plus balances surviving a reload, but it is a capture run, not a test suite: it is not in `npm test`, has no failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007*
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
@@ -51,6 +49,8 @@
 
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
+
+- **One remote, slice branches may deploy** — delivered in [slice 0013](slices/0013-dev-remote.md); `main` and `slice/**` both deploy to `splitnext-v3`; last green wins; no wipe. A separate `splitnext-v3-dev` was declined.
 
 - **Missed-wake reconnect** — delivered in [slice 0011](slices/0011-missed-wake.md); a dropped Realtime socket returning to `SUBSCRIBED` runs the same `syncGroup` as open, for that group only. No cursor.
 
