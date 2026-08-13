@@ -87,7 +87,9 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path != "/open":
             if url.path in ("/", "/slicer.html", "/index.html"):
-                return self.serve_board()
+                return self.serve_board("slicer.html")
+            if url.path == "/slice.html":
+                return self.serve_board("slice.html")
             return super().do_GET()
 
         query = parse_qs(url.query)
@@ -127,11 +129,11 @@ class Handler(SimpleHTTPRequestHandler):
             return self.reply(500, str(err))
         return self.reply(204, "")
 
-    def serve_board(self) -> None:
+    def serve_board(self, name: str = "slicer.html") -> None:
         """The board, with this run's token in its head so /open will answer it."""
-        page = DOCS / "slicer.html"
+        page = DOCS / name
         if not page.is_file():
-            return self.reply(404, "no slicer.html — run npm run board")
+            return self.reply(404, f"no {name} — run npm run board")
         html = page.read_text(encoding="utf-8")
         tag = f'<meta name="slicer-token" content="{TOKEN}">'
         html = html.replace("</head>", f"{tag}</head>", 1)
@@ -156,17 +158,19 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def generate() -> None:
-    """Build docs/slicer.html before the first request can ask for it."""
-    out = subprocess.run(
-        [sys.executable, str(ROOT / "docs/scripts/generate-slicer-board.py")],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if out.returncode:
-        print(out.stdout + out.stderr, flush=True)
-        print("board generation failed — serving whatever is on disk", flush=True)
+    """Build the published board and the local slice page before the first request."""
+    script = str(ROOT / "docs/scripts/generate-slicer-board.py")
+    jobs = [
+        [sys.executable, script],
+        [sys.executable, script, "--slice-page", "--out", str(DOCS / "slice.html")],
+    ]
+    for cmd in jobs:
+        out = subprocess.run(
+            cmd, cwd=ROOT, capture_output=True, text=True, check=False
+        )
+        if out.returncode:
+            print(out.stdout + out.stderr, flush=True)
+            print("board generation failed — serving whatever is on disk", flush=True)
 
 
 def main() -> None:
@@ -179,6 +183,7 @@ def main() -> None:
     host = "0.0.0.0" if lan else "127.0.0.1"  # noqa: S104 - opt-in
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"Slicer board → http://127.0.0.1:{port}/slicer.html", flush=True)
+    print(f"This slice   → http://127.0.0.1:{port}/slice.html", flush=True)
     if lan:
         print("Bound to 0.0.0.0 — anything on this network can reach it.", flush=True)
     print(f"Opening files with: {EDITOR or 'nothing found — install the CLI'}", flush=True)

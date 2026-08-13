@@ -60,7 +60,7 @@ export async function createGroup(): Promise<string> {
     store$.syncStatus.set('on_server');
     store$.lastError.set(null);
     try {
-      await startWakeSubscription(groupId);
+      await startWakeSubscription(groupId, () => syncGroup(groupId));
     } catch (wakeErr) {
       store$.lastError.set(
         syncError(
@@ -269,7 +269,7 @@ export async function syncAllLobbyGroups(): Promise<void> {
 export async function openGroup(groupId: string): Promise<void> {
   getGroupStore(groupId);
   try {
-    await startWakeSubscription(groupId);
+    await startWakeSubscription(groupId, () => syncGroup(groupId));
   } catch {
     // Opening a group for browse must not crash if Realtime is unavailable.
   }
