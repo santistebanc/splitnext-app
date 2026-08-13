@@ -1,0 +1,88 @@
+name: deploy-supabase
+
+# Shared deploy path. The caller chooses the trigger; this file asks
+# `target_for` whether that trigger may touch `splitnext-v3`. It will not
+# deploy when the answer is none, and it will never reset (D-052, D-058).
+on:
+  workflow_call:
+    inputs:
+      event_name:
+        required: true
+        type: string
+      ref:
+        required: true
+        type: string
+    secrets:
+      access_token:
+        required: true
+      anon_key:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.access_token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Decide whether this run may touch the remote
+        id: decide
+        env:
+          EVENT_NAME: ${{ inputs.event_name }}
+          GIT_REF: ${{ inputs.ref }}
+        run: |
+          python3 docs/scripts/deploy_target.py \
+            --event "$EVENT_NAME" \
+            --ref "$GIT_REF" >> "$GITHUB_OUTPUT"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link the project
+        env:
+          PROJECT_REF: ${{ steps.decide.outputs.project_ref }}
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      - name: Push migrations
+        run: supabase db push
+
+      - name: Assert no migration is left pending
+        run: |
+          set -o pipefail
+          out=$(supabase db push --dry-run 2>&1 | tee /dev/stderr)
+          if ! grep -q "up to date" <<<"$out"; then
+            echo "::error::migrations still pending after db push" >&2
+            exit 1
+          fi
+
+      - name: Stamp the deploy sha
+        env:
+          PROJECT_REF: ${{ steps.decide.outputs.project_ref }}
+        run: supabase secrets set "DEPLOY_SHA=$GITHUB_SHA" --project-ref "$PROJECT_REF"
+
+      - name: Deploy the Edge Functions
+        env:
+          PROJECT_REF: ${{ steps.decide.outputs.project_ref }}
+        run: |
+          set -euo pipefail
+          fns=$(python3 -c "import sys; sys.path.insert(0, 'docs/scripts'); import verify_deploy; print(' '.join(verify_deploy.FUNCTIONS))")
+          echo "deploying: $fns"
+          for fn in $fns; do
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+          done
+
+      - name: Verify the deployment is this commit
+        env:
+          ANON_KEY: ${{ secrets.anon_key }}
+          PROJECT_REF: ${{ steps.decide.outputs.project_ref }}
+        run: |
+          python3 docs/scripts/verify_deploy.py \
+            --base-url "https://$PROJECT_REF.supabase.co" \
+            --sha "$GITHUB_SHA" \
+            --anon-key "$ANON_KEY"

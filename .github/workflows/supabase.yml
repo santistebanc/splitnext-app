@@ -1,100 +1,33 @@
 name: supabase
 
-# Makes the server equal to `main`, on every merge.
+# Makes `splitnext-v3` equal to the branch CI just pushed: `main` after a
+# merge, or a `slice/**` branch so an unmerged server change can be demoed
+# (D-058). Last green run wins. Migrations are additive and are not undone
+# if the slice is abandoned.
 #
-# Until this existed, migrations and Edge Functions shipped by hand, and the
+# Until slice 0010, migrations and Edge Functions shipped by hand, and the
 # gap showed: the remote was missing the whole `expenses` table and served a
 # stale `fetch-entity` for three slices after the archive said both shipped.
 # Nothing checked, so nothing caught it.
 #
-# Deploying is only half the fix — a deploy step that quietly did nothing would
-# still pass green. So each function is asked what commit it is running
-# (`?health=1`) and the run fails unless every name in FUNCTIONS answers
-# with this merge's sha.
-#
-# Independent of pages.yml on purpose: the board is documentation and should
-# never be held hostage to a Supabase outage — and it is also where you go to
-# find out that the deploy broke.
-#
-# main only. No workflow_dispatch, no branch input: the whole point is that
-# merging is the only thing that can move the server.
+# No workflow_dispatch, no hand deploy (D-052). Nobody wipes this database.
 on:
   push:
-    branches: [main]
+    branches: [main, 'slice/**']
 
 # One at a time, and never cancelled: a cancelled `db push` is a half-applied
-# migration, which is worse than a queued one.
+# migration, which is worse than a queued one. Main and slice deploys share
+# this group so they cannot overlap on the one remote.
 concurrency:
   group: supabase
   cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      # No SUPABASE_DB_PASSWORD: the CLI mints a short-lived login role from the
-      # access token ("Initialising login role…"), so the database password is
-      # never needed and never has to live in GitHub.
-      # Not a secret: it is in supabase/config.toml and in every client bundle.
-      PROJECT_REF: ycpkguwfxlhpovnsuujr
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      # Deliberately unpinned, unlike the board's renderer: a pinned CLI patch
-      # that is later yanked fails this workflow in a way that looks like a
-      # broken deploy. Pin it the first time a CLI release breaks the run.
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Link the project
-        run: supabase link --project-ref "$PROJECT_REF"
-
-      - name: Push migrations
-        run: supabase db push
-
-      # The first half of the verification tail. `db push` reporting success is
-      # not the same as there being nothing left to apply.
-      - name: Assert no migration is left pending
-        run: |
-          set -o pipefail
-          out=$(supabase db push --dry-run 2>&1 | tee /dev/stderr)
-          if ! grep -q "up to date" <<<"$out"; then
-            echo "::error::migrations still pending after db push" >&2
-            exit 1
-          fi
-
-      # Read by _shared/health.ts at request time. Set before deploying, so the
-      # functions that pick it up are the ones deployed in the next step.
-      - name: Stamp the deploy sha
-        run: supabase secrets set "DEPLOY_SHA=$GITHUB_SHA" --project-ref "$PROJECT_REF"
-
-      # The function list lives in verify_deploy.py and nowhere else — a
-      # function deployed but unverified, or verified but undeployed, is the
-      # exact drift this workflow exists to remove.
-      - name: Deploy the Edge Functions
-        run: |
-          set -euo pipefail
-          fns=$(python3 -c "import sys; sys.path.insert(0, 'docs/scripts'); import verify_deploy; print(' '.join(verify_deploy.FUNCTIONS))")
-          echo "deploying: $fns"
-          for fn in $fns; do
-            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
-          done
-
-      # The half that catches a deploy that no-op'd: every function has to name
-      # this commit. Retries absorb a cold start, not a wrong answer.
-      - name: Verify the deployment is this commit
-        # Through env rather than inline interpolation: a value with a quote in
-        # it would otherwise be pasted into the shell rather than passed to it.
-        env:
-          ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-        run: |
-          python3 docs/scripts/verify_deploy.py \
-            --base-url "https://$PROJECT_REF.supabase.co" \
-            --sha "$GITHUB_SHA" \
-            --anon-key "$ANON_KEY"
+    uses: ./.github/workflows/deploy-supabase.yml
+    with:
+      event_name: ${{ github.event_name }}
+      ref: ${{ github.ref }}
+    secrets:
+      access_token: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      anon_key: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}

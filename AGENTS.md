@@ -35,7 +35,7 @@ A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` o
 - **One slice opens one PR.** Squash-only enforces one commit per PR, not per slice; two PRs under one slice number is two commits on `main` and a slice you can no longer revert.
 - **`docs/slicer.html` is generated and gitignored** — regenerate it, never hand-edit or hand-merge it. Same for `docs/slice.html`, the per-PR slice page.
 
-Every PR gets a generated slicer page for **this slice only** — same chrome as the published board, hosted from the `pr-boards` branch and linked in a CI comment (D-055). Read that before the file diff: it is the one view that says which *pieces* moved. The published board does not carry the current slice.
+Every PR gets a generated slicer page for **this slice only** — same chrome as the published board, hosted from the `pr-boards` branch and linked in a CI comment (D-055). Read that before the file diff: it is the one view that says which *pieces* moved. The published board does not carry the current slice. That comment also carries a QR of the published web app (`L-prPhone`) so a phone camera can open it; Expo Go still needs `npm start`.
 
 Merging `main` republishes the board and the web app to GitHub Pages.
 
@@ -59,11 +59,11 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 
 ## Setup
 
-`cp .env.example .env` and fill in the Supabase URL and anon key. Never commit `.env`; never put a service-role key anywhere in the client — Edge Functions hold it server-side.
+`cp .env.example .env`. That file already holds the `splitnext-v3` URL and anon key (public; they also ship in the Pages bundle). Never commit `.env`; never put a service-role key anywhere in the client — Edge Functions hold it server-side.
 
 ## The server deploys itself — never by hand
 
-Merging to `main` runs `.github/workflows/supabase.yml`: `supabase db push`, then `functions deploy` for every name in `docs/scripts/verify_deploy.py` (`FUNCTIONS`), then a verification tail that fails the run unless every function reports the merge sha at `?health=1` (D-052). **Do not run `db push` or `functions deploy` from your machine** — a hand-deploy makes the server something no commit describes, which is exactly the drift that raised slice 0010. A migration or function is "shipped" when its PR merged green, and not before.
+Pushing to `main` or to a `slice/**` branch runs `.github/workflows/supabase.yml`: `supabase db push`, then `functions deploy` for every name in `docs/scripts/verify_deploy.py` (`FUNCTIONS`), then a verification tail that fails the run unless every function reports that commit's sha at `?health=1` (D-052, D-058). Last green run wins on the one remote. **Do not run `db push` or `functions deploy` from your machine**, and do not reset the remote — a hand-deploy or a wipe makes the server something no commit describes. A migration is additive; abandoning a slice does not undo it.
 
 Ask any deployed function what it is running:
 
