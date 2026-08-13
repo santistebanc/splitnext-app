@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0017
+Last updated: slice 0018
 
 ## Direction
 
@@ -33,7 +33,8 @@ Last updated: slice 0017
 - Record an expense against the member who paid — integer cents, listed on the hub, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md)
 - Choose which member you are, and change that choice, until the group's first expense fixes it — [slice 0005](slices/0005-expense-spine.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
-- Split every expense equally across the members live at record time, frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md)
+- Split every expense equally across the members chosen at record time (default everyone live), frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md)
+- Choose who paid and who shares on a dedicated new-expense screen; default is You paid and everyone shares — [slice 0018](slices/0018-expense-form.md)
 - See each member's net position on the hub — paid minus owed, most-negative first, You (Name) marked — [slice 0007](slices/0007-allocations-balances.md)
 - See the fewest transfers that zero those nets, listed under Settle up; derived, identical on every device, never moves money — [slice 0017](slices/0017-settle-up.md)
 - Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
@@ -74,7 +75,7 @@ Last updated: slice 0017
 
 **Bind** — `id`, `group_id`, `device_user_id`, `member_id`, `version`, `updated_at`, `deleted_at`. Active bind = assumed member. Unique: one active bind per device per group — re-choosing re-points that bind at a higher version rather than adding a second.
 
-**Expense** — `id`, `group_id`, `payer_member_id`, `amount_cents`, `description`, `allocations`, `version`, `updated_at`, `deleted_at`. Integer cents only. `allocations` is `[{ member_id, amount_cents }]` carried *inside* the expense (JSON text in the Durable Object), so one version number covers the whole split and a merge can never take a new amount while rejecting a share. Optional on the type: expenses recorded before slice 0007 carry none, and balances treat that as "payer credited, nobody debited".
+**Expense** — `id`, `group_id`, `payer_member_id`, `amount_cents`, `description`, `allocations`, `version`, `updated_at`, `deleted_at`. Integer cents only. `allocations` is `[{ member_id, amount_cents }]` carried *inside* the expense (JSON text in the Durable Object), so one version number covers the whole split and a merge can never take a new amount while rejecting a share. Split equally across the members selected at record time (default all live); the payer need not be in that set (D-068). Optional on the type: expenses recorded before slice 0007 carry none, and balances treat that as "payer credited, nobody debited".
 
 **Balance** (derived, never stored) — per live member, Σ paid − Σ owed across live expenses, sorted most-negative first.
 
@@ -92,7 +93,8 @@ Last updated: slice 0017
 | --- | --- | --- |
 | `/` | Lobby: create group, paste-to-join, list local group ids; root AppState sync | slice 0001 / 0002 / 0012 |
 | `/join` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 |
-| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite on members who are not You, You (Name); balances (net per member, signed); settle-up list (fewest transfers, You marked, hidden when square); expenses list + add, each row saying how many ways it split; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 / 0017 |
+| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite on members who are not You, You (Name); balances (net per member, signed); settle-up list (fewest transfers, You marked, hidden when square); expenses list + Add expense; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 |
+| `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal among selected; default You paid, everyone shares) | slice 0018 |
 
 ## Seams
 
@@ -103,7 +105,7 @@ Last updated: slice 0017
 - `syncError` / `coerceSyncError` — `src/sync/syncErrors.ts` — vitest
 - `getSecret` / `setSecret` — `src/secrets/secureStorage.ts` — the platform split for secrets; a fake here replaces the keychain
 - `persistPlugin` — `src/store/persistPlugin.ts` — the platform split for durability
-- `splitEqually` — `src/domain/split.ts` — vitest
+- `splitEqually` / `participantsForSplit` — `src/domain/split.ts` — vitest
 - `computeBalances` — `src/domain/balances.ts` — vitest
 - `suggestSettlements` — `src/domain/settle.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open

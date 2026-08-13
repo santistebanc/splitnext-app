@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Allocation } from '@/src/types/group';
-import { splitEqually } from './split';
+import { participantsForSplit, splitEqually } from './split';
 
 const sum = (allocations: readonly Allocation[]) =>
   allocations.reduce((total, a) => total + a.amount_cents, 0);
@@ -60,5 +60,41 @@ describe('splitEqually', () => {
     expect(() => splitEqually(0, ['a'])).toThrow();
     expect(() => splitEqually(-100, ['a'])).toThrow();
     expect(() => splitEqually(10.5, ['a'])).toThrow();
+  });
+
+  it('gives the one participant the whole amount', () => {
+    expect(splitEqually(500, ['ana'])).toEqual([
+      { member_id: 'ana', amount_cents: 500 },
+    ]);
+  });
+});
+
+describe('participantsForSplit', () => {
+  it('returns the selected members when they are all live', () => {
+    expect(participantsForSplit(['c', 'a', 'b'], ['b', 'a'])).toEqual({
+      ok: true,
+      memberIds: ['a', 'b'],
+    });
+  });
+
+  it('refuses an empty selection rather than splitting nobody', () => {
+    expect(participantsForSplit(['a', 'b'], [])).toEqual({
+      ok: false,
+      reason: 'empty',
+    });
+  });
+
+  it('refuses a selected id that is not live, and does not drop it', () => {
+    expect(participantsForSplit(['a', 'b'], ['a', 'gone'])).toEqual({
+      ok: false,
+      reason: 'member_missing',
+    });
+  });
+
+  it('counts a duplicated selected id once', () => {
+    expect(participantsForSplit(['a', 'b'], ['a', 'a'])).toEqual({
+      ok: true,
+      memberIds: ['a'],
+    });
   });
 });

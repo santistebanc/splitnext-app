@@ -13,9 +13,9 @@
 - **Reopen the binding choice after an expense exists** — "in the future it will be possible to change in other way" — the first expense closes it for good today (D-020); reopening has to decide what happens to expenses already attributed to the old member — area: membership — raised: slice 0005
 
 - **Member rename / soft-delete** — rename any assumed member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap
-- **Expense editor + invariants** — edit an existing expense; participant picker; uneven / share-based splits with real largest-remainder ranking; defaults (payer = assumed member, equal shares). Slice 0007 shipped the equal-split half only, at record time, with no way to change it after — area: ledger — raised: bootstrap
+- **Expense editor + invariants** — edit an existing expense; uneven / share-based splits with real largest-remainder ranking. Slice 0018 shipped the add form (payer + who shares, equal among selected). Edit-after and uneven stay here — area: ledger — raised: bootstrap · *partially delivered in 0018*
 - **Member invites** — HTTPS deep link join; joiner-side picker / add-new; claimed exclusive slot. Slice 0012 shipped mint + redeem for a named member (`/join` + lobby paste); app links and group-wide invite stay parked — area: invites — raised: bootstrap · *partially delivered in 0012*
-- **Settle-up suggestions** — Slice 0017 shipped the list (min-count transfers on the hub). Prefill a settlement expense from a row stays parked — area: ledger — raised: bootstrap · *partially delivered in 0017*
+- **Settle-up → prefill the expense form** — "so we can just make the settleup open the expense editor with prefiled fields". After 0018: tap a row, confirm, open `/group/[id]/expense/new` with payer=`from`, participants=`[to]`, amount. Any device can tap any row. Do not record on tap — area: ledger — raised: slice 0017 / 0018 · *list shipped in 0017*
 - **Leave group** — unbind + revoke this device’s access token; member history remains — area: membership — raised: bootstrap
 
 ## Breadth
@@ -51,6 +51,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Wake socket retries itself** — delivered in [slice 0016](slices/0016-wake-reconnect.md); drop while the hub is open is retried with backoff, then the same catch-up as open.
-
 - **Settle-up list** — delivered in [slice 0017](slices/0017-settle-up.md); fewest transfers from the nets, on the hub, inert. Prefill a settlement expense stays parked.
+
+- **New expense form** — delivered in [slice 0018](slices/0018-expense-form.md); payer + who shares, equal among selected. Edit-after and uneven stay parked.

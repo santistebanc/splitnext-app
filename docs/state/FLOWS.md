@@ -65,15 +65,17 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 ## F-add-expense — Add expense
 
-**Trigger** — On the hub, the person types an amount and taps **Add expense**.  
-**Outcome** — The cost is listed immediately against the member who paid, reaches the server on the next push, and the This is me buttons go away — see This is me.
+**Trigger** — On the hub, the person taps **Add expense**, types an amount, and taps **Add expense** on the form.  
+**Outcome** — The cost is listed immediately against the member who paid, split among whoever was selected (everyone, if they left the defaults), reaches the server on the next push, and the This is me buttons go away — see This is me.
 
-1. `L-hub` parses the typed amount into whole cents and calls `L-addExpense` with the assumed member as payer.
-2. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
-3. `L-splitEqually` divides the cost across everyone in the group at this moment, and `L-addExpense` refuses to store a split that does not add up to the total. The split is frozen into the expense: a member added later joins the next expense, not this one.
-4. The expense is written into the store at version 1, split and all, and queued — the list updates before any network call.
-5. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
-6. `L-balances` refolds and the hub's balances move — the payer up by what they paid, everyone down by their share. `L-settle` refolds the transfer list from those nets.
+1. `L-hub` opens `L-expenseNew` for that group.
+2. `L-expenseNew` defaults the payer to this device's assumed member and checks every live member as sharing.
+3. The person types an amount; `L-expenseNew` parses it into whole cents and calls `L-addExpense` with that payer and the checked members.
+4. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
+5. `L-participantsForSplit` accepts the checked members only when they are all live and at least one remains; `L-splitEqually` divides the cost across that set, every cent. The split is frozen into the expense: a member added later joins the next expense, not this one.
+6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and the list updates before any network call.
+7. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
+8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets.
 
 ## F-balances — See who owes what
 

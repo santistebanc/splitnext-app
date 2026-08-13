@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
 import { bindingIsOpen } from '@/src/domain/assumedMember';
-import { splitEqually } from '@/src/domain/split';
+import { participantsForSplit, splitEqually } from '@/src/domain/split';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   addLobbyGroupId,
@@ -135,17 +135,19 @@ export async function addMember(
   return memberId;
 }
 
-/** What the hub knows when someone records a cost. */
+/** What the form knows when someone records a cost. */
 export type NewExpense = {
   payerMemberId: string;
   /** Integer cents. Rejected outright if it is not — money never rounds here. */
   amountCents: number;
   description: string;
+  /** Who shares. Omitted means every live member, which is the form's default. */
+  participantMemberIds?: string[];
 };
 
 export async function addExpense(
   groupId: string,
-  { payerMemberId, amountCents, description }: NewExpense,
+  { payerMemberId, amountCents, description, participantMemberIds }: NewExpense,
 ): Promise<string> {
   if (!Number.isInteger(amountCents)) {
     throw new Error('amount must be integer cents');
@@ -162,12 +164,16 @@ export async function addExpense(
     return '';
   }
 
-  // Split across whoever is in the group right now, and freeze it into the
-  // expense. A member added later joins the next expense, not this one.
-  const participants = Object.values(members)
+  const liveIds = Object.values(members)
     .filter((m) => m.deleted_at == null)
     .map((m) => m.id);
-  const allocations = splitEqually(amountCents, participants);
+  const selected = participantMemberIds ?? liveIds;
+  const split = participantsForSplit(liveIds, selected);
+  if (!split.ok) {
+    store$.lastError.set(syncError('member_missing'));
+    return '';
+  }
+  const allocations = splitEqually(amountCents, split.memberIds);
 
   const expense: ExpenseEntity = {
     id: Crypto.randomUUID(),

@@ -145,6 +145,7 @@ const FLOWS = [
     id: 'F-add-expense',
     from: 'bound',
     async run(d) {
+      await d.tap('Add expense');
       await d.type(/^Amount/, '10.00');
       await d.type('What for', 'Taxi');
       await d.tap('Add expense');
@@ -157,6 +158,7 @@ const FLOWS = [
     async run(d, page) {
       // The second expense is what makes the balances interesting: uneven
       // cents, and a payer who is up while everyone else is down.
+      await d.tap('Add expense');
       await d.type(/^Amount/, '4.50');
       await d.type('What for', 'Coffee');
       await d.tap('Add expense');
@@ -259,9 +261,11 @@ async function seed(browser, stage) {
     await page.waitForTimeout(1800);
   }
   if (upTo >= STAGES.indexOf('spent')) {
+    await page.getByText('Add expense', { exact: true }).filter({ visible: true }).first().click();
+    await page.waitForTimeout(1200);
     await page.getByPlaceholder(/^Amount/).fill('10.00');
     await page.getByPlaceholder('What for').fill('Taxi');
-    await page.getByText('Add expense', { exact: true }).first().click();
+    await page.getByText('Add expense', { exact: true }).filter({ visible: true }).first().click();
     await page.waitForTimeout(2500);
   }
 
@@ -319,11 +323,11 @@ async function stills(browser, storageState, hubUrl, number) {
   });
   const page = await context.newPage();
   await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
-  await page.waitForTimeout(3000);
-  const heading = page.getByText(/settle up/i).first();
-  if (await heading.count()) await heading.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: join(SHOTS, `${number}-settle.png`) });
-  console.log('still', `${number}-settle.png`);
+  await page.waitForTimeout(2000);
+  await page.getByText('Add expense', { exact: true }).filter({ visible: true }).first().click();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: join(SHOTS, `${number}-expense-form.png`) });
+  console.log('still', `${number}-expense-form.png`);
   await context.close();
 }
 
@@ -338,7 +342,7 @@ for (const flow of FLOWS) {
 }
 
 if (SLICE) {
-  const { storageState, hubUrl } = await seed(browser, 'spent');
+  const { storageState, hubUrl } = await seed(browser, 'bound');
   await stills(browser, storageState, hubUrl, SLICE);
 }
 
