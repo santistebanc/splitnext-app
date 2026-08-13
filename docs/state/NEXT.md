@@ -1,43 +1,41 @@
-# Slice 0013 — dev remote
+# Slice 0013 — one remote, slice branches may deploy
 
 **Tier** — foundation-risk
 
 ## Goal
 
-A slice that has not merged can be demoed on a phone: Expo Go and `npm run web` talk to a persistent `splitnext-v3-dev` that CI updates on every `slice/**` push. Prod (`splitnext-v3`) still moves only when `main` merges (D-052).
+An unmerged slice can be demoed on a phone against the same `splitnext-v3` the published app uses. There is no second project. CI on `main` and on `slice/**` both deploy there; last green run wins. Nobody wipes that database.
 
 ## Before → After
 
 | | Now | After |
 | --- | --- | --- |
-| Unmerged server change | 404 until the PR lands. `F-invite` / `F-join` shipped unrecorded for this reason | Push the slice branch; `L-efHealth` on **dev** reports that commit |
-| Local `.env` | Placeholder; easy to point a phone at prod | `.env.example` is the real **dev** URL + anon key. `cp .env.example .env` is the setup |
-| Prod deploy | `supabase.yml` on `main` only. No `workflow_dispatch` (D-052) | Unchanged. Dev is a second target, not a second way to touch prod |
-| Dev schema vs this repo | No dev project | New `splitnext-v3-dev` (eu-central-1). Additive `db push` on each slice push. Wipe + replay migrations only via `workflow_dispatch` at the start of a server slice |
-| `evaluate` / `L-efHealth` | One remote, the merge sha | Same probe, two remotes: prod = `main` sha, dev = the slice-branch sha |
+| Unmerged server change | 404 until the PR lands | Push the slice branch; `L-efHealth` on `splitnext-v3` reports that commit. The published app runs those functions until `main` deploys again |
+| Local `.env` | Placeholder | `.env.example` is the real `splitnext-v3` URL + anon key. `cp .env.example .env` is the setup |
+| Who may deploy | `push` `main` only (D-052) | `push` `main` or `push` `slice/**`. Still no `workflow_dispatch`, still no hand deploy |
+| Second project | Wanted `splitnext-v3-dev` | None. Reset is gone — this database is not disposable |
+| `evaluate` / `L-efHealth` | Merge sha on the one remote | Same probe, same remote, sha of whichever branch CI last deployed |
 
 ## Plan
 
-1. Create persistent project `splitnext-v3-dev` in the same org, `eu-central-1`. Do not revive `splitnext-preview`. First deploy is an empty database + this repo's migrations.
-2. Add GitHub secrets for the dev anon key (and the project ref if it is not committed). Existing `SUPABASE_ACCESS_TOKEN` stays the login. Pages keeps `EXPO_PUBLIC_SUPABASE_*` aimed at **prod**.
-3. New pure seam `targetFor` (`L-deployTarget`) — given GitHub `event` + `ref`, return `prod` / `dev` / `none`, and whether this run may reset. Tests pin: `push` `main` → prod, no reset; `push` `slice/**` → dev, no reset; `workflow_dispatch` on `slice/**` → dev, reset; anything on `main` other than `push` → none.
-4. One deploy path, two callers. Prod workflow stays `push` `main` only — no `workflow_dispatch`. Slice-branch workflow: `push` `slice/**` runs `db push` + stamp sha + `FUNCTIONS` deploy + `evaluate` against **dev**; `workflow_dispatch` wipes the dev database, then the same deploy. Both reuse `evaluate` / `L-efHealth`.
-5. `.env.example` gets the real dev URL and anon key. `AGENTS.md`: local `.env` is dev; never hand-deploy **prod**; a slice-branch push is how **dev** moves; reset is the dispatch at the start of a server slice. Local `supabase start` stays the contract-test item.
-6. D-058: D-052 still governs prod; slice-branch CI may deploy to `splitnext-v3-dev`. `workflow_dispatch` exists only as the dev reset, never on prod.
+1. `L-deployTarget` `target_for`: `push` `main` → this project, no reset; `push` `slice/**` → this project, no reset; anything else (including `workflow_dispatch`) → none. `github_output` refuses `reset=true` even if forced.
+2. One workflow, one concurrency group. `supabase.yml` triggers on `main` and `slice/**`. No `workflow_dispatch`. No reset step. Same `db push` + stamp + `FUNCTIONS` + `evaluate` path.
+3. `.env.example` gets the real `splitnext-v3` URL and anon key. `AGENTS.md`: local `.env` is that project; a slice-branch push is how an unmerged server change becomes demoable; never hand-deploy; never reset the remote. Local `supabase start` stays the contract-test item.
+4. D-058: D-052 still forbids hand deploy and `workflow_dispatch`. It no longer means “only `main`.” `slice/**` CI may deploy to the same project. Last deploy wins. Migrations are additive and are not undone if the slice is abandoned.
 
 ## Seams under test
 
 | Seam | Behavior |
 | --- | --- |
-| `L-deployTarget` `targetFor` | Which remote a GitHub event+ref may touch, and whether that run may wipe. The workflows call this; they do not re-encode the table. |
-| `evaluate` | Unchanged: every name in `FUNCTIONS` must report the sha this run deployed. Pointed at prod or at dev by the caller. |
+| `L-deployTarget` `targetFor` | `push` `main` and `push` `slice/**` both deploy to `splitnext-v3` with `reset=false`. Dispatch, other branches, and pull requests are none. Reset is refused even if forced. |
+| `evaluate` | Unchanged: every name in `FUNCTIONS` must report the sha this run deployed. |
 
 ## Acceptance
 
-- Push this slice branch. `curl` **dev** `fetch-entity?health=1` returns this commit's sha. `curl` **prod** `fetch-entity?health=1` still returns the sha currently on `main`.
-- `cp .env.example .env`, `npm run web`, create a group — it exists on **dev**, not on prod.
-- `npx python3 -m unittest` (via `npm run test:board`) covers every `targetFor` row above, and existing `evaluate` cases still pass.
-- Prod `supabase.yml` still has no `workflow_dispatch`.
+- Push this slice branch. `curl` `splitnext-v3` `fetch-entity?health=1` returns this commit's sha (not the previous `main` sha).
+- `cp .env.example .env`, `npm run web`, create a group — it exists on `splitnext-v3`.
+- `npm run test:board` covers every `target_for` row above; existing `evaluate` cases still pass.
+- No `workflow_dispatch` on `supabase.yml`. No reset step. No second project.
 
 ## Edge paths
 
@@ -47,14 +45,17 @@ A slice that has not merged can be demoed on a phone: Expo Go and `npm run web` 
 
 ## Out of scope
 
-- Contract test against a local Supabase stack — parked (foundation-risk). `supabase start` stays that item, not the Expo Go target.
-- Preview deploys per PR (Pages / app URL per branch) — parked (breadth)
-- Hand-deploy to prod — forbidden (D-052)
-- Revive `splitnext-preview` — declined
+- A separate `splitnext-v3-dev` project — declined this session
+- Wiping / resetting the remote — declined; one shared database
+- Contract test against a local Supabase stack — parked (foundation-risk)
+- Preview deploys per PR — parked (breadth)
+- Hand-deploy — forbidden
 - Invite rate limits, Realtime JWT, missed-wake cursor — parked, untouched
 
 ## Parked this session
 
-- Contract test against a local Supabase stack — stays foundation-risk; this slice does not absorb it
+- Separate `splitnext-v3-dev` — declined; one remote
+- Pause old `splitnext` / upgrade to Pro — not needed
+- Neon / Deno / Ably combo — parked as a future backend question (`docs/research/cheap-dev-backend.md`)
+- Contract test against a local Supabase stack — stays foundation-risk
 - Preview deploys per PR — stays breadth
-- Revive paused `splitnext-preview` — declined, not parked

@@ -1,23 +1,25 @@
 name: supabase
 
-# Makes prod (`splitnext-v3`) equal to `main`, on every merge.
+# Makes `splitnext-v3` equal to the branch CI just pushed: `main` after a
+# merge, or a `slice/**` branch so an unmerged server change can be demoed
+# (D-058). Last green run wins. Migrations are additive and are not undone
+# if the slice is abandoned.
 #
-# Until this existed, migrations and Edge Functions shipped by hand, and the
+# Until slice 0010, migrations and Edge Functions shipped by hand, and the
 # gap showed: the remote was missing the whole `expenses` table and served a
 # stale `fetch-entity` for three slices after the archive said both shipped.
 # Nothing checked, so nothing caught it.
 #
-# main only. No workflow_dispatch, no branch input: merging is the only thing
-# that can move prod (D-052). Slice branches deploy to `splitnext-v3-dev`
-# instead — see supabase-dev.yml (D-058).
+# No workflow_dispatch, no hand deploy (D-052). Nobody wipes this database.
 on:
   push:
-    branches: [main]
+    branches: [main, 'slice/**']
 
 # One at a time, and never cancelled: a cancelled `db push` is a half-applied
-# migration, which is worse than a queued one.
+# migration, which is worse than a queued one. Main and slice deploys share
+# this group so they cannot overlap on the one remote.
 concurrency:
-  group: supabase-prod
+  group: supabase
   cancel-in-progress: false
 
 jobs:

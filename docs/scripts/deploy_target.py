@@ -1,12 +1,11 @@
-"""Which remote a GitHub Actions run may touch.
+"""Which GitHub Actions runs may deploy to splitnext-v3.
 
 `target_for` is the whole decision: given the event name and git ref, return
-the project this run may deploy to (`prod` / `dev` / None) and whether it may
-wipe that database first. The workflows call this; they do not re-encode the
-table.
+whether this run may deploy to the one remote (`prod`) and it may never wipe.
+The workflows call this; they do not re-encode the table.
 
-Prod is `main` on `push` only (D-052). Dev is any `slice/**` branch: `push`
-deploys additively, `workflow_dispatch` resets then deploys (D-058).
+`push` to `main` or to `slice/**` deploys (D-058). Hand deploy and
+`workflow_dispatch` stay forbidden (D-052).
 """
 
 from __future__ import annotations
@@ -15,12 +14,9 @@ import argparse
 import sys
 from dataclasses import dataclass
 
-# Not secrets: both refs are in every client bundle that talks to that project.
-# Dev is filled once splitnext-v3-dev exists; github_output fails closed until then.
-PROD_PROJECT_REF = "ycpkguwfxlhpovnsuujr"
-DEV_PROJECT_REF = ""
-
-PROJECTS = {"prod": PROD_PROJECT_REF, "dev": DEV_PROJECT_REF}
+# Not a secret: it is in every client bundle and in supabase.yml already.
+PROJECT_REF = "ycpkguwfxlhpovnsuujr"
+PROJECTS = {"prod": PROJECT_REF}
 
 
 @dataclass(frozen=True)
@@ -30,28 +26,21 @@ class Decision:
 
 
 def target_for(event: str, ref: str) -> Decision:
-    if event == "push" and ref == "refs/heads/main":
+    if event == "push" and (ref == "refs/heads/main" or _is_slice_branch(ref)):
         return Decision(target="prod", reset=False)
-    if event == "push" and _is_slice_branch(ref):
-        return Decision(target="dev", reset=False)
-    if event == "workflow_dispatch" and _is_slice_branch(ref):
-        return Decision(target="dev", reset=True)
     return Decision(target=None, reset=False)
 
 
 def github_output(decision: Decision) -> str:
     """GITHUB_OUTPUT body for this run, or ValueError if it must not proceed."""
     if decision.target is None:
-        raise ValueError("this event+ref may not touch any remote")
-    if decision.reset and decision.target != "dev":
-        raise ValueError("reset is only allowed on dev")
+        raise ValueError("this event+ref may not touch the remote")
+    if decision.reset:
+        raise ValueError("reset is never allowed")
     project_ref = PROJECTS[decision.target]
-    if not project_ref:
-        raise ValueError(f"no project ref configured for {decision.target}")
-    reset = "true" if decision.reset else "false"
     return (
         f"target={decision.target}\n"
-        f"reset={reset}\n"
+        f"reset=false\n"
         f"project_ref={project_ref}\n"
     )
 

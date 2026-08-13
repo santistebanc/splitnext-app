@@ -1,8 +1,8 @@
 name: deploy-supabase
 
-# Shared deploy path. Callers choose the trigger; this file asks `target_for`
-# which remote that trigger may touch. It will not deploy when the answer is
-# none, and it will not reset anything but `dev` (D-052, D-058).
+# Shared deploy path. The caller chooses the trigger; this file asks
+# `target_for` whether that trigger may touch `splitnext-v3`. It will not
+# deploy when the answer is none, and it will never reset (D-052, D-058).
 on:
   workflow_call:
     inputs:
@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Decide which remote this run may touch
+      - name: Decide whether this run may touch the remote
         id: decide
         env:
           EVENT_NAME: ${{ inputs.event_name }}
@@ -48,13 +48,6 @@ jobs:
         env:
           PROJECT_REF: ${{ steps.decide.outputs.project_ref }}
         run: supabase link --project-ref "$PROJECT_REF"
-
-      # `target_for` only sets reset on a slice-branch dispatch, and github_output
-      # refuses reset on any target other than dev. The `if` is a third copy of
-      # that rule so a future YAML edit cannot wipe prod by dropping the script.
-      - name: Reset the dev database to this repo's migrations
-        if: steps.decide.outputs.reset == 'true' && steps.decide.outputs.target == 'dev'
-        run: supabase db reset --linked --yes
 
       - name: Push migrations
         run: supabase db push
