@@ -1,4 +1,3 @@
-import { env } from '@/src/config/env';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import type { EntityType } from '@/src/domain/version';
 import { getAccessToken } from '@/src/secrets/tokens';
@@ -8,6 +7,9 @@ import {
   shouldCatchUpOnStatus,
   shouldReplaceSubscription,
 } from '@/src/sync/wakePolicy';
+import { wakeUrl } from '@/src/sync/wakeUrl';
+
+export { wakeUrl };
 
 const SUBSCRIBE_WAIT_MS = 8000;
 
@@ -16,14 +18,6 @@ const reconnectByGroup = new Map<string, () => Promise<void>>();
 const lastStatusByGroup = new Map<string, string>();
 const reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const failedAttemptsByGroup = new Map<string, number>();
-
-function wakeUrl(groupId: string, accessToken: string, deviceUserId: string): string {
-  const base = env.apiUrl.replace(/^http/i, 'ws');
-  const url = new URL(`${base}/wake/${encodeURIComponent(groupId)}`);
-  url.searchParams.set('access_token', accessToken);
-  url.searchParams.set('device_user_id', deviceUserId);
-  return url.toString();
-}
 
 function clearReconnectTimer(groupId: string): void {
   const timer = reconnectTimers.get(groupId);

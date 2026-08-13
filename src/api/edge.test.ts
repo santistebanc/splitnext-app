@@ -12,6 +12,7 @@ import {
   mergeEntities,
   mintInviteRemote,
 } from '@/src/api/edge';
+import { wakeUrl } from '@/src/sync/wakeUrl';
 import type { MemberEntity } from '@/src/types/group';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -244,5 +245,104 @@ describe('local Worker HTTP contract', () => {
       version: 1,
       deleted_at: null,
     });
+  });
+});
+
+function openWake(url: string): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(url);
+    socket.addEventListener('open', () => resolve(socket), { once: true });
+    socket.addEventListener(
+      'error',
+      () => reject(new Error('wake socket failed to open')),
+      { once: true },
+    );
+  });
+}
+
+function nextJson(socket: WebSocket, ms = 5_000): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('no wake message')), ms);
+    socket.addEventListener(
+      'message',
+      (event) => {
+        clearTimeout(timer);
+        resolve(JSON.parse(String(event.data)));
+      },
+      { once: true },
+    );
+  });
+}
+
+describe('local Worker wake contract', () => {
+  it('does not list /wake/ on FUNCTIONS', () => {
+    expect(ROUTES).not.toContain('wake');
+  });
+
+  it('does not upgrade /wake/ without a token', async () => {
+    const { groupId, deviceUserId } = await seededGroup();
+    await expect(openWake(wakeUrl(groupId, '', deviceUserId))).rejects.toThrow(
+      /wake socket failed/,
+    );
+  });
+
+  it('does not upgrade /wake/ with a wrong token', async () => {
+    const { groupId, deviceUserId } = await seededGroup();
+    await expect(openWake(wakeUrl(groupId, 'nope', deviceUserId))).rejects.toThrow(
+      /wake socket failed/,
+    );
+  });
+
+  it('does not upgrade /wake/ without a device id', async () => {
+    const { groupId, created } = await seededGroup();
+    const url = new URL(wakeUrl(groupId, created.access_token, 'x'));
+    url.searchParams.delete('device_user_id');
+    await expect(openWake(url.toString())).rejects.toThrow(/wake socket failed/);
+  });
+
+  it('does not upgrade /wake/ with a wrong device id', async () => {
+    const { groupId, created } = await seededGroup();
+    await expect(
+      openWake(wakeUrl(groupId, created.access_token, 'nope')),
+    ).rejects.toThrow(/wake socket failed/);
+  });
+
+  it('sends a wake tip after an accepted merge, with no entity body', async () => {
+    const group = await seededGroup();
+    const socket = await openWake(
+      wakeUrl(
+        group.groupId,
+        group.created.access_token,
+        group.deviceUserId,
+      ),
+    );
+    const incoming = nextJson(socket);
+    const member: MemberEntity = {
+      id: crypto.randomUUID(),
+      group_id: group.groupId,
+      display_name: 'Ada',
+      version: 1,
+      updated_at: nowIso(),
+      deleted_at: null,
+    };
+    const merged = await mergeEntities({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+      items: [
+        { entity_type: 'members', id: member.id, version: 1, payload: member },
+      ],
+    });
+    expect(merged.results[0]?.status).toBe('accepted');
+    expect(await incoming).toEqual({
+      event: 'wake',
+      payload: {
+        group_id: group.groupId,
+        entity_type: 'members',
+        id: member.id,
+        version: 1,
+      },
+    });
+    socket.close();
   });
 });
