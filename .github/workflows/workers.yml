@@ -1,0 +1,25 @@
+name: workers
+
+# Makes the Cloudflare Worker equal to the branch CI just pushed: `main`
+# after a merge, or a `slice/**` branch so an unmerged server change can be
+# demoed (D-058). Last green run wins. D1 migrations are additive and are
+# not undone if the slice is abandoned.
+#
+# No workflow_dispatch, no hand deploy (D-052). Nobody wipes D1.
+on:
+  push:
+    branches: [main, 'slice/**']
+
+concurrency:
+  group: workers
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-workers.yml
+    with:
+      event_name: ${{ github.event_name }}
+      ref: ${{ github.ref }}
+    secrets:
+      api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

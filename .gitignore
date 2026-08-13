@@ -41,6 +41,8 @@ yarn-error.*
 /ios
 /android
 supabase/.temp/
+.wrangler/
+workers/.wrangler/
 
 # python bytecode from docs/scripts
 __pycache__/

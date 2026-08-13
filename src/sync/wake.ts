@@ -1,5 +1,3 @@
-import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
-import { mintRealtimeAuth } from '@/src/api/edge';
 import { env } from '@/src/config/env';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import type { EntityType } from '@/src/domain/version';
@@ -12,15 +10,16 @@ import {
 
 const SUBSCRIBE_WAIT_MS = 8000;
 
-const channels = new Map<string, RealtimeChannel>();
-const clients = new Map<string, SupabaseClient>();
+const sockets = new Map<string, WebSocket>();
 const reconnectByGroup = new Map<string, () => Promise<void>>();
 const lastStatusByGroup = new Map<string, string>();
 
-function supabaseClient() {
-  return createClient(env.supabaseUrl, env.supabaseAnonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+function wakeUrl(groupId: string, accessToken: string, deviceUserId: string): string {
+  const base = env.apiUrl.replace(/^http/i, 'ws');
+  const url = new URL(`${base}/wake/${encodeURIComponent(groupId)}`);
+  url.searchParams.set('access_token', accessToken);
+  url.searchParams.set('device_user_id', deviceUserId);
+  return url.toString();
 }
 
 export async function startWakeSubscription(
@@ -30,75 +29,78 @@ export async function startWakeSubscription(
   reconnectByGroup.set(groupId, onReconnect);
   if (
     !shouldReplaceSubscription(
-      channels.has(groupId),
+      sockets.has(groupId),
       lastStatusByGroup.get(groupId),
     )
   ) {
     return;
   }
 
-  const stale = channels.get(groupId);
-  const staleClient = clients.get(groupId);
-  if (stale && staleClient) {
-    channels.delete(groupId);
-    clients.delete(groupId);
+  const stale = sockets.get(groupId);
+  if (stale) {
+    sockets.delete(groupId);
     lastStatusByGroup.delete(groupId);
-    await staleClient.removeChannel(stale);
+    stale.close();
   }
 
   const accessToken = await getAccessToken(groupId);
   const deviceUserId = await getOrCreateDeviceUserId();
   if (!accessToken) return;
 
-  const auth = await mintRealtimeAuth({
-    group_id: groupId,
-    device_user_id: deviceUserId,
-    access_token: accessToken,
-  });
-
-  const client = supabaseClient();
-  if (auth.jwt) {
-    client.realtime.setAuth(auth.jwt);
-  }
-  clients.set(groupId, client);
-
   await new Promise<void>((resolve) => {
     const timer = setTimeout(resolve, SUBSCRIBE_WAIT_MS);
-    const channel = client
-      .channel(auth.channel)
-      .on('broadcast', { event: 'wake' }, (msg) => {
-        const payload = msg.payload as {
+    const socket = new WebSocket(wakeUrl(groupId, accessToken, deviceUserId));
+    sockets.set(groupId, socket);
+
+    socket.onopen = () => {
+      const prev = lastStatusByGroup.get(groupId) ?? null;
+      lastStatusByGroup.set(groupId, 'SUBSCRIBED');
+      clearTimeout(timer);
+      resolve();
+      if (!shouldCatchUpOnStatus(prev, 'SUBSCRIBED')) return;
+      const catchUp = reconnectByGroup.get(groupId);
+      if (!catchUp) return;
+      void Promise.resolve(catchUp()).catch(() => {
+        // syncGroup records lastError; never let it kill the socket callback.
+      });
+    };
+
+    socket.onmessage = (event) => {
+      let parsed: {
+        event?: string;
+        payload?: {
           group_id?: string;
           entity_type?: string;
           id?: string;
           version?: number;
         };
-        if (
-          payload.group_id === groupId &&
-          payload.entity_type &&
-          payload.id
-        ) {
-          void applyRemoteFetch(
-            groupId,
-            payload.entity_type as EntityType,
-            payload.id,
-          );
-        }
-      })
-      .subscribe((status) => {
-        const prev = lastStatusByGroup.get(groupId) ?? null;
-        lastStatusByGroup.set(groupId, status);
-        if (status === 'SUBSCRIBED') {
-          clearTimeout(timer);
-          resolve();
-        }
-        if (!shouldCatchUpOnStatus(prev, status)) return;
-        const catchUp = reconnectByGroup.get(groupId);
-        if (!catchUp) return;
-        void Promise.resolve(catchUp()).catch(() => {
-          // syncGroup records lastError; never let it kill the channel callback.
-        });
-      });
-    channels.set(groupId, channel);
+      };
+      try {
+        parsed = JSON.parse(String(event.data)) as typeof parsed;
+      } catch {
+        return;
+      }
+      const payload = parsed.payload;
+      if (
+        parsed.event === 'wake' &&
+        payload?.group_id === groupId &&
+        payload.entity_type &&
+        payload.id
+      ) {
+        void applyRemoteFetch(
+          groupId,
+          payload.entity_type as EntityType,
+          payload.id,
+        );
+      }
+    };
+
+    socket.onerror = () => {
+      lastStatusByGroup.set(groupId, 'CHANNEL_ERROR');
+    };
+
+    socket.onclose = () => {
+      lastStatusByGroup.set(groupId, 'CLOSED');
+    };
   });
 }

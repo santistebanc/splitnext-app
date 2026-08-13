@@ -16,14 +16,15 @@ async function callFunction<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    apikey: env.supabaseAnonKey,
-    Authorization: `Bearer ${options?.accessToken ?? env.supabaseAnonKey}`,
   };
+  if (options?.accessToken) {
+    headers.Authorization = `Bearer ${options.accessToken}`;
+  }
   if (options?.deviceUserId) {
     headers['x-device-user-id'] = options.deviceUserId;
   }
 
-  const url = `${env.supabaseUrl}/functions/v1/${name}`;
+  const url = `${env.apiUrl}/${name}`;
   const res = await fetch(url, {
     method: 'POST',
     headers,
@@ -120,26 +121,6 @@ export async function listRoster(input: {
 }> {
   return callFunction(
     'list-roster',
-    { group_id: input.group_id },
-    {
-      accessToken: input.access_token,
-      deviceUserId: input.device_user_id,
-    },
-  );
-}
-
-export async function mintRealtimeAuth(input: {
-  group_id: string;
-  device_user_id: string;
-  access_token: string;
-}): Promise<{
-  jwt: string | null;
-  channel: string;
-  auth_mode: string;
-  expires_in: number;
-}> {
-  return callFunction(
-    'rt-jwt',
     { group_id: input.group_id },
     {
       accessToken: input.access_token,

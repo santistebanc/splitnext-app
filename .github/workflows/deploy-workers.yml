@@ -1,0 +1,65 @@
+name: deploy-workers
+
+# Shared deploy path. The caller chooses the trigger; this file asks
+# `target_for` whether that trigger may touch the Worker. It will not
+# deploy when the answer is none, and it will never reset (D-052, D-058).
+on:
+  workflow_call:
+    inputs:
+      event_name:
+        required: true
+        type: string
+      ref:
+        required: true
+        type: string
+    secrets:
+      api_token:
+        required: true
+      account_id:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.api_token }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.account_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Decide whether this run may touch the remote
+        id: decide
+        env:
+          EVENT_NAME: ${{ inputs.event_name }}
+          GIT_REF: ${{ inputs.ref }}
+        run: |
+          python3 docs/scripts/deploy_target.py \
+            --event "$EVENT_NAME" \
+            --ref "$GIT_REF" >> "$GITHUB_OUTPUT"
+
+      - run: npm ci
+
+      - name: Apply D1 migrations
+        working-directory: workers
+        run: npx wrangler d1 migrations apply splitnext-index --remote
+
+      - name: Deploy the Worker
+        working-directory: workers
+        run: npx wrangler deploy --var DEPLOY_SHA:${{ github.sha }}
+
+      - name: Verify the deployment is this commit
+        env:
+          BASE_URL: ${{ steps.decide.outputs.base_url }}
+        run: |
+          python3 docs/scripts/verify_deploy.py \
+            --base-url "$BASE_URL" \
+            --sha "$GITHUB_SHA"

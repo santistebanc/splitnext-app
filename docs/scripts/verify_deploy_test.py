@@ -35,7 +35,6 @@ class Evaluate(unittest.TestCase):
                 "merge",
                 "fetch-entity",
                 "list-roster",
-                "rt-jwt",
                 "mint-invite",
                 "join-group",
             ],
@@ -83,6 +82,13 @@ class Evaluate(unittest.TestCase):
     def test_a_200_that_is_not_a_health_payload_fails(self):
         probes = all_ok()
         probes[1] = {"fn": "merge", "status": 200, "body": {"error": "unauthorized"}}
+        failures = evaluate(probes, SHA)
+        self.assertEqual(len(failures), 1)
+        self.assertIn("merge", failures[0])
+
+    def test_a_200_with_non_json_body_fails(self):
+        probes = all_ok()
+        probes[1] = {"fn": "merge", "status": 200, "body": "ok"}
         failures = evaluate(probes, SHA)
         self.assertEqual(len(failures), 1)
         self.assertIn("merge", failures[0])

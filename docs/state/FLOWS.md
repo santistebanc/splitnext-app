@@ -16,7 +16,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
    - sends `{ group_id, device_user_id, name, currency_label, updated_at }`
    - returns `{ access_token, group }`
 5. `L-accessToken` writes that token through `L-secureStorage` and `L-lobbyIds` adds the group to this device's lobby list.
-6. `L-wakeSub` subscribes to the group's channel so other devices' changes arrive, asking `L-edgeRtJwt` / `L-efRtJwt` for permission first. If Realtime is unavailable the group still works — only live updates are lost.
+6. `L-wakeSub` opens a hibernating WebSocket on the group's Durable Object so other devices' changes arrive. If the socket is unavailable the group still works — only live updates are lost.
 
 ## F-open — Open group
 
@@ -116,7 +116,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 2. `L-edgeJoin` posts the secret and this install's `device_user_id` to `L-efJoin`.
 3. `L-efJoin` looks up the hash. `L-inviteIsLive` (the same three checks, on the server) refuses a spent, expired, or tombstoned-member invite. A device that already has a live token for the group is refused without consuming the invite.
 4. On success it mints an access token, inserts a v1 bind for the named member, marks the invite redeemed, and `L-efWake` tells the group's other devices.
-5. `L-joinGroup` stores the token, adds the group to the lobby, and commits the bind. The hub then `L-openGroup`s — subscribe for wakes, then pull the roster — so the live channel is started on the screen that stays open, not on the join spinner that unmounts.
+5. `L-joinGroup` stores the token, adds the group to the lobby, and commits the bind. The hub then `L-openGroup`s — subscribe for wakes, then pull the roster — so the live socket is started on the screen that stays open, not on the join spinner that unmounts.
 6. `L-assumedMember` already resolves, so `L-hub` shows You (Name) and no **This is me** for this device.
 
 ## F-bump — Bump group name
@@ -139,7 +139,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 ## F-wake-reconnect — Catch up after a dropped socket
 
-**Trigger** — The Realtime channel drops while the hub is still open, then comes back.  
+**Trigger** — The wake socket drops while the hub is still open, then comes back.  
 **Outcome** — This group matches the server again, without waiting for a foreground.
 
 1. `L-wakeSub` sees the channel leave `SUBSCRIBED` — `CHANNEL_ERROR`, `TIMED_OUT`, or `CLOSED`.

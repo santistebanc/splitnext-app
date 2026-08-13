@@ -1,4 +1,4 @@
-/** Whether a Realtime channel status change means this group missed wakes. */
+/** Whether a wake-socket status change means this group missed wakes. */
 const DROP_STATUSES = new Set(['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED']);
 
 export function shouldCatchUpOnStatus(

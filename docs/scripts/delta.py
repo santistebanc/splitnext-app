@@ -197,7 +197,7 @@ def report(state: dict, title: str) -> str:
     unmapped = sorted(
         c["path"]
         for c in state["changes"]
-        if c["path"].startswith(("src/", "app/", "supabase/"))
+        if c["path"].startswith(("src/", "app/", "workers/", "supabase/"))
         and not any(e["where"] == c["path"] for e in rows)
         and not any(c["path"].startswith(e["where"].rstrip("/") + "/") for e in rows)
     )
