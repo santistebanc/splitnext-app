@@ -17,7 +17,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ title: 'SplitNext' }} />
         <Stack.Screen name="join" options={{ title: 'Join group' }} />
-        <Stack.Screen name="group/[id]" options={{ title: 'Group' }} />
+        <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
       </Stack>
     </>
   );

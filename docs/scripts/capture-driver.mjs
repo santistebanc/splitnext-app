@@ -33,7 +33,10 @@ export function makeDriver(page) {
     await beat();
   };
 
-  const tap = (label) => press(page.getByText(label, { exact: true }).first());
+  const tap = (label) =>
+    press(
+      page.getByText(label, { exact: true }).filter({ visible: true }).first(),
+    );
 
   const type = async (placeholder, text) => {
     const field = page.getByPlaceholder(placeholder);

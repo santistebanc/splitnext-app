@@ -7,7 +7,6 @@ import { computeBalances } from '@/src/domain/balances';
 import { suggestSettlements } from '@/src/domain/settle';
 import { getGroupStore } from '@/src/store/groupStore';
 import {
-  addExpense,
   addMember,
   bindMe,
   bumpGroupName,
@@ -17,7 +16,7 @@ import { mintInvite } from '@/src/sync/invite';
 import { inviteShareText } from '@/src/sync/inviteShareText';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { useValue } from '@legendapp/state/react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -41,6 +40,7 @@ async function copyText(text: string): Promise<void> {
 export default function GroupHubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const groupId = id ?? '';
+  const router = useRouter();
   const store$ = getGroupStore(groupId);
   const group = useValue(store$.group);
   const members = useValue(store$.members);
@@ -51,8 +51,6 @@ export default function GroupHubScreen() {
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [what, setWhat] = useState('');
   const [busy, setBusy] = useState(false);
   const [joinLink, setJoinLink] = useState<string | null>(null);
 
@@ -104,31 +102,6 @@ export default function GroupHubScreen() {
       text: `${sign}${(Math.abs(cents) / 100).toFixed(2)} ${group.currency_label}`,
       style: !signed || cents === 0 ? styles.value : cents > 0 ? styles.owed : styles.owes,
     };
-  };
-
-  /** "12,34" and "12.34" both mean 1234 cents; anything else is not money. */
-  const parseCents = (text: string): number | null => {
-    const cleaned = text.trim().replace(',', '.');
-    if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
-    return Math.round(Number(cleaned) * 100);
-  };
-
-  const onAddExpense = async () => {
-    const cents = parseCents(amount);
-    if (cents === null || cents <= 0 || busy) return;
-    if (!assumedMemberId) return;
-    setBusy(true);
-    try {
-      await addExpense(groupId, {
-        payerMemberId: assumedMemberId,
-        amountCents: cents,
-        description: what,
-      });
-      setAmount('');
-      setWhat('');
-    } finally {
-      setBusy(false);
-    }
   };
 
   const onBump = () => {
@@ -322,7 +295,7 @@ export default function GroupHubScreen() {
             <Text style={styles.value}>
               {e.description || '(no description)'} · {nameOf(e.payer_member_id)}
               {e.allocations?.length
-                ? ` · split ${e.allocations.length} ways`
+                ? ` · split ${e.allocations.length} way${e.allocations.length === 1 ? '' : 's'}`
                 : ''}
             </Text>
             <Text style={styles.you}>{money(e.amount_cents).text}</Text>
@@ -331,35 +304,14 @@ export default function GroupHubScreen() {
       )}
 
       {assumedMemberId ? (
-        <>
-          <TextInput
-            style={styles.input}
-            value={amount}
-            onChangeText={setAmount}
-            placeholder={`Amount (${group.currency_label})`}
-            placeholderTextColor="#8a8d82"
-            keyboardType="decimal-pad"
-            inputMode="decimal"
-          />
-          <TextInput
-            style={styles.input}
-            value={what}
-            onChangeText={setWhat}
-            placeholder="What for"
-            placeholderTextColor="#8a8d82"
-          />
-          <Pressable
-            style={[
-              styles.button,
-              busy || parseCents(amount) === null ? styles.buttonDisabled : null,
-            ]}
-            onPress={() => void onAddExpense()}
-            accessibilityRole="button"
-            disabled={busy || parseCents(amount) === null}
-          >
-            <Text style={styles.buttonText}>Add expense</Text>
-          </Pressable>
-        </>
+        <Pressable
+          style={[styles.button, busy ? styles.buttonDisabled : null]}
+          onPress={() => router.push(`/group/${groupId}/expense/new`)}
+          accessibilityRole="button"
+          disabled={busy}
+        >
+          <Text style={styles.buttonText}>Add expense</Text>
+        </Pressable>
       ) : null}
 
       <Pressable

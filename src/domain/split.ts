@@ -30,3 +30,34 @@ export function splitEqually(
     amount_cents: base + (index < remainder ? 1 : 0),
   }));
 }
+
+export type SplitParticipantsResult =
+  | { ok: true; memberIds: string[] }
+  | { ok: false; reason: 'empty' | 'member_missing' };
+
+/**
+ * Who shares this expense. Selected ids must all be live and at least one;
+ * a missing member is refused rather than dropped, so two devices cannot
+ * silently split a different set.
+ */
+export function participantsForSplit(
+  liveMemberIds: readonly string[],
+  selectedIds: readonly string[],
+): SplitParticipantsResult {
+  const live = new Set(liveMemberIds);
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const id of selectedIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    if (!live.has(id)) {
+      return { ok: false, reason: 'member_missing' };
+    }
+    unique.push(id);
+  }
+  if (unique.length === 0) {
+    return { ok: false, reason: 'empty' };
+  }
+  unique.sort();
+  return { ok: true, memberIds: unique };
+}

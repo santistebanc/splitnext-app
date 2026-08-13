@@ -26,7 +26,8 @@ Screens and routes the person touches.
 | Id | Name | Kind | Where | What it is for |
 | --- | --- | --- | --- | --- |
 | L-lobby | Lobby screen | Screen | `app/index.tsx` | The first screen: lists every group this device knows, offers Create group or Join group (paste a token), and opens one into the hub. |
-| L-hub | Group hub | Screen | `app/group/[id].tsx` | One group's screen: shows its name, member list and everyone's balance, lists the fewest transfers that settle those nets, lets you add a member or an expense, claim a member as yourself, invite another device onto a member who is not You, rename the group, and surfaces the last sync error. |
+| L-hub | Group hub | Screen | `app/group/[id]/index.tsx` | One group's screen: shows its name, member list and everyone's balance, lists the fewest transfers that settle those nets, lets you add a member, claim a member as yourself, invite another device onto a member who is not You, You (Name), and opens the new-expense form; bump sync proof; surfaces the last sync error. |
+| L-expenseNew | New expense | Screen | `app/group/[id]/expense/new.tsx` | Records a cost: who paid, how much, what for, and who shares equally among the selected members. Defaults to You paid and everyone shares. |
 | L-join | Join screen | Screen | `app/join.tsx` | Redeems a `/join?token=` invite, stores the new access token, and opens the hub already bound to the named member. |
 | L-rootLayout | Root layout | Screen | `app/_layout.tsx` | The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app. |
 
@@ -40,7 +41,8 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-sortByFlushOrder | `sortByFlushOrder` | Pure | `src/domain/version.ts` | Orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it. |
 | L-assumedMember | `assumedMemberIdFromBinds` | Pure | `src/domain/assumedMember.ts` | Answers "which member am I in this group?" by finding this device's live bind. |
 | L-bindingOpen | `bindingIsOpen` | Pure | `src/domain/assumedMember.ts` | Answers "can this device still say which member it is?" — yes until the group's first live expense, which is what shows or hides the This is me button. |
-| L-splitEqually | `splitEqually` | Pure | `src/domain/split.ts` | Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. |
+| L-splitEqually | `splitEqually` | Pure | `src/domain/split.ts` | Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. One participant receives the whole amount. |
+| L-participantsForSplit | `participantsForSplit` | Pure | `src/domain/split.ts` | Answers who shares an expense: the selected members, but only if every one of them is live and at least one remains. A missing member is refused, not dropped. |
 | L-balances | `computeBalances` | Pure | `src/domain/balances.ts` | Works out what each member is up or down overall — what they paid minus what they owe — most-negative first. |
 | L-settle | `suggestSettlements` | Pure | `src/domain/settle.ts` | Turns those nets into the fewest transfers that zero everyone who can be settled, identical on every device. |
 | L-inviteIsLive | `inviteIsLive` | Pure | `src/domain/invite.ts` | Answers whether an invite can still be redeemed — not spent, not past `expires_at`, and the named member still live. |
@@ -51,7 +53,7 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-syncAllLobby | `syncAllLobbyGroups` | Job | `src/sync/groupSync.ts` | Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest. |
 | L-bumpName | `bumpGroupName` | Job | `src/sync/groupSync.ts` | Renames a group: the new name shows immediately, then goes to the server as the next version. |
 | L-addMember | `addMember` | Job | `src/sync/groupSync.ts` | Adds a person to the group locally, then sends them to the server. |
-| L-addExpense | `addExpense` | Job | `src/sync/groupSync.ts` | Records a cost: refuses anything that is not a positive whole number of cents, splits it across everyone in the group right now, writes it locally against the paying member, then sends it. |
+| L-addExpense | `addExpense` | Job | `src/sync/groupSync.ts` | Records a cost: refuses anything that is not a positive whole number of cents, splits it equally across the members selected at record time (everyone live, if the form did not narrow it), writes it locally against the paying member, then sends it. The payer need not be in the split. |
 | L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. Refuses once the group has an expense, or if the member is gone. |
 | L-mintInvite | `mintInvite` | Job | `src/sync/invite.ts` | Asks the server for a one-use invite bound to one member and returns the plaintext secret to copy. |
 | L-inviteShare | `inviteShareText` | Pure | `src/sync/inviteShareText.ts` | Turns that secret into what you copy: the raw token on native, a `/join?token=` URL on web. |
