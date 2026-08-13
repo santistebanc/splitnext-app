@@ -107,4 +107,5 @@ Edge Functions and their shared helpers.
 | L-efWake | `publishWake` | Network | `supabase/functions/_shared/wake.ts` | Tells the group's other devices that something changed, naming only what — never the data itself. A failed wake never undoes the write. |
 | L-efHealth | `isHealthRequest` / `healthPayload` | Pure | `supabase/functions/_shared/health.ts` | Lets anyone ask a deployed function which commit it is running, so a server that silently lagged behind the repo can be caught instead of assumed. |
 | L-deployTarget | `target_for` | Pure | `docs/scripts/deploy_target.py` | Answers whether a GitHub event and ref may deploy to `splitnext-v3`, and refuses a wipe — `push` to `main` or `slice/**` is yes, everything else is no. |
+| L-prPhone | `phone_section` | Pure | `docs/scripts/pr_phone.py` | The PR comment's scan code: a QR of the published web app, so a phone camera opens it without a Metro bundler. |
 | L-efShouldAccept | `shouldAccept` | Pure | `supabase/functions/_shared/entities.ts` | The server's copy of the version rule, deliberately identical to the client's so both sides agree on who wins. |

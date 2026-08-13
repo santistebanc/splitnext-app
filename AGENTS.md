@@ -35,7 +35,7 @@ A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` o
 - **One slice opens one PR.** Squash-only enforces one commit per PR, not per slice; two PRs under one slice number is two commits on `main` and a slice you can no longer revert.
 - **`docs/slicer.html` is generated and gitignored** — regenerate it, never hand-edit or hand-merge it. Same for `docs/slice.html`, the per-PR slice page.
 
-Every PR gets a generated slicer page for **this slice only** — same chrome as the published board, hosted from the `pr-boards` branch and linked in a CI comment (D-055). Read that before the file diff: it is the one view that says which *pieces* moved. The published board does not carry the current slice.
+Every PR gets a generated slicer page for **this slice only** — same chrome as the published board, hosted from the `pr-boards` branch and linked in a CI comment (D-055). Read that before the file diff: it is the one view that says which *pieces* moved. The published board does not carry the current slice. That comment also carries a QR of the published web app (`L-prPhone`) so a phone camera can open it; Expo Go still needs `npm start`.
 
 Merging `main` republishes the board and the web app to GitHub Pages.
 
