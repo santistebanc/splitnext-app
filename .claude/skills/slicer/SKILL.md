@@ -46,15 +46,31 @@ Slice 1 is question-heavy on purpose: every answer is load-bearing on every futu
 
 Ask **one question at a time, in plain text, each with your recommended answer.** Never batch. Answers will wander — a question about routing draws out a thought about billing. Catch the tangent, park it verbatim, and return to the question. Do not chase it.
 
-If an interview question stalls — nobody can answer in words whether a state model feels right — reach for `/prototype` instead of asking a fifth variant of it.
+If an interview question stalls — nobody can answer in words whether a state model feels right — reach for `/prototype` instead of asking a fifth variant of it (Phase 2.5).
+
+## Brainstorm mode
+
+`/slicer brainstorm` — the one place the filter and the question budget are off.
+
+Everything else in this skill exists to keep planning one slice deep, and that discipline is only bearable if thinking wide has somewhere to go. This is that place, so it is bounded by ritual rather than by budget:
+
+1. **Offer it, do not assume it.** Phase 0 offers a brainstorm before the direction pass on a greenfield repo. After that it is user-invoked only — never volunteer it mid-slice, and never enter it to dodge a decision the current slice actually needs.
+2. **No code, no `NEXT.md`, no slice pick.** A brainstorm that ends in a build is a slice that skipped its gate. It ends in files, then stops.
+3. **Grill freely** — `/grilling` is in scope here and only here. Unbounded questioning inside a slice interview is the failure this skill was written against; unbounded questioning about the destination is the entire point of the mode.
+4. **It ends by writing.** Close by grooming `PARKING.md` — new items in the user's own phrasing, tiers re-scored against what the session revealed. A brainstorm that leaves no file changed did not happen.
+5. **Say what moved.** Report the diff in one paragraph: what was added, what was re-scored, and anything in `OVERVIEW.md`'s **Direction** section the session contradicted. A contradiction is a new `D-NNN` naming the reversal, never a quiet edit.
+
+If direction genuinely changed, Phase 1's next pick re-scores from scratch. That is the steering wheel working, not a restart.
+
+**Tiers stay risk-ordered.** A brainstorm sorts naturally by appetite — do this next, this after, this maybe someday. `PARKING.md` deliberately does not: `foundation-risk > core value > breadth > polish` puts whatever is most likely to invalidate the direction first, *even when it is the unpleasant one*. Record appetite in the entry if it matters; do not let it become the ranking.
 
 ## The loop
 
-`/slicer` detects its phase from `docs/state/`. Arguments are hints, not modes: `park <thing>` (record and stop), `status` (report and stop), `next <idea>` (bias the next slice pick).
+`/slicer` detects its phase from `docs/state/`. Arguments are hints, not modes: `park <thing>` (record and stop), `status` (report and stop), `next <idea>` (bias the next slice pick), `brainstorm` (the mode above).
 
 ### Phase 0 — Bootstrap (no `docs/state/`)
 
-**Empty or near-empty repo (greenfield).** Run the direction pass: destination, users, platform, persistence, auth/multi-user, deployment target, hard constraints, non-goals. Budget above. Write `OVERVIEW.md` with a **Direction** section — later slices check against it instead of re-asking.
+**Empty or near-empty repo (greenfield).** Offer a brainstorm first — the destination is the one thing no repo can answer, and it is cheaper to think wide before the direction pass than to re-open it at slice 6. If the user declines, go straight to the pass. Run the direction pass: destination, users, platform, persistence, auth/multi-user, deployment target, hard constraints, non-goals. Budget above. Write `OVERVIEW.md` with a **Direction** section — later slices check against it instead of re-asking.
 
 **Existing codebase (brownfield).** Explore *first* — parallel `Explore` subagents if the repo is large — and read `CONTEXT.md`, `docs/adr/`, and any domain glossary if present. Write `OVERVIEW.md` describing what exists **today**. Then run a direction pass scoped to the *feature only*: destination, non-goals, constraints. Skip every question the code already answers.
 
@@ -73,6 +89,16 @@ Whatever is most likely to invalidate the direction goes next. Score parking aga
 ### Phase 2 — Interview
 
 Ask only what the chosen slice needs, under the budget, through the filter. Park the rest as you go.
+
+### Phase 2.5 — Prototype (optional, cheap)
+
+Reach for `/prototype` before writing `NEXT.md` when the slice turns on something words settle badly: what a surface should look like, whether a state model feels right, which of two interaction shapes the user actually wants. Asking a fifth variant of a question the user cannot answer in prose is the slow path.
+
+- **Mock data, throwaway, off the slice branch.** It answers one question and is deleted. A prototype that survives into the slice is an unreviewed feature that skipped TDD and the demo gate.
+- **One question per prototype.** Name it out loud before building, and stop when it is answered. A prototype that grows a second question is turning into the slice.
+- **The answer goes into `NEXT.md`** — the plan, or a Before → After row — so the build reads the decision where it already looks. If it settled something durable, append a `D-NNN` too.
+
+Skip it when the slice is plumbing with no surface, or when the interview already converged.
 
 ### Phase 3 — Pre-build gate
 

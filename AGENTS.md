@@ -19,7 +19,7 @@ The app is built one **slice** at a time — a narrow but complete path through 
 The short version:
 
 1. Pick the next slice risk-first (foundation-risk > core value > breadth > polish) from `docs/state/PARKING.md`, proposing candidates rather than choosing silently.
-2. Interview only about that slice. Everything further out goes to `PARKING.md` verbatim — recorded, not resolved.
+2. Interview only about that slice. Everything further out goes to `PARKING.md` verbatim — recorded, not resolved. `/slicer brainstorm` is the bounded exception: filter and budget off, no code, ends by writing `PARKING.md`.
 3. Write `docs/state/NEXT.md` (Now → After, plan, acceptance, seams under test, out of scope) and get a yes before building.
 4. Build to the quality bar (reviewed at close by this repo's own `/code-review`, in `.claude/skills/code-review/`): seams first, tests on the seams (`.claude/skills/tdd/SKILL.md`), small interfaces over fat orchestrators, self-review written into `NEXT.md` under `## Edge paths`.
 5. Demo it, capture it (`npm run capture`), then close: review, update `OVERVIEW.md` / `LOGIC.md` / `FLOWS.md`, archive to `docs/state/slices/NNNN-name.md`, append `D-NNN` decisions, groom parking, regenerate the board.
