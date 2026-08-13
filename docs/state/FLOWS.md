@@ -116,7 +116,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 2. `L-edgeJoin` posts the secret and this install's `device_user_id` to `L-efJoin`.
 3. `L-efJoin` looks up the hash. `L-inviteIsLive` (the same three checks, on the server) refuses a spent, expired, or tombstoned-member invite. A device that already has a live token for the group is refused without consuming the invite.
 4. On success it mints an access token, inserts a v1 bind for the named member, marks the invite redeemed, and `L-efWake` tells the group's other devices.
-5. `L-joinGroup` stores the token, adds the group to the lobby, commits the bind, and `L-openGroup` pulls the roster.
+5. `L-joinGroup` stores the token, adds the group to the lobby, and commits the bind. The hub then `L-openGroup`s — subscribe for wakes, then pull the roster — so the live channel is started on the screen that stays open, not on the join spinner that unmounts.
 6. `L-assumedMember` already resolves, so `L-hub` shows You (Name) and no **This is me** for this device.
 
 ## F-bump — Bump group name

@@ -8,7 +8,6 @@ import {
 } from '@/src/secrets/tokens';
 import { getGroupStore, initLocalGroup } from '@/src/store/groupStore';
 import { commitRemoteEntity } from '@/src/sync/inbound';
-import { openGroup } from '@/src/sync/groupSync';
 import { syncError } from '@/src/sync/syncErrors';
 
 /** Mint a one-use invite for this member. Returns the plaintext secret. */
@@ -67,6 +66,8 @@ export async function joinGroup(input: string): Promise<string> {
   commitRemoteEntity(group.id, 'binds', bind);
   store$.syncStatus.set('on_server');
   store$.lastError.set(null);
-  await openGroup(group.id);
+  // Do not subscribe here. Join is a spinner that unmounts as soon as we
+  // navigate; a socket started on that screen is what left joiners deaf.
+  // The hub's openGroup starts the live channel on a screen that stays up.
   return group.id;
 }
