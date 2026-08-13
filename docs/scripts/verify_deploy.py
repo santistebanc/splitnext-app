@@ -92,7 +92,7 @@ def evaluate(probes, expected_sha):
 def probe(base_url, fn, anon_key, timeout, retries):
     """Ask one function what it is running. Never raises; a failure is a probe."""
     url = f"{base_url.rstrip('/')}/{fn}?health=1"
-    headers = {}
+    headers = {"User-Agent": "splitnext-verify-deploy"}
 
     last = "no attempt made"
     for attempt in range(retries):
