@@ -41,7 +41,10 @@ export async function leaveGroup(groupId: string): Promise<boolean> {
       const leftover = (store$.queue.get() ?? []).some(
         (item) => item.id === tombstone.id,
       );
-      if (leftover) return false;
+      if (leftover) {
+        store$.lastError.set(syncError('leave_failed', 'merge_failed'));
+        return false;
+      }
     }
   }
 

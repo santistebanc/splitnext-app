@@ -157,11 +157,11 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On You-detail, the person taps **Leave group**, reads the confirm, and taps **Leave group** again.  
 **Outcome** — This device is unbound and its access token is revoked. The member slot and expenses stay. The group is gone from this device’s lobby.
 
-1. `L-member` shows **Leave group** only on You. Cancel closes the confirm and writes nothing.
+1. `L-member` shows **Leave group** only on You. Cancel closes the confirm and writes nothing. A failed leave keeps Leave on this screen, not on other members.
 2. Confirm calls `L-leaveGroup`. `L-tombstoneBind` soft-deletes this device’s live bind at the next version; `L-flushQueue` pushes it while the token still works.
 3. `L-edgeLeave` posts to `L-efLeave`, which checks the token belongs to this group and this device, then sets `revoked_at`. A second leave is still success.
-4. `L-leaveGroup` drops the token through `L-accessToken` / `L-secureStorage`, takes the group off `L-lobbyIds`, and closes the wake socket so it does not retry. `L-member` returns to `L-lobby`.
-5. If flush or revoke fails, the lobby is not dropped and `L-member` shows the typed error. D-020 is unchanged: nobody else can **This is me** after the first expense.
+4. `L-leaveGroup` drops the token through `L-accessToken` / `L-secureStorage`, takes the group off `L-lobbyIds`, and `L-wakeSub` closes the socket so it does not retry. `L-member` returns to `L-lobby`.
+5. If flush leftover or revoke fails, the lobby is not dropped and `L-member` shows `leave_failed`. D-020 is unchanged: nobody else can **This is me** after the first expense.
 
 ## F-wake — Peer change arrives live
 

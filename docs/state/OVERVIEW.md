@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0024
+Last updated: slice 0025
 
 ## Direction
 
@@ -39,7 +39,7 @@ Last updated: slice 0024
 - See a member's expenses as paid-for and owe-for lines that add up to their net — [slice 0024](slices/0024-member-expense-buckets.md)
 - See the fewest transfers that zero those nets on a member's screen (the ones they would pay); derived, identical on every device, never moves money — [slice 0017](slices/0017-settle-up.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Tap a settle button to open the new-expense form already filled for that transfer; saving records it, the tap does not — [slice 0019](slices/0019-settle-prefill.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
-- Leave a group from You-detail: this device is unbound and its token is revoked; the member and expenses stay — slice 0025
+- Leave a group from You-detail: this device is unbound and its token is revoked; the member and expenses stay — [slice 0025](slices/0025-leave-group.md)
 - Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
 - Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Worker; CI asserts those same flows against a local Worker without rewriting the clips — [slice 0007](slices/0007-allocations-balances.md) / [slice 0022](slices/0022-capture-ci.md)
 - Work the repo from any clone: the loop is vendored at `.claude/skills/`, `AGENTS.md` is the entry point, CI enforces the gates — [slice 0008](slices/0008-repo-home.md)

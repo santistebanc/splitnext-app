@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accessAllows, inviteRedeemBlock } from './access';
+import { accessAllows, accessIdentifies, inviteRedeemBlock } from './access';
 
 describe('accessAllows', () => {
   const row = {
@@ -19,6 +19,13 @@ describe('accessAllows', () => {
     );
     expect(accessAllows(row, 'g-other', 'd1')).toBe(false);
     expect(accessAllows(row, 'g1', 'd-other')).toBe(false);
+  });
+
+  it('still identifies a revoked token as this group and device', () => {
+    expect(
+      accessIdentifies({ ...row, revoked_at: '2026-01-01T00:00:00.000Z' }, 'g1', 'd1'),
+    ).toBe(true);
+    expect(accessIdentifies(row, 'g-other', 'd1')).toBe(false);
   });
 });
 

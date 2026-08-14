@@ -49,6 +49,7 @@ export default function MemberScreen() {
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [offerLeave, setOfferLeave] = useState(false);
 
   useEffect(() => {
     if (!groupId) return;
@@ -99,7 +100,7 @@ export default function MemberScreen() {
   const currency = group.currency_label;
   const paidHeading = isYou ? 'You paid for' : `${subjectName} paid for`;
   const owesHeading = isYou ? 'You owe for' : `${subjectName} owes for`;
-  const showLeave = isYou || lastError?.code === 'leave_failed';
+  const showLeave = isYou || offerLeave;
 
   const onLeave = async () => {
     if (leaving) return;
@@ -212,7 +213,10 @@ export default function MemberScreen() {
             <Pressable
               testID="leave"
               style={styles.leave}
-              onPress={() => setConfirming(true)}
+              onPress={() => {
+                setOfferLeave(true);
+                setConfirming(true);
+              }}
               accessibilityRole="button"
               accessibilityLabel="Leave group"
             >

@@ -12,7 +12,7 @@ import {
   resolveAccessToken,
   revokeAccessToken,
 } from './indexDb';
-import { inviteRedeemBlock } from './access';
+import { accessIdentifies, inviteRedeemBlock } from './access';
 import type { MergeItem } from './entities';
 
 export { GroupObject };
@@ -294,7 +294,7 @@ async function handleLeave(request: Request, env: Env): Promise<Response> {
   }
 
   const row = await lookupAccess(env.INDEX, accessToken);
-  if (!row || row.group_id !== groupId || row.device_user_id !== deviceUserId) {
+  if (!accessIdentifies(row, groupId, deviceUserId)) {
     return jsonResponse({ error: 'unauthorized' }, 401);
   }
 
