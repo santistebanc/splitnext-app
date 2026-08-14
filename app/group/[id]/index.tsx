@@ -4,8 +4,6 @@ import {
   bindingIsOpen,
 } from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
-import { settlementHref } from '@/src/domain/expensePrefill';
-import { suggestSettlements } from '@/src/domain/settle';
 import { getGroupStore } from '@/src/store/groupStore';
 import {
   addMember,
@@ -16,8 +14,10 @@ import {
 import { mintInvite } from '@/src/sync/invite';
 import { inviteShareText } from '@/src/sync/inviteShareText';
 import { coerceSyncError } from '@/src/sync/syncErrors';
+import { formatMoney, memberLabel } from '@/src/ui/format';
+import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
-import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -38,16 +38,30 @@ async function copyText(text: string): Promise<void> {
   }
 }
 
+/** Fewer members → larger rows, matching the hub-chrome prototype. */
+function balScale(count: number): number {
+  if (count <= 2) return 1.7;
+  if (count <= 3) return 1.55;
+  if (count <= 4) return 1.4;
+  if (count <= 5) return 1.3;
+  if (count <= 6) return 1.22;
+  if (count <= 7) return 1.15;
+  if (count <= 8) return 1.1;
+  if (count <= 10) return 1.05;
+  if (count <= 12) return 1;
+  return 0.95;
+}
+
 export default function GroupHubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const groupId = id ?? '';
   const router = useRouter();
+  const navigation = useNavigation();
   const store$ = getGroupStore(groupId);
   const group = useValue(store$.group);
   const members = useValue(store$.members);
   const binds = useValue(store$.binds);
   const expenses = useValue(store$.expenses);
-  const syncStatus = useValue(store$.syncStatus);
   const lastErrorRaw = useValue(store$.lastError);
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
@@ -61,6 +75,23 @@ export default function GroupHubScreen() {
     void getOrCreateDeviceUserId().then(setDeviceUserId);
   }, [groupId]);
 
+  const title = group.name === '' ? '(empty)' : group.name;
+  useEffect(() => {
+    navigation.setOptions({
+      title,
+      headerLeft: () => (
+        <Pressable
+          onPress={() => router.navigate('/')}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={styles.headerBack}
+        >
+          <Text style={styles.headerBackText}>←</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, router, title]);
+
   const assumedMemberId = useMemo(
     () =>
       deviceUserId
@@ -71,39 +102,11 @@ export default function GroupHubScreen() {
   /** Every member stays offerable until the first expense lands. */
   const canChoose = useMemo(() => bindingIsOpen(expenses ?? {}), [expenses]);
 
-  const memberList = useMemo(
-    () =>
-      Object.values(members ?? {})
-        .filter((m) => m.deleted_at == null)
-        .sort((a, b) => a.display_name.localeCompare(b.display_name)),
-    [members],
-  );
-
-  const expenseList = useMemo(
-    () =>
-      Object.values(expenses ?? {})
-        .filter((e) => e.deleted_at == null)
-        .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
-    [expenses],
-  );
-
   const balances = useMemo(
     () => computeBalances(members ?? {}, expenses ?? {}),
     [members, expenses],
   );
-  const settlements = useMemo(() => suggestSettlements(balances), [balances]);
-
-  const nameOf = (memberId: string) =>
-    (members ?? {})[memberId]?.display_name || '(unnamed)';
-
-  /** Money as text plus the tone it should be read in. */
-  const money = (cents: number, signed = false) => {
-    const sign = !signed || cents === 0 ? '' : cents > 0 ? '+' : '−';
-    return {
-      text: `${sign}${(Math.abs(cents) / 100).toFixed(2)} ${group.currency_label}`,
-      style: !signed || cents === 0 ? styles.value : cents > 0 ? styles.owed : styles.owes,
-    };
-  };
+  const scale = balScale(balances.length);
 
   const onBump = () => {
     void bumpGroupName(groupId, 'Demo ' + (group.version + 1));
@@ -148,305 +151,320 @@ export default function GroupHubScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.label}>Group id</Text>
-      <Text style={styles.mono}>{group.id}</Text>
-
-      <Text style={styles.label}>Name</Text>
-      <Text style={styles.value}>{group.name === '' ? '(empty)' : group.name}</Text>
-
-      <Text style={styles.label}>Version</Text>
-      <Text style={styles.mono}>{String(group.version)}</Text>
-
-      <Text style={styles.label}>Sync</Text>
-      <Text style={styles.status}>{syncStatus}</Text>
-      {lastError ? (
-        <Text style={styles.error}>
-          {lastError.code}: {lastError.message}
-        </Text>
-      ) : null}
-
-      <Text style={styles.label}>Members</Text>
-      {joinLink ? (
-        <>
-          <Text style={styles.hint}>
-            Join link copied — paste it on the other device, or open it there.
-          </Text>
-          <Text selectable style={styles.mono} accessibilityLabel="Join link">
-            {joinLink}
-          </Text>
-        </>
-      ) : null}
-      {memberList.length === 0 ? (
-        <Text style={styles.hint}>No members yet — add yourself first.</Text>
-      ) : (
-        memberList.map((m) => {
-          const isYou = m.id === assumedMemberId;
-          const label =
-            m.display_name === ''
-              ? '(unnamed)'
-              : isYou
-                ? `You (${m.display_name})`
-                : m.display_name;
-          return (
-            <View key={m.id} style={styles.memberRow}>
-              <Text style={isYou ? styles.you : styles.value}>{label}</Text>
-              <View style={styles.memberActions}>
-                {!isYou ? (
-                  <Pressable
-                    style={styles.smallButton}
-                    onPress={() => void onInvite(m.id)}
-                    accessibilityRole="button"
-                    disabled={busy}
-                  >
-                    <Text style={styles.smallButtonText}>Invite</Text>
-                  </Pressable>
-                ) : null}
-                {canChoose && !isYou ? (
-                  <Pressable
-                    style={styles.smallButton}
-                    onPress={() => void onBind(m.id)}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.smallButtonText}>This is me</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
-          );
-        })
-      )}
-
-      <TextInput
-        style={styles.input}
-        value={newName}
-        onChangeText={setNewName}
-        placeholder="Member name"
-        placeholderTextColor="#8a8d82"
-        autoCapitalize="words"
-      />
-      <Pressable
-        style={[styles.button, busy ? styles.buttonDisabled : null]}
-        onPress={() => void onAdd()}
-        accessibilityRole="button"
-        disabled={busy}
+    <View style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        testID="balances"
       >
-        <Text style={styles.buttonText}>Add member</Text>
-      </Pressable>
+        {lastError ? (
+          <Text style={styles.error}>
+            {lastError.code}: {lastError.message}
+          </Text>
+        ) : null}
 
-      <Text style={styles.label}>Balances</Text>
-      {expenseList.length === 0 ? (
-        <Text style={styles.hint}>
-          Nothing spent yet — everyone is square.
-        </Text>
-      ) : (
-        balances.map((b) => {
-          const isYou = b.member_id === assumedMemberId;
-          return (
-            <View key={b.member_id} style={styles.memberRow}>
-              <Text style={isYou ? styles.you : styles.value}>
-                {isYou ? `You (${b.display_name})` : b.display_name}
-              </Text>
-              <Text style={money(b.net_cents, true).style}>
-                {money(b.net_cents, true).text}
-              </Text>
-            </View>
-          );
-        })
-      )}
-
-      {settlements.length > 0 ? (
-        <>
-          <Text style={styles.label}>Settle up</Text>
-          {settlements.map((s, i) => {
-            const fromYou = s.from_member_id === assumedMemberId;
-            const toYou = s.to_member_id === assumedMemberId;
-            const person = (name: string, isYou: boolean) => {
-              const shown = name === '' ? '(unnamed)' : name;
-              if (!isYou) return shown;
-              return name === '' ? 'You (unnamed)' : `You (${name})`;
-            };
-            const from = person(s.from_display_name, fromYou);
-            const to = person(s.to_display_name, toYou);
-            return (
-              <Pressable
-                key={`${s.from_member_id}-${s.to_member_id}-${i}`}
-                style={styles.memberRow}
-                onPress={() => router.push(settlementHref(groupId, s) as Href)}
-                accessibilityRole="button"
-                accessibilityLabel={`${from} → ${to}`}
-              >
-                <Text style={fromYou || toYou ? styles.you : styles.value}>
-                  {from} → {to}
-                </Text>
-                <Text style={styles.value}>{money(s.amount_cents).text}</Text>
-              </Pressable>
-            );
-          })}
-        </>
-      ) : null}
-
-      <Text style={styles.label}>Expenses</Text>
-      {expenseList.length === 0 ? (
-        <Text style={styles.hint}>
-          {assumedMemberId
-            ? 'No expenses yet — add the first one. Adding it fixes who you are.'
-            : 'Tap This is me on a member first; expenses are recorded against you.'}
-        </Text>
-      ) : (
-        expenseList.map((e) => (
-          <View key={e.id} style={styles.memberRow}>
-            <Text style={styles.value}>
-              {e.description || '(no description)'} · {nameOf(e.payer_member_id)}
-              {e.allocations?.length
-                ? ` · split ${e.allocations.length} way${e.allocations.length === 1 ? '' : 's'}`
-                : ''}
+        {joinLink ? (
+          <>
+            <Text style={styles.hint}>
+              Join link copied — paste it on the other device, or open it there.
             </Text>
-            <Text style={styles.you}>{money(e.amount_cents).text}</Text>
-          </View>
-        ))
-      )}
+            <Text selectable style={styles.mono} accessibilityLabel="Join link">
+              {joinLink}
+            </Text>
+          </>
+        ) : null}
 
-      {assumedMemberId ? (
+        {balances.length === 0 ? (
+          <Text style={styles.hint}>No members yet — add yourself first.</Text>
+        ) : (
+          balances.map((b) => {
+            const isYou = b.member_id === assumedMemberId;
+            const label = memberLabel(b.display_name, isYou);
+            const amt = formatMoney(b.net_cents, group.currency_label, true);
+            const amtStyle =
+              b.net_cents > 0
+                ? styles.amtPos
+                : b.net_cents < 0
+                  ? styles.amtNeg
+                  : styles.amt;
+            return (
+              <View
+                key={b.member_id}
+                style={[styles.balRow, isYou ? styles.balRowYou : null]}
+              >
+                <Pressable
+                  testID="balance-row"
+                  style={styles.balOpen}
+                  onPress={() =>
+                    router.push(`/group/${groupId}/member/${b.member_id}` as Href)
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={label}
+                >
+                  <Text
+                    style={[
+                      styles.balName,
+                      isYou ? styles.balNameYou : null,
+                      { fontSize: (isYou ? 17 : 15) * scale },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                  <Text
+                    style={[
+                      amtStyle,
+                      isYou ? styles.amtYou : null,
+                      { fontSize: (isYou ? 18 : 16) * scale },
+                    ]}
+                  >
+                    {amt}
+                  </Text>
+                </Pressable>
+                <View style={styles.chips}>
+                  {!isYou ? (
+                    <Pressable
+                      style={styles.chip}
+                      onPress={() => void onInvite(b.member_id)}
+                      accessibilityRole="button"
+                      disabled={busy}
+                    >
+                      <Text style={styles.chipText}>Invite</Text>
+                    </Pressable>
+                  ) : null}
+                  {canChoose && !isYou ? (
+                    <Pressable
+                      style={styles.chip}
+                      onPress={() => void onBind(b.member_id)}
+                      accessibilityRole="button"
+                      disabled={busy}
+                    >
+                      <Text style={styles.chipText}>This is me</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })
+        )}
+
+        <View style={styles.footer}>
+          <Pressable
+            onPress={() => router.push(`/group/${groupId}/expenses` as Href)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.balLink}>All expenses →</Text>
+          </Pressable>
+        </View>
+
+        <TextInput
+          style={styles.input}
+          value={newName}
+          onChangeText={setNewName}
+          placeholder="Member name"
+          placeholderTextColor={colors.muted}
+          autoCapitalize="words"
+        />
         <Pressable
-          style={[styles.button, busy ? styles.buttonDisabled : null]}
-          onPress={() => router.push(`/group/${groupId}/expense/new`)}
+          style={[styles.addMember, busy ? styles.buttonDisabled : null]}
+          onPress={() => void onAdd()}
           accessibilityRole="button"
           disabled={busy}
         >
-          <Text style={styles.buttonText}>Add expense</Text>
+          <Text style={styles.addMemberText}>Add member</Text>
         </Pressable>
+
+        <Pressable
+          style={styles.bump}
+          onPress={onBump}
+          accessibilityRole="button"
+        >
+          <Text style={styles.bumpText}>Bump name (merge + wake)</Text>
+        </Pressable>
+      </ScrollView>
+
+      {assumedMemberId ? (
+        <View style={styles.fabBar}>
+          <Pressable
+            style={[styles.fab, busy ? styles.buttonDisabled : null]}
+            onPress={() => router.push(`/group/${groupId}/expense/new` as Href)}
+            accessibilityRole="button"
+            accessibilityLabel="Add expense"
+            disabled={busy}
+          >
+            <Text style={styles.fabText}>+ Expense</Text>
+          </Pressable>
+        </View>
       ) : null}
-
-      <Pressable
-        style={styles.secondaryButton}
-        onPress={onBump}
-        accessibilityRole="button"
-      >
-        <Text style={styles.secondaryButtonText}>Bump name (merge + wake)</Text>
-      </Pressable>
-
-      <Text style={styles.hint}>
-        Add a member, tap This is me, then record an expense. Invite on a
-        member copies a join link for another device.
-      </Text>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
   container: {
-    padding: 24,
-    gap: 8,
-    paddingBottom: 48,
+    paddingBottom: 96,
   },
-  label: {
-    marginTop: 12,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1a1c16',
-    opacity: 0.6,
-    textTransform: 'uppercase',
+  headerBack: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  value: {
+  headerBackText: {
     fontSize: 18,
-    color: '#1a1c16',
+    color: colors.ink,
   },
-  you: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1f6b4a',
+  error: {
+    color: colors.danger,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+  },
+  hint: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    fontSize: 14,
+    color: colors.muted,
+    lineHeight: 20,
   },
   mono: {
     fontFamily: 'monospace',
-    fontSize: 14,
-    color: '#1a1c16',
+    fontSize: 13,
+    color: colors.ink,
+    paddingHorizontal: 14,
+    paddingTop: 6,
   },
-  status: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1f6b4a',
-  },
-  error: {
-    color: '#8b1e1e',
-  },
-  owes: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8b1e1e',
-  },
-  owed: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1f6b4a',
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 6,
-  },
-  memberActions: {
+  balRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  balRowYou: {
+    backgroundColor: colors.youRow,
+  },
+  balOpen: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0,
+  },
+  balName: {
+    flex: 1,
+    fontWeight: '600',
+    color: colors.ink,
+    textAlign: 'right',
+  },
+  balNameYou: {
+    fontWeight: '700',
+  },
+  amt: {
+    fontFamily: 'monospace',
+    fontWeight: '600',
+    color: colors.ink,
+  },
+  amtPos: {
+    fontFamily: 'monospace',
+    fontWeight: '600',
+    color: colors.accent,
+  },
+  amtNeg: {
+    fontFamily: 'monospace',
+    fontWeight: '600',
+    color: colors.warn,
+  },
+  amtYou: {
+    fontWeight: '700',
+  },
+  chips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.youRow,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  chipText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  balLink: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   input: {
-    marginTop: 8,
+    marginHorizontal: 14,
     borderWidth: 1,
-    borderColor: '#d9d6cc',
+    borderColor: colors.line,
+    backgroundColor: colors.bg,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#1a1c16',
-    backgroundColor: '#fff',
+    color: colors.ink,
+    textAlign: 'center',
   },
-  button: {
+  addMember: {
+    marginHorizontal: 14,
     marginTop: 8,
-    backgroundColor: '#1f6b4a',
-    minHeight: 48,
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignSelf: 'flex-end',
+  },
+  addMemberText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  bump: {
+    marginTop: 24,
+    marginHorizontal: 14,
+    paddingVertical: 10,
     alignItems: 'center',
-    paddingHorizontal: 16,
+  },
+  bumpText: {
+    color: colors.muted,
+    fontSize: 13,
   },
   buttonDisabled: {
     opacity: 0.5,
   },
-  buttonText: {
-    color: '#f2efe8',
-    fontSize: 16,
-    fontWeight: '600',
+  fabBar: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    pointerEvents: 'box-none',
   },
-  smallButton: {
-    backgroundColor: '#1f6b4a',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  fab: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
-  smallButtonText: {
-    color: '#f2efe8',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: '#1f6b4a',
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  secondaryButtonText: {
-    color: '#1f6b4a',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  hint: {
-    marginTop: 16,
+  fabText: {
+    color: colors.accentInk,
     fontSize: 14,
-    color: '#1a1c16',
-    opacity: 0.7,
-    lineHeight: 20,
+    fontWeight: '600',
   },
 });

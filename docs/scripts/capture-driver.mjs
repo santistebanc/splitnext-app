@@ -38,6 +38,10 @@ export function makeDriver(page) {
       page.getByText(label, { exact: true }).filter({ visible: true }).first(),
     );
 
+  /** Hub FAB — accessible name is Add expense, visible label is + Expense. */
+  const tapNewExpense = () =>
+    press(page.getByRole('button', { name: 'Add expense' }).first());
+
   const type = async (placeholder, text) => {
     const field = page.getByPlaceholder(placeholder);
     await press(field);
@@ -50,17 +54,27 @@ export function makeDriver(page) {
   const enter = () =>
     page.mouse.move(VIEWPORT.width / 2, VIEWPORT.height - 120);
 
-  return { beat, press, tap, type, enter };
+  return { beat, press, tap, tapNewExpense, type, enter };
 }
 
-/** The balances block as text — the thing a reload must not change. */
+/** The balances as signed money lines — the thing a reload must not change. */
 export const balancesOf = (body) =>
-  body.split('BALANCES')[1]?.split(/SETTLE UP|EXPENSES/)[0]?.trim() ?? '';
+  body
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => /[+\u2212-]\d+\.\d{2}/.test(l))
+    .join('\n');
 
-/** The settle-up block as text — derived, so a reload must not change it either. */
+/** Settle buttons as text — derived, so a reload must not change them either. */
 export const settleOf = (body) =>
-  body.split('SETTLE UP')[1]?.split('EXPENSES')[0]?.trim() ?? '';
+  body
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => /(^Pay |\bpays )/.test(l) && /\d+\.\d{2}/.test(l))
+    .join('\n');
 
-/** First settle-up row — visible text is `Name → Name`. */
-export const settleRowOf = (page) =>
-  page.getByText(/→/).filter({ visible: true }).first();
+/** First hub balance row — most-negative first. */
+export const balanceRowOf = (page) => page.getByTestId('balance-row').first();
+
+/** First settle button on a member screen. */
+export const settleRowOf = (page) => page.getByTestId('settle-row').first();

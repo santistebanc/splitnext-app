@@ -65,15 +65,15 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 ## F-add-expense — Add expense
 
-**Trigger** — On the hub, the person taps **Add expense**, types an amount, and taps **Add expense** on the form.  
+**Trigger** — On the hub, the person taps **+ Expense**, types an amount, and taps **Add expense** on the form.  
 **Outcome** — The cost is listed immediately against the member who paid, split among whoever was selected (everyone, if they left the defaults), reaches the server on the next push, and the This is me buttons go away — see This is me.
 
-1. `L-hub` opens `L-expenseNew` for that group.
+1. `L-hub` opens `L-expenseNew` for that group from the FAB.
 2. `L-expenseNew` defaults the payer to this device's assumed member and checks every live member as sharing.
 3. The person types an amount; `L-expenseNew` parses it into whole cents and calls `L-addExpense` with that payer and the checked members.
 4. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
 5. `L-participantsForSplit` accepts the checked members only when they are all live and at least one remains; `L-splitEqually` divides the cost across that set, every cent. The split is frozen into the expense: a member added later joins the next expense, not this one.
-6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and the list updates before any network call.
+6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and `L-expenses` will list it; the hub's balances update before any network call.
 7. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
 8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets.
 
@@ -84,29 +84,29 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-hub` reads the group's members and expenses straight from the store, so the list is as fresh as the last sync and needs no network of its own.
 2. `L-balances` credits each payer the full amount and debits each member their share. Because a split always sums to its expense, the nets cancel out across the group.
-3. `L-assumedMember` marks which row is yours; the hub colours a negative red and a positive green.
+3. `L-assumedMember` marks which row is yours; `L-memberLabel` writes You (Name) and signs the net. The hub colours a negative the warn colour and a positive the accent.
 4. Anything arriving later — a wake, a roster pull — lands in the store and the list refolds on its own.
 
 ## F-settle — See who should pay whom
 
 **Trigger** — The hub is on screen and at least one member is not square.  
-**Outcome** — The fewest transfers that zero every net that can be settled, with this device's own member marked. The list does not move money; a tap opens the form for that transfer and does not record it.
+**Outcome** — Opening a member who owes shows the transfers they would pay. The list does not move money; a tap opens the form for that transfer and does not record it.
 
 1. `L-hub` already has the nets from `L-balances`, so settle-up needs no network of its own.
 2. `L-settle` drops members at zero, partitions the rest into as many zero-sum subgroups as exist, and pairs poorest with richest inside each. Two devices holding the same nets list the same transfers.
-3. `L-hub` shows each transfer under **Settle up**, marking You the same way the balances do. Tapping a row pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
-4. When every net is already 0 — or nothing has been spent — the section is absent.
+3. Tapping a balance row opens `L-member`. `L-settlementsForMember` keeps only that person's outgoing transfers. Each button pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
+4. When that member has no outgoing transfer — they are square, or only owed — the settle block is absent.
 
 ## F-settle-record — Record a suggested transfer
 
-**Trigger** — On the hub, the person taps a settle-up row, checks the form, and taps **Add expense**.  
+**Trigger** — On a member screen, the person taps a settle button, checks the form, and taps **Add expense**.  
 **Outcome** — That transfer is recorded as an ordinary expense: the debtor paid, only the creditor shares, what-for is Settlement. The tap itself did not move money.
 
-1. `L-hub` already has the transfers from `L-settle`.
-2. The row's `L-settlementHref` opens `L-expenseNew` with payer, amount in cents, the creditor as the only participant, and what-for `Settlement`.
+1. `L-member` already has the transfers from `L-settlementsForMember`.
+2. The button's `L-settlementHref` opens `L-expenseNew` with payer, amount in cents, the creditor as the only participant, and what-for `Settlement`.
 3. `L-expensePrefill` turns that query into the form's starting values; missing or non-money params would have left the You / everyone defaults, which this path does not hit.
 4. **Add expense** calls `L-addExpense` with that payer and the one-person share — the same write as any other expense.
-5. `L-expenseNew` returns to the hub. `L-balances` and `L-settle` refold from the new expense, so that transfer is gone or the list shrinks.
+5. `L-expenseNew` returns to `L-member`. `L-balances` and `L-settle` refold from the new expense, so that transfer is gone or the list shrinks. `L-expenses` lists the Settlement row.
 
 ## F-bind — This is me
 

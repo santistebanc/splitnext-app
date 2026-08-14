@@ -7,6 +7,8 @@ import {
 import { getGroupStore } from '@/src/store/groupStore';
 import { addExpense, openGroup } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
+import { formatCents, memberLabel } from '@/src/ui/format';
+import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,13 +20,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-
-/** Integer cents → the amount field's decimal text. No float. */
-function formatCents(cents: number): string {
-  const whole = Math.floor(cents / 100);
-  const frac = cents % 100;
-  return `${whole}.${String(frac).padStart(2, '0')}`;
-}
 
 function sharingFromPrefill(
   memberIds: readonly string[],
@@ -117,11 +112,8 @@ export default function NewExpenseScreen() {
     payerId != null &&
     participantIds.length > 0;
 
-  const labelOf = (memberId: string, displayName: string) => {
-    const shown = displayName === '' ? '(unnamed)' : displayName;
-    if (memberId !== assumedMemberId) return shown;
-    return displayName === '' ? 'You (unnamed)' : `You (${displayName})`;
-  };
+  const labelOf = (memberId: string, displayName: string) =>
+    memberLabel(displayName, memberId === assumedMemberId);
 
   const toggleShare = (memberId: string) => {
     setSharing((current) => ({
@@ -159,7 +151,7 @@ export default function NewExpenseScreen() {
         value={amount}
         onChangeText={setAmount}
         placeholder={`Amount (${group.currency_label})`}
-        placeholderTextColor="#8a8d82"
+        placeholderTextColor={colors.muted}
         keyboardType="decimal-pad"
         inputMode="decimal"
       />
@@ -168,7 +160,7 @@ export default function NewExpenseScreen() {
         value={what}
         onChangeText={setWhat}
         placeholder="What for"
-        placeholderTextColor="#8a8d82"
+        placeholderTextColor={colors.muted}
       />
 
       <Text style={styles.label}>Paid by</Text>
@@ -233,21 +225,21 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 12,
     fontWeight: '600',
-    color: '#1a1c16',
+    color: colors.ink,
     opacity: 0.6,
     textTransform: 'uppercase',
   },
   value: {
     fontSize: 18,
-    color: '#1a1c16',
+    color: colors.ink,
   },
   you: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f6b4a',
+    color: colors.accent,
   },
   error: {
-    color: '#8b1e1e',
+    color: colors.danger,
   },
   memberRow: {
     flexDirection: 'row',
@@ -259,16 +251,16 @@ const styles = StyleSheet.create({
   input: {
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#d9d6cc',
+    borderColor: colors.line,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#1a1c16',
-    backgroundColor: '#fff',
+    color: colors.ink,
+    backgroundColor: colors.surface,
   },
   button: {
     marginTop: 8,
-    backgroundColor: '#1f6b4a',
+    backgroundColor: colors.accent,
     minHeight: 48,
     justifyContent: 'center',
     alignItems: 'center',
@@ -278,13 +270,13 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   buttonText: {
-    color: '#f2efe8',
+    color: colors.accentInk,
     fontSize: 16,
     fontWeight: '600',
   },
   hintInline: {
     fontSize: 14,
-    color: '#1a1c16',
+    color: colors.ink,
     opacity: 0.7,
   },
 });
