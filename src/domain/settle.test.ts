@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Balance } from './balances';
-import { suggestSettlements } from './settle';
+import { settlementsForMember, suggestSettlements } from './settle';
 
 const row = (
   member_id: string,
@@ -118,5 +118,54 @@ describe('suggestSettlements', () => {
       row('leftover', 50),
     ];
     expect(suggestSettlements(balances)).toHaveLength(8);
+  });
+});
+
+describe('settlementsForMember', () => {
+  const transfers = [
+    {
+      from_member_id: 'b',
+      to_member_id: 'a',
+      amount_cents: 400,
+      from_display_name: 'Bo',
+      to_display_name: 'Ana',
+    },
+    {
+      from_member_id: 'c',
+      to_member_id: 'a',
+      amount_cents: 200,
+      from_display_name: 'Cy',
+      to_display_name: 'Ana',
+    },
+    {
+      from_member_id: 'e',
+      to_member_id: 'd',
+      amount_cents: 500,
+      from_display_name: 'Ed',
+      to_display_name: 'Di',
+    },
+  ];
+
+  it('is empty when that member has no outgoing transfer', () => {
+    expect(settlementsForMember(transfers, 'a')).toEqual([]);
+  });
+
+  it('returns only transfers that member pays', () => {
+    expect(settlementsForMember(transfers, 'b')).toEqual([transfers[0]]);
+  });
+
+  it('keeps the group list order when one member pays more than once', () => {
+    const twice = [
+      transfers[0],
+      {
+        from_member_id: 'c',
+        to_member_id: 'd',
+        amount_cents: 50,
+        from_display_name: 'Cy',
+        to_display_name: 'Di',
+      },
+      transfers[1],
+    ];
+    expect(settlementsForMember(twice, 'c')).toEqual([twice[1], twice[2]]);
   });
 });

@@ -1,4 +1,5 @@
 import { joinGroup } from '@/src/sync/invite';
+import { colors } from '@/src/ui/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -32,7 +33,7 @@ export default function JoinScreen() {
         <Text style={styles.error}>{error}</Text>
       ) : (
         <>
-          <ActivityIndicator color="#1f6b4a" />
+          <ActivityIndicator color={colors.accent} />
           <Text style={styles.hint}>Joining the group…</Text>
         </>
       )}
@@ -50,11 +51,11 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 16,
-    color: '#1a1c16',
+    color: colors.ink,
     opacity: 0.75,
   },
   error: {
-    color: '#8b1e1e',
+    color: colors.danger,
     fontSize: 16,
   },
 });

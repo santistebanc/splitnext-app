@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0022
+Last updated: slice 0023
 
 ## Direction
 
@@ -25,19 +25,19 @@ Last updated: slice 0022
 ## Capabilities
 
 - Create an empty group on device, mint a per-device access token, persist locally, sync the group entity to the server — [slice 0001](slices/0001-walking-skeleton.md)
-- Open a group hub showing id, name, version, and sync status; bump name via merge + wake + fetch — [slice 0001](slices/0001-walking-skeleton.md)
+- Open a group hub: balance list (You highlighted, Invite / This is me chips), All expenses, FAB + Expense once bound; bump name still there until settings — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
 - Add name-slot members, bind this device to one (assumed member), show You (Name) on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
 - Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version` — [slice 0004](slices/0004-sync-quality-harden.md)
-- Record an expense against the member who paid — integer cents, listed on the hub, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md)
+- Record an expense against the member who paid — integer cents, listed under All expenses, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Choose which member you are, and change that choice, until the group's first expense fixes it — [slice 0005](slices/0005-expense-spine.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
 - Split every expense equally across the members chosen at record time (default everyone live), frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md)
 - Choose who paid and who shares on a dedicated new-expense screen; default is You paid and everyone shares — [slice 0018](slices/0018-expense-form.md)
-- See each member's net position on the hub — paid minus owed, most-negative first, You (Name) marked — [slice 0007](slices/0007-allocations-balances.md)
-- See the fewest transfers that zero those nets, listed under Settle up; derived, identical on every device, never moves money — [slice 0017](slices/0017-settle-up.md)
-- Tap a settle-up row to open the new-expense form already filled for that transfer; saving records it, the tap does not — [slice 0019](slices/0019-settle-prefill.md)
+- See each member's net position on the hub — paid minus owed, most-negative first, You (Name) marked — [slice 0007](slices/0007-allocations-balances.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
+- See the fewest transfers that zero those nets on a member's screen (the ones they would pay); derived, identical on every device, never moves money — [slice 0017](slices/0017-settle-up.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
+- Tap a settle button to open the new-expense form already filled for that transfer; saving records it, the tap does not — [slice 0019](slices/0019-settle-prefill.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
 - Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Worker; CI asserts those same flows against a local Worker without rewriting the clips — [slice 0007](slices/0007-allocations-balances.md) / [slice 0022](slices/0022-capture-ci.md)
 - Work the repo from any clone: the loop is vendored at `.claude/skills/`, `AGENTS.md` is the entry point, CI enforces the gates — [slice 0008](slices/0008-repo-home.md)
@@ -83,7 +83,7 @@ Last updated: slice 0022
 
 **Balance** (derived, never stored) — per live member, Σ paid − Σ owed across live expenses, sorted most-negative first.
 
-**Settlement** (derived, never stored) — the fewest transfers that zero those nets: `{ from_member_id, to_member_id, amount_cents }`. Zero-sum subgroups, then poorest↔richest inside each; unmatched leftover omitted. A hub row opens the new-expense form for that transfer; the tap does not move money (D-067, D-069).
+**Settlement** (derived, never stored) — the fewest transfers that zero those nets: `{ from_member_id, to_member_id, amount_cents }`. Zero-sum subgroups, then poorest↔richest inside each; unmatched leftover omitted. A member screen shows that person's outgoing transfers; a tap opens the new-expense form; the tap does not move money (D-067, D-069, D-073).
 
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
@@ -97,7 +97,9 @@ Last updated: slice 0022
 | --- | --- | --- |
 | `/` | Lobby: create group, paste-to-join, list local group ids; root AppState sync | slice 0001 / 0002 / 0012 |
 | `/join` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 |
-| `/group/[id]` | Hub: members list, add, This is me (open until the first expense), Invite on members who are not You, You (Name); balances (net per member, signed); settle-up list (fewest transfers, You marked, hidden when square, tap opens the form); expenses list + Add expense; bump sync proof; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 |
+| `/group/[id]` | Hub: one balance list (You highlighted; Invite on everyone who isn't You; This is me while binding is open); add member; All expenses →; FAB + Expense once bound; bump leftover; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 |
+| `/group/[id]/member/[memberId]` | Member: net, that person's outgoing settle buttons (tap prefills the form) | slice 0023 |
+| `/group/[id]/expenses` | All expenses, newest first | slice 0023 |
 | `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal among selected; default You paid, everyone shares; query can prefill) | slice 0018 / 0019 |
 
 ## Seams
@@ -111,10 +113,13 @@ Last updated: slice 0022
 - `persistPlugin` — `src/store/persistPlugin.ts` — the platform split for durability
 - `splitEqually` / `participantsForSplit` — `src/domain/split.ts` — vitest
 - `computeBalances` — `src/domain/balances.ts` — vitest
-- `suggestSettlements` — `src/domain/settle.ts` — vitest
+- `suggestSettlements` / `settlementsForMember` — `src/domain/settle.ts` — vitest
+- `formatCents` / `formatMoney` / `memberLabel` — `src/ui/format.ts` — integer cents as decimal text; You (Name)
+- `colors` — `src/ui/theme.ts` — prototype palette
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload. `--assert-only` skips writing clips. CI runs that against a local Worker (`npm run capture:ci`).
+- `balancesOf` / `settleOf` / `settleRowOf` / `balanceRowOf` — `docs/scripts/capture-driver.mjs` — unittest via `npm run test:board` for the extractors; capture drives the locators
 - `parseCaptureArgv` / `contextOptions` — `docs/scripts/capture-opts.mjs` — unittest via `npm run test:board` — whether this run records video
 - `assertLocalOrigin` / `metroEnv` / `isDeployedWorkerUrl` / `webPortOccupied` — `docs/scripts/local-origin.mjs` — unittest via `npm run test:board` — the web bundle talks to the listen origin, not `workers.dev`
 - `jobs` / `job_text` / `secret_names` — `docs/scripts/ci_gates.py` — unittest via `npm run test:board` — `check` stays the four fast gates; the `capture` job has no Cloudflare secrets

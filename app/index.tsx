@@ -1,3 +1,7 @@
+import { listLobbyGroupIds } from '@/src/secrets/tokens';
+import { createGroup } from '@/src/sync/groupSync';
+import { joinGroup } from '@/src/sync/invite';
+import { colors } from '@/src/ui/theme';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -8,9 +12,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { listLobbyGroupIds } from '@/src/secrets/tokens';
-import { createGroup } from '@/src/sync/groupSync';
-import { joinGroup } from '@/src/sync/invite';
 
 export default function LobbyScreen() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function LobbyScreen() {
         accessibilityRole="button"
       >
         {busy ? (
-          <ActivityIndicator color="#f2efe8" />
+          <ActivityIndicator color={colors.accentInk} />
         ) : (
           <Text style={styles.buttonText}>Create group</Text>
         )}
@@ -79,7 +80,7 @@ export default function LobbyScreen() {
         value={invitePaste}
         onChangeText={setInvitePaste}
         placeholder="Paste invite token or join link"
-        placeholderTextColor="#8a8d82"
+        placeholderTextColor={colors.muted}
         autoCapitalize="none"
         autoCorrect={false}
       />
@@ -122,16 +123,16 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#1a1c16',
+    color: colors.ink,
   },
   sub: {
     fontSize: 16,
-    color: '#1a1c16',
+    color: colors.ink,
     opacity: 0.75,
     marginBottom: 12,
   },
   button: {
-    backgroundColor: '#1f6b4a',
+    backgroundColor: colors.accent,
     minHeight: 48,
     paddingHorizontal: 16,
     justifyContent: 'center',
@@ -141,50 +142,50 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#f2efe8',
+    color: colors.accentInk,
     fontSize: 16,
     fontWeight: '600',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d9d6cc',
+    borderColor: colors.line,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#1a1c16',
-    backgroundColor: '#fff',
+    color: colors.ink,
+    backgroundColor: colors.surface,
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: '#1f6b4a',
+    borderColor: colors.accent,
     minHeight: 48,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
   },
   secondaryButtonText: {
-    color: '#1f6b4a',
+    color: colors.accent,
     fontSize: 16,
     fontWeight: '600',
   },
   error: {
-    color: '#8b1e1e',
+    color: colors.danger,
   },
   section: {
     marginTop: 24,
     fontSize: 14,
     fontWeight: '600',
-    color: '#1a1c16',
+    color: colors.ink,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   empty: {
-    color: '#1a1c16',
+    color: colors.ink,
     opacity: 0.6,
   },
   row: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1a1c16',
+    borderBottomColor: colors.ink,
     paddingVertical: 14,
     minHeight: 44,
     justifyContent: 'center',
@@ -192,6 +193,6 @@ const styles = StyleSheet.create({
   rowText: {
     fontFamily: 'monospace',
     fontSize: 13,
-    color: '#1a1c16',
+    color: colors.ink,
   },
 });

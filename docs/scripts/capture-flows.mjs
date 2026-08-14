@@ -33,7 +33,7 @@ const run = promisify(execFile);
 
 import { parseCaptureArgv, contextOptions } from './capture-opts.mjs';
 import { installPointerOverlay } from './capture-overlay.mjs';
-import { VIEWPORT, balancesOf, makeDriver, settleOf, settleRowOf } from './capture-driver.mjs';
+import { VIEWPORT, balanceRowOf, balancesOf, makeDriver, settleOf, settleRowOf } from './capture-driver.mjs';
 import { isDeployedWorkerUrl } from './local-origin.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -163,7 +163,7 @@ const FLOWS = [
     id: 'F-add-expense',
     from: 'bound',
     async run(d) {
-      await d.tap('Add expense');
+      await d.tapNewExpense();
       await d.type(/^Amount/, '10.00');
       await d.type('What for', 'Taxi');
       await d.tap('Add expense');
@@ -176,7 +176,7 @@ const FLOWS = [
     async run(d, page) {
       // The second expense is what makes the balances interesting: uneven
       // cents, and a payer who is up while everyone else is down.
-      await d.tap('Add expense');
+      await d.tapNewExpense();
       await d.type(/^Amount/, '4.50');
       await d.type('What for', 'Coffee');
       await d.tap('Add expense');
@@ -199,20 +199,18 @@ const FLOWS = [
     id: 'F-settle',
     from: 'spent',
     async run(d, page) {
-      const heading = page.getByText(/settle up/i).first();
-      await heading.scrollIntoViewIfNeeded();
-      await d.press(heading);
+      await d.press(balanceRowOf(page));
       await d.beat(1600);
 
       const before = settleOf(await page.innerText('body'));
-      if (!before) problems.push('[F-settle] no settle-up section');
+      if (!before) problems.push('[F-settle] no settle buttons');
       await page.goto(page.url(), { waitUntil: 'networkidle', timeout: 120000 });
       await page.waitForTimeout(4000);
       const after = settleOf(await page.innerText('body'));
-      if (!after) problems.push('[F-settle] no settle-up after reload');
+      if (!after) problems.push('[F-settle] no settle buttons after reload');
       if (before !== after) {
         problems.push(
-          `[F-settle] settle-up changed across a reload:\n  before: ${before}\n  after:  ${after}`,
+          `[F-settle] settle buttons changed across a reload:\n  before: ${before}\n  after:  ${after}`,
         );
       }
 
@@ -229,8 +227,11 @@ const FLOWS = [
     id: 'F-settle-record',
     from: 'spent',
     async run(d, page) {
+      const hubUrl = page.url();
+      await d.press(balanceRowOf(page));
+      await d.beat(800);
       const before = settleOf(await page.innerText('body'));
-      if (!before) problems.push('[F-settle-record] no settle-up section');
+      if (!before) problems.push('[F-settle-record] no settle buttons');
 
       await d.press(settleRowOf(page));
       await d.beat(800);
@@ -243,16 +244,23 @@ const FLOWS = [
       await d.tap('Add expense');
       await d.beat(2400);
 
-      const hub = await page.innerText('body');
-      if (!/Settlement/.test(hub)) {
+      await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
+      await d.beat(800);
+      await d.tap('All expenses →');
+      await d.beat(1200);
+      const listed = await page.innerText('body');
+      if (!/Settlement/.test(listed)) {
         problems.push('[F-settle-record] no Settlement expense listed');
       }
-      if (!/split 1 way/.test(hub)) {
+      if (!/split 1 way/.test(listed)) {
         problems.push('[F-settle-record] settlement was not split 1 way');
       }
-      const after = settleOf(hub);
+      await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
+      await d.press(balanceRowOf(page));
+      await d.beat(800);
+      const after = settleOf(await page.innerText('body'));
       if (before && after === before) {
-        problems.push('[F-settle-record] settle-up list did not change after save');
+        problems.push('[F-settle-record] settle buttons did not change after save');
       }
     },
   },
@@ -317,7 +325,7 @@ async function seed(browser, stage) {
     await page.waitForTimeout(1800);
   }
   if (upTo >= STAGES.indexOf('spent')) {
-    await page.getByText('Add expense', { exact: true }).filter({ visible: true }).first().click();
+    await page.getByRole('button', { name: 'Add expense' }).click();
     await page.waitForTimeout(1200);
     await page.getByPlaceholder(/^Amount/).fill('10.00');
     await page.getByPlaceholder('What for').fill('Taxi');
@@ -395,6 +403,12 @@ async function stills(browser, storageState, hubUrl, number) {
   const page = await context.newPage();
   await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
   await page.waitForTimeout(2000);
+  await page.screenshot({ path: join(SHOTS, `${number}-hub.png`) });
+  console.log('still', `${number}-hub.png`);
+  await balanceRowOf(page).click();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: join(SHOTS, `${number}-member.png`) });
+  console.log('still', `${number}-member.png`);
   await settleRowOf(page).click();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: join(SHOTS, `${number}-settle-prefill.png`) });

@@ -13,19 +13,19 @@
 - **Reopen the binding choice after an expense exists** — "in the future it will be possible to change in other way" — the first expense closes it for good today (D-020); reopening has to decide what happens to expenses already attributed to the old member — area: membership — raised: slice 0005
 
 - **Member rename / soft-delete** — rename any assumed member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap
-- **Expense editor + invariants** — edit an existing expense; uneven / share-based splits with real largest-remainder ranking. Slice 0018 shipped the add form (payer + who shares, equal among selected). Slice 0019 shipped settle-up tap → prefill that form. Edit-after and uneven stay here — area: ledger — raised: bootstrap · *partially delivered in 0018 / 0019*
 - **Member invites** — HTTPS deep link join; joiner-side picker / add-new; claimed exclusive slot. Slice 0012 shipped mint + redeem for a named member (`/join` + lobby paste); app links and group-wide invite stay parked — area: invites — raised: bootstrap · *partially delivered in 0012*
-- **Leave group** — unbind + revoke this device’s access token; member history remains — area: membership — raised: bootstrap
+- **Leave group** — unbind + revoke this device’s access token; member history remains. Prototype: danger on You-detail — area: membership — raised: bootstrap · *appetite: next after 0023*
+- **Kick out** — "Kick out" on member detail in hub-chrome.html — soft-delete a member; never hard-delete while referenced — area: membership — raised: slice 0023 · *appetite: next after 0023*
+- **Expense editor + invariants** — edit an existing expense from the list or a bucket line; uneven / share-based splits. Prototype edits in a sheet; add stays `L-expenseNew` until that chrome earns its keep. Slice 0018 shipped the add form; 0019 shipped settle-up tap → prefill — area: ledger — raised: bootstrap · *partially delivered in 0018 / 0019* · *appetite: next after 0023*
 
 ## Breadth
 
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
 - **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — area: invites — raised: bootstrap
-- **Activity feed** — twelve event types; client-authored; flushed last — area: activity — raised: bootstrap
-- **Member detail** — paid-for / owes-for buckets; leave group — area: membership — raised: bootstrap
-- **All-expenses list** — area: expenses — raised: bootstrap
-- **Group settings** — rename, currency relabel — area: groups — raised: bootstrap
+- **Activity feed** — twelve event types; client-authored; flushed last. Hub-chrome.html puts the list in a burger drawer — area: activity — raised: bootstrap · *appetite: next after 0023*
+- **Member detail** — paid-for / owes-for buckets; leave group. Slice 0023 shipped the member *screen* (net + that person's settle buttons) without the buckets — area: membership — raised: bootstrap · *partially 0023* · *appetite: next*
+- **Group settings** — ⚙ FAB: rename, currency relabel; takes bump off the hub — area: groups — raised: bootstrap · *appetite: next after 0023*
 - **Retention / deletion policy** — area: data — raised: bootstrap
 - **Expense note required vs optional** — area: ux — raised: bootstrap
 - **Close / reopen group UI** — capability rules exist; screens deferred — area: groups — raised: bootstrap
@@ -42,7 +42,11 @@
 - **Import-level dependency view** — a second graph on the board, module to module rather than symbol to symbol; the symbol tree draws call sites only — area: board — raised: slice 0009
 - **Wire-hop edges in the symbol graph** — draw `mergeEntities` → `merge` as a distinct kind of edge so the tree can cross the device/server boundary the way Flows does; today it is not a call and so not an edge — area: board — raised: slice 0009
 - **Lobby index out of Secure Store** — move `lobby_group_ids` to Legend/SQLite; Secure Store for secrets only — area: client — raised: slice 0001
-- **Design system application** — locked palette/components in blueprint; apply across screens — area: ui — raised: bootstrap
+- **Design system application** — locked palette/components in blueprint; apply across screens. Slice 0023 extracts prototype tokens and restacks the hub; lobby / join / expense-form layouts stay — area: ui — raised: bootstrap · *partially 0023*
+- **Activity burger drawer** — "Burger opens Activity drawer (full scrollable list)" from hub-chrome.html — area: ui — raised: slice 0023 · *appetite: next after 0023*
+- **Invite only if unjoined** — prototype shows Invite only when `joined: false`; we have no joined signal, so Invite stays on every non-You row — area: ui — raised: slice 0023 · *appetite: next after 0023*
+- **Invite sheet chrome** — prototype copy/share sheet; today the join link lands on the hub after mint — area: ui — raised: slice 0023 · *appetite: next after 0023*
+- **Expense editor as a sheet** — hub-chrome.html adds/edits in a bottom sheet; add stays the dedicated `L-expenseNew` screen — area: ui — raised: slice 0023 · *appetite: next after 0023*
 - **Debug telemetry** — crash reporter; tags group_id + device_user_id only — area: observability — raised: bootstrap
 - **Handoff checklist** — "Final spec section outline and the acceptance checklist proving the design is implementable" — area: meta — raised: bootstrap
 
@@ -51,6 +55,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Wake socket contract** — delivered in [slice 0021](slices/0021-wake-contract.md); auth + tip after merge. Driving `startWakeSubscription` stays parked.
-
 - **Capture asserts in CI** — delivered in [slice 0022](slices/0022-capture-ci.md); local Worker + `--assert-only`. Failure taxonomy and SQLite-on-web stay parked.
+
+- **Member-first hub chrome** — delivered in [slice 0023](slices/0023-member-first-hub-chrome.md); balance list, member settle, All expenses, FAB. Buckets / activity / settings / leave stay parked.

@@ -90,6 +90,14 @@ export function suggestSettlements(balances: readonly Balance[]): Settlement[] {
   );
 }
 
+/** The transfers this member pays — what their screen offers to record. */
+export function settlementsForMember(
+  settlements: readonly Settlement[],
+  memberId: string,
+): Settlement[] {
+  return settlements.filter((s) => s.from_member_id === memberId);
+}
+
 function splitComponents(
   mask: number,
   sum: Int32Array,
