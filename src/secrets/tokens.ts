@@ -1,4 +1,4 @@
-import { getSecret, setSecret } from './secureStorage';
+import { deleteSecret, getSecret, setSecret } from './secureStorage';
 
 /** Secret keys allow only [A-Za-z0-9._-]. UUIDs use hyphens; no colons. */
 function tokenKey(groupId: string): string {
@@ -35,4 +35,13 @@ export async function addLobbyGroupId(groupId: string): Promise<void> {
   const ids = await listLobbyGroupIds();
   if (ids.includes(groupId)) return;
   await setSecret(LOBBY_KEY, JSON.stringify([groupId, ...ids]));
+}
+
+export async function removeLobbyGroupId(groupId: string): Promise<void> {
+  const ids = await listLobbyGroupIds();
+  await setSecret(LOBBY_KEY, JSON.stringify(ids.filter((id) => id !== groupId)));
+}
+
+export async function deleteAccessToken(groupId: string): Promise<void> {
+  await deleteSecret(tokenKey(groupId));
 }

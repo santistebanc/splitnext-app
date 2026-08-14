@@ -12,6 +12,7 @@ import {
   listRoster,
   mergeEntities,
   mintInviteRemote,
+  leaveGroupRemote,
 } from '@/src/api/edge';
 import { wakeUrl } from '@/src/sync/wakeUrl';
 import type { MemberEntity } from '@/src/types/group';
@@ -246,6 +247,55 @@ describe('local Worker HTTP contract', () => {
       version: 1,
       deleted_at: null,
     });
+  });
+});
+
+describe('local Worker leave-group contract', () => {
+  it('revokes the token so a later fetch is rejected', async () => {
+    const group = await seededGroup();
+    const left = await leaveGroupRemote({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+    });
+    expect(left).toEqual({ ok: true });
+
+    await expect(
+      fetchEntity({
+        group_id: group.groupId,
+        device_user_id: group.deviceUserId,
+        access_token: group.created.access_token,
+        entity_type: 'groups',
+        id: group.groupId,
+      }),
+    ).rejects.toThrow(/unauthorized/);
+  });
+
+  it('is idempotent: a second leave is still ok', async () => {
+    const group = await seededGroup();
+    await leaveGroupRemote({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+    });
+    await expect(
+      leaveGroupRemote({
+        group_id: group.groupId,
+        device_user_id: group.deviceUserId,
+        access_token: group.created.access_token,
+      }),
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it('rejects a missing token', async () => {
+    const group = await seededGroup();
+    await expect(
+      leaveGroupRemote({
+        group_id: group.groupId,
+        device_user_id: group.deviceUserId,
+        access_token: '',
+      }),
+    ).rejects.toThrow(/unauthorized/);
   });
 });
 

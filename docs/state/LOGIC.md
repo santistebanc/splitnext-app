@@ -27,7 +27,7 @@ Screens and routes the person touches.
 | --- | --- | --- | --- | --- |
 | L-lobby | Lobby screen | Screen | `app/index.tsx` | The first screen: lists every group this device knows, offers Create group or Join group (paste a token), and opens one into the hub. |
 | L-hub | Group hub | Screen | `app/group/[id]/index.tsx` | One group's home: a list of members as balances (You highlighted), Invite and This is me as chips, add a member, All expenses, and a FAB to record a cost; bump is a muted leftover until settings; surfaces the last sync error. |
-| L-member | Member screen | Screen | `app/group/[id]/member/[memberId].tsx` | One member's screen: what they paid for, what they owe for, their net, and the settle transfers they would pay, each opening the new-expense form for that transfer. |
+| L-member | Member screen | Screen | `app/group/[id]/member/[memberId].tsx` | One member's screen: what they paid for, what they owe for, their net, the settle transfers they would pay, and Leave group on You (after a confirm). |
 | L-expenses | All expenses | Screen | `app/group/[id]/expenses.tsx` | The group's expense list, pushed from the hub, newest first. |
 | L-expenseNew | New expense | Screen | `app/group/[id]/expense/new.tsx` | Records a cost: who paid, how much, what for, and who shares equally among the selected members. Defaults to You paid and everyone shares, unless the query names a prefill. |
 | L-join | Join screen | Screen | `app/join.tsx` | Redeems a `/join?token=` invite, stores the new access token, and opens the hub already bound to the named member. |
@@ -42,6 +42,7 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-shouldAcceptVersion | `shouldAcceptVersion` | Pure | `src/domain/version.ts` | Decides who wins when two copies of an entity disagree: the incoming one, but only if its version number is strictly higher. |
 | L-sortByFlushOrder | `sortByFlushOrder` | Pure | `src/domain/version.ts` | Orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it. |
 | L-assumedMember | `assumedMemberIdFromBinds` | Pure | `src/domain/assumedMember.ts` | Answers "which member am I in this group?" by finding this device's live bind. |
+| L-tombstoneBind | `tombstoneBind` | Pure | `src/domain/bind.ts` | Soft-deletes a live bind at the next version so the member slot remains and this device is no longer that person. |
 | L-bindingOpen | `bindingIsOpen` | Pure | `src/domain/assumedMember.ts` | Answers "can this device still say which member it is?" — yes until the group's first live expense, which is what shows or hides the This is me button. |
 | L-splitEqually | `splitEqually` | Pure | `src/domain/split.ts` | Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. One participant receives the whole amount. |
 | L-participantsForSplit | `participantsForSplit` | Pure | `src/domain/split.ts` | Answers who shares an expense: the selected members, but only if every one of them is live and at least one remains. A missing member is refused, not dropped. |
@@ -63,6 +64,7 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-addMember | `addMember` | Job | `src/sync/groupSync.ts` | Adds a person to the group locally, then sends them to the server. |
 | L-addExpense | `addExpense` | Job | `src/sync/groupSync.ts` | Records a cost: refuses anything that is not a positive whole number of cents, splits it equally across the members selected at record time (everyone live, if the form did not narrow it), writes it locally against the paying member, then sends it. The payer need not be in the split. |
 | L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. Refuses once the group has an expense, or if the member is gone. |
+| L-leaveGroup | `leaveGroup` | Job | `src/sync/leave.ts` | Leaves a group: tombstones this device's bind and flushes it while the token still works, revokes the token, drops it locally, and takes the group off the lobby. |
 | L-mintInvite | `mintInvite` | Job | `src/sync/invite.ts` | Asks the server for a one-use invite bound to one member and returns the plaintext secret to copy. |
 | L-inviteShare | `inviteShareText` | Pure | `src/sync/inviteShareText.ts` | Turns that secret into what you copy: the raw token on native, a `/join?token=` URL on web. |
 | L-joinGroup | `joinGroup` | Job | `src/sync/invite.ts` | Redeems an invite: stores the new access token, writes the returned bind locally, and adds the group to the lobby. The hub then opens and subscribes — join itself is a spinner that unmounts. |
@@ -75,17 +77,17 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-applyRemoteFetch | `applyRemoteFetch` | Job | `src/sync/inbound.ts` | Fetches one entity from the server and commits it, clearing or setting the group's error. |
 | L-pullRoster | `pullRoster` | Job | `src/sync/inbound.ts` | Fetches every member, bind and expense of a group and commits them one by one, so the group catches up in a single call. |
 | L-wakeCatchUp | `shouldCatchUpOnStatus` / `shouldReplaceSubscription` / `nextReconnectDelayMs` | Pure | `src/sync/wakePolicy.ts` | Answers whether a wake-socket status change means this group missed wakes — only when the socket is `OPEN` again after `ERROR` or `CLOSED`, not on the first connect — whether a dead socket should be replaced so the hub can listen, and how long to wait before the next retry (1s, doubling, capped at 30s). |
-| L-wakeSub | `startWakeSubscription` / `wakeUrl` | Network | `src/sync/wake.ts` | Opens a hibernating WebSocket on the group's Durable Object; a wake says only what changed, and this fetches that one entity. If the socket drops, it retries with backoff and then runs that group's full catch-up. A close of a socket already replaced is ignored, so error-then-close is one retry. One live socket per group. The URL carries the token on the query string because RN `WebSocket` cannot set headers. |
+| L-wakeSub | `startWakeSubscription` / `stopWakeSubscription` / `wakeUrl` | Network | `src/sync/wake.ts` | Opens a hibernating WebSocket on the group's Durable Object; a wake says only what changed, and this fetches that one entity. If the socket drops, it retries with backoff and then runs that group's full catch-up. A close of a socket already replaced is ignored, so error-then-close is one retry. Leave closes the socket and does not retry. One live socket per group. The URL carries the token on the query string because RN `WebSocket` cannot set headers. |
 | L-foreground | `useLobbyForegroundSync` | Job | `src/sync/appForegroundSync.ts` | Runs the lobby-wide catch-up on mount and every time the app returns to the foreground. |
 | L-syncError | `syncError` / `coerceSyncError` | Pure | `src/sync/syncErrors.ts` | Gives every failure a code, a message and a timestamp, and normalises older stored errors into that shape. |
 | L-getGroupStore | `getGroupStore` | State | `src/store/groupStore.ts` | Hands out the one observable state object per group — group, members, binds, expenses, sync status, pending queue — persisted so it survives restarts, and repaired on open by `L-normalizeTimestamps`. |
 | L-initLocalGroup | `initLocalGroup` | State | `src/store/groupStore.ts` | Seeds a group into its store before a sync fills the rest — used on create and on join. |
 | L-deviceUser | `getOrCreateDeviceUserId` | State | `src/device/deviceUser.ts` | The identity of this install: one id, generated once and kept in the secret store, since there are no accounts. |
-| L-secureStorage | `getSecret` / `setSecret` | State | `src/secrets/secureStorage.ts` | The one door to the device's secrets. Native goes to the OS keychain; the web build swaps in `localStorage`, which is why nothing wider than a per-group token belongs here. |
+| L-secureStorage | `getSecret` / `setSecret` / `deleteSecret` | State | `src/secrets/secureStorage.ts` | The one door to the device's secrets. Native goes to the OS keychain; the web build swaps in `src/secrets/secureStorage.web.ts` (`localStorage`), which is why nothing wider than a per-group token belongs here. |
 | L-normalizeTimestamps | `normalizePersistedTimestamps` | Pure | `src/store/timestamps.ts` | Undoes the `Date` objects that reloading a saved store invents in place of our timestamp strings, so a reopened group holds exactly what a freshly synced one does. |
 | L-persistPlugin | `persistPlugin` | State | `src/store/persistPlugin.ts` | Where a store survives a restart: SQLite on a device, `localStorage` on web, so the browser target needs no wasm. |
-| L-accessToken | `getAccessToken` / `saveAccessToken` | State | `src/secrets/tokens.ts` | Keeps each group's capability token in the secret store — holding it is what proves access to that group. |
-| L-lobbyIds | `listLobbyGroupIds` / `addLobbyGroupId` | State | `src/secrets/tokens.ts` | The device's list of known group ids, which is what the lobby and the catch-up sync iterate over. Temporary home. |
+| L-accessToken | `getAccessToken` / `saveAccessToken` / `deleteAccessToken` | State | `src/secrets/tokens.ts` | Keeps each group's capability token in the secret store — holding it is what proves access to that group; deleting it is how leave drops the secret. |
+| L-lobbyIds | `listLobbyGroupIds` / `addLobbyGroupId` / `removeLobbyGroupId` | State | `src/secrets/tokens.ts` | The device's list of known group ids, which is what the lobby and the catch-up sync iterate over. Temporary home. |
 
 ## Edge
 
@@ -99,6 +101,7 @@ The client side of the wire — HTTP calls out of the device.
 | L-edgeRoster | `listRoster` | Network | `src/api/edge.ts` | Asks for a group's whole roster — members, binds and expenses — in one request. |
 | L-edgeMintInvite | `mintInviteRemote` | Network | `src/api/edge.ts` | Asks the server to mint a one-use invite for one member of a group this device already belongs to. |
 | L-edgeJoin | `joinGroupRemote` | Network | `src/api/edge.ts` | Redeems an invite secret for a new access token and the bind that names who this device is. |
+| L-edgeLeave | `leaveGroupRemote` | Network | `src/api/edge.ts` | Asks the server to revoke this device's access token for a group. |
 
 ## Server
 
@@ -109,6 +112,7 @@ The Cloudflare Worker and the group Durable Object.
 | L-efCreate | `handleCreateGroup` | Endpoint | `workers/src/index.ts` | Creates the group row in that group's Durable Object and issues an access token, storing only its hash in D1. |
 | L-efMintInvite | `handleMintInvite` | Endpoint | `workers/src/index.ts` | Issues a 7-day one-use invite for one member, storing only the hash in D1, after a capability check. |
 | L-efJoin | `handleJoin` | Endpoint | `workers/src/index.ts` | Redeems a live invite into a new access token and a v1 bind for the named member, then wakes the group. |
+| L-efLeave | `handleLeave` | Endpoint | `workers/src/index.ts` | Revokes this device's access token after matching group and device (`accessIdentifies`), including when the token is already revoked — that is still success. The member and expenses are not touched. |
 | L-efMerge | `mergeOne` | Endpoint | `workers/src/merge.ts` | The write path: applies each pushed item if its version wins, reports accepted or rejected per item; the Durable Object then wakes the group's other devices. |
 | L-efFetch | `fetchEntity` | Endpoint | `workers/src/groupObject.ts` | Returns one entity to a caller whose token proves access to that group. |
 | L-efRoster | `listRoster` | Endpoint | `workers/src/groupObject.ts` | Returns every member, bind and expense of a group in one response. |

@@ -6,15 +6,24 @@ export type AccessRow = {
   revoked_at: string | null;
 };
 
+export function accessIdentifies(
+  row: AccessRow | null,
+  groupId: string,
+  deviceUserId: string,
+): row is AccessRow {
+  if (!row) return false;
+  if (row.group_id !== groupId) return false;
+  if (row.device_user_id !== deviceUserId) return false;
+  return true;
+}
+
 export function accessAllows(
   row: AccessRow | null,
   groupId: string,
   deviceUserId: string,
 ): boolean {
-  if (!row) return false;
+  if (!accessIdentifies(row, groupId, deviceUserId)) return false;
   if (row.revoked_at) return false;
-  if (row.group_id !== groupId) return false;
-  if (row.device_user_id !== deviceUserId) return false;
   return true;
 }
 

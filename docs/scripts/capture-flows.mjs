@@ -278,6 +278,25 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-leave',
+    from: 'spent',
+    async run(d, page) {
+      await d.tap('You (Ana)');
+      await d.beat(1000);
+      await d.press(page.getByTestId('leave'));
+      await d.beat(800);
+      await d.press(page.getByTestId('leave-confirm-ok'));
+      await d.beat(2800);
+      const body = await page.innerText('body');
+      if (!/Create group/.test(body)) {
+        problems.push('[F-leave] did not land on the lobby');
+      }
+      if (/[0-9a-f]{8}-[0-9a-f]{4}-/.test(body)) {
+        problems.push('[F-leave] group still listed on the lobby');
+      }
+    },
+  },
+  {
     id: 'F-bump',
     from: 'bound',
     async run(d) {
@@ -418,6 +437,18 @@ async function stills(browser, storageState, hubUrl, number) {
   await page.waitForTimeout(2000);
   await page.screenshot({ path: join(SHOTS, `${number}-hub.png`) });
   console.log('still', `${number}-hub.png`);
+  if (number === '0025') {
+    await page.getByText('You (Ana)', { exact: true }).first().click();
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: join(SHOTS, `${number}-you.png`) });
+    console.log('still', `${number}-you.png`);
+    await page.getByTestId('leave').click();
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: join(SHOTS, `${number}-leave-confirm.png`) });
+    console.log('still', `${number}-leave-confirm.png`);
+    await context.close();
+    return;
+  }
   await balanceRowOf(page).click();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: join(SHOTS, `${number}-member.png`) });

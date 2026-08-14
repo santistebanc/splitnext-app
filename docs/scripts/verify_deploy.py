@@ -36,6 +36,7 @@ FUNCTIONS = [
     "list-roster",
     "mint-invite",
     "join-group",
+    "leave-group",
 ]
 
 

@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0024
+Last updated: slice 0025
 
 ## Direction
 
@@ -39,6 +39,7 @@ Last updated: slice 0024
 - See a member's expenses as paid-for and owe-for lines that add up to their net — [slice 0024](slices/0024-member-expense-buckets.md)
 - See the fewest transfers that zero those nets on a member's screen (the ones they would pay); derived, identical on every device, never moves money — [slice 0017](slices/0017-settle-up.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Tap a settle button to open the new-expense form already filled for that transfer; saving records it, the tap does not — [slice 0019](slices/0019-settle-prefill.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
+- Leave a group from You-detail: this device is unbound and its token is revoked; the member and expenses stay — [slice 0025](slices/0025-leave-group.md)
 - Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
 - Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Worker; CI asserts those same flows against a local Worker without rewriting the clips — [slice 0007](slices/0007-allocations-balances.md) / [slice 0022](slices/0022-capture-ci.md)
 - Work the repo from any clone: the loop is vendored at `.claude/skills/`, `AGENTS.md` is the entry point, CI enforces the gates — [slice 0008](slices/0008-repo-home.md)
@@ -62,7 +63,7 @@ Last updated: slice 0024
 - Secrets — `expo-secure-store` behind `src/secrets/secureStorage.ts` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary). Web has no keychain and falls back to `localStorage`
 - Group store — SQLite Durable Object per `group_id` — `groups`, `members`, `binds`, `expenses` (allocations as JSON text); one-threaded merge, no race
 - Token index — D1 `splitnext-index` — `access_tokens`, `invites` only (`token_hash → group_id`)
-- Server API — Worker routes `create-group`, `merge`, `fetch-entity`, `list-roster`, `mint-invite`, `join-group` — capability hash-check then the named Durable Object; each answers `GET ?health=1` with the deploy sha (L-efHealth). `npm test` boots the same Worker locally and drives those routes through `src/api/edge.ts` (D-070), plus the wake WebSocket wire (D-071)
+- Server API — Worker routes `create-group`, `merge`, `fetch-entity`, `list-roster`, `mint-invite`, `join-group`, `leave-group` — capability hash-check then the named Durable Object; each answers `GET ?health=1` with the deploy sha (L-efHealth). `npm test` boots the same Worker locally and drives those routes through `src/api/edge.ts` (D-070), plus the wake WebSocket wire (D-071)
 - Wake channel — hibernating WebSocket on the group Durable Object at `/wake/:groupId`; payload is tip only; a drop is retried with backoff, then `OPEN` after `ERROR` / `CLOSED` runs the same catch-up as open (D-054, D-066); joiners subscribe on the hub, not the join spinner. Auth + tip shape are contract-tested against a local Worker.
 - Hosting — Cloudflare Worker `splitnext` (`splitnext.santistebanc94.workers.dev`)
 - Server deploy — `.github/workflows/workers.yml` on push to `main` or `slice/**`: D1 migrations apply, `wrangler deploy` with `DEPLOY_SHA`, verify each health endpoint; last green run wins; never by hand, never a wipe — D-052, D-058
@@ -101,7 +102,7 @@ Last updated: slice 0024
 | `/` | Lobby: create group, paste-to-join, list local group ids; root AppState sync | slice 0001 / 0002 / 0012 |
 | `/join` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 |
 | `/group/[id]` | Hub: one balance list (You highlighted; Invite on everyone who isn't You; This is me while binding is open); add member; All expenses →; FAB + Expense once bound; bump leftover; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 |
-| `/group/[id]/member/[memberId]` | Member: paid-for / owe-for buckets, net, that person's outgoing settle buttons (tap prefills the form) | slice 0023 / 0024 |
+| `/group/[id]/member/[memberId]` | Member: paid-for / owe-for buckets, net, settle buttons, Leave group on You | slice 0023 / 0024 / 0025 |
 | `/group/[id]/expenses` | All expenses, newest first | slice 0023 |
 | `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal among selected; default You paid, everyone shares; query can prefill) | slice 0018 / 0019 |
 
@@ -110,9 +111,10 @@ Last updated: slice 0024
 - `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest
 - `shouldAttemptFlush` / `queueAfterMergeResults` — `src/sync/queuePolicy.ts` — vitest
 - `assumedMemberIdFromBinds` / `bindingIsOpen` — `src/domain/assumedMember.ts` — vitest
-- Worker routes behind `src/api/edge.ts` — vitest against a local Worker (`createTestHarness` + D1 migrations), never `workers.dev` — the HTTP capability boundary. Wake WebSocket at `/wake/:groupId` is the same harness: auth + tip after merge.
+- `tombstoneBind` — `src/domain/bind.ts` — vitest — soft-delete a live bind at the next version
+- Worker routes behind `src/api/edge.ts` — vitest against a local Worker (`createTestHarness` + D1 migrations), never `workers.dev` — the HTTP capability boundary. Wake WebSocket at `/wake/:groupId` is the same harness: auth + tip after merge. `leave-group` revokes the token (D-075).
 - `syncError` / `coerceSyncError` — `src/sync/syncErrors.ts` — vitest
-- `getSecret` / `setSecret` — `src/secrets/secureStorage.ts` — the platform split for secrets; a fake here replaces the keychain
+- `getSecret` / `setSecret` / `deleteSecret` — `src/secrets/secureStorage.ts` — the platform split for secrets; a fake here replaces the keychain
 - `persistPlugin` — `src/store/persistPlugin.ts` — the platform split for durability
 - `splitEqually` / `participantsForSplit` — `src/domain/split.ts` — vitest
 - `computeBalances` — `src/domain/balances.ts` — vitest

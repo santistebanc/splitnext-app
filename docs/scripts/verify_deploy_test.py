@@ -37,6 +37,7 @@ class Evaluate(unittest.TestCase):
                 "list-roster",
                 "mint-invite",
                 "join-group",
+                "leave-group",
             ],
         )
 
