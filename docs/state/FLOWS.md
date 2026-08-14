@@ -90,12 +90,12 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 ## F-settle — See who should pay whom
 
 **Trigger** — The hub is on screen and at least one member is not square.  
-**Outcome** — Opening a member who owes shows the transfers they would pay. The list does not move money; a tap opens the form for that transfer and does not record it.
+**Outcome** — Opening a member who owes shows what they paid for, what they owe for, and the transfers they would pay. The list does not move money; a tap opens the form for that transfer and does not record it.
 
 1. `L-hub` already has the nets from `L-balances`, so settle-up needs no network of its own.
 2. `L-settle` drops members at zero, partitions the rest into as many zero-sum subgroups as exist, and pairs poorest with richest inside each. Two devices holding the same nets list the same transfers.
-3. Tapping a balance row opens `L-member`. `L-settlementsForMember` keeps only that person's outgoing transfers. Each button pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
-4. When that member has no outgoing transfer — they are square, or only owed — the settle block is absent.
+3. Tapping a balance row opens `L-member`. `L-memberBuckets` lists that person's expenses as paid-for and owe-for lines that sum to their net. `L-settlementsForMember` keeps only that person's outgoing transfers. Each button pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
+4. When that member has no outgoing transfer — they are square, or only owed — the settle block is absent. Empty buckets say **None**.
 
 ## F-settle-record — Record a suggested transfer
 
@@ -106,7 +106,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 2. The button's `L-settlementHref` opens `L-expenseNew` with payer, amount in cents, the creditor as the only participant, and what-for `Settlement`.
 3. `L-expensePrefill` turns that query into the form's starting values; missing or non-money params would have left the You / everyone defaults, which this path does not hit.
 4. **Add expense** calls `L-addExpense` with that payer and the one-person share — the same write as any other expense.
-5. `L-expenseNew` returns to `L-member`. `L-balances` and `L-settle` refold from the new expense, so that transfer is gone or the list shrinks. `L-expenses` lists the Settlement row.
+5. `L-expenseNew` returns to `L-member`. `L-balances`, `L-memberBuckets` and `L-settle` refold from the new expense, so that transfer is gone or the list shrinks and the Settlement line appears in a bucket. `L-expenses` lists the Settlement row.
 
 ## F-bind — This is me
 

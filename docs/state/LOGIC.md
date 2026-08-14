@@ -27,7 +27,7 @@ Screens and routes the person touches.
 | --- | --- | --- | --- | --- |
 | L-lobby | Lobby screen | Screen | `app/index.tsx` | The first screen: lists every group this device knows, offers Create group or Join group (paste a token), and opens one into the hub. |
 | L-hub | Group hub | Screen | `app/group/[id]/index.tsx` | One group's home: a list of members as balances (You highlighted), Invite and This is me as chips, add a member, All expenses, and a FAB to record a cost; bump is a muted leftover until settings; surfaces the last sync error. |
-| L-member | Member screen | Screen | `app/group/[id]/member/[memberId].tsx` | One member's screen: their net, and the settle transfers they would pay, each opening the new-expense form for that transfer. |
+| L-member | Member screen | Screen | `app/group/[id]/member/[memberId].tsx` | One member's screen: what they paid for, what they owe for, their net, and the settle transfers they would pay, each opening the new-expense form for that transfer. |
 | L-expenses | All expenses | Screen | `app/group/[id]/expenses.tsx` | The group's expense list, pushed from the hub, newest first. |
 | L-expenseNew | New expense | Screen | `app/group/[id]/expense/new.tsx` | Records a cost: who paid, how much, what for, and who shares equally among the selected members. Defaults to You paid and everyone shares, unless the query names a prefill. |
 | L-join | Join screen | Screen | `app/join.tsx` | Redeems a `/join?token=` invite, stores the new access token, and opens the hub already bound to the named member. |
@@ -46,6 +46,7 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-splitEqually | `splitEqually` | Pure | `src/domain/split.ts` | Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. One participant receives the whole amount. |
 | L-participantsForSplit | `participantsForSplit` | Pure | `src/domain/split.ts` | Answers who shares an expense: the selected members, but only if every one of them is live and at least one remains. A missing member is refused, not dropped. |
 | L-balances | `computeBalances` | Pure | `src/domain/balances.ts` | Works out what each member is up or down overall — what they paid minus what they owe — most-negative first. |
+| L-memberBuckets | `memberBuckets` | Pure | `src/domain/buckets.ts` | Lists one member's expenses as paid-for and owe-for lines — one line per expense, amount equal to their net on that expense — so the two buckets add up to their balance. |
 | L-settle | `suggestSettlements` | Pure | `src/domain/settle.ts` | Turns those nets into the fewest transfers that zero everyone who can be settled, identical on every device. |
 | L-settlementsForMember | `settlementsForMember` | Pure | `src/domain/settle.ts` | Picks the transfers one member would pay, in the same order the group list had them, so a member screen does not invent a different settle-up. |
 | L-theme | `colors` | Pure | `src/ui/theme.ts` | The prototype palette every screen paints with, so a hex is not invented per file. |

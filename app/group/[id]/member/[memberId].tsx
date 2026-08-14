@@ -1,6 +1,10 @@
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
+import {
+  memberBuckets,
+  type BucketLine,
+} from '@/src/domain/buckets';
 import { settlementHref } from '@/src/domain/expensePrefill';
 import {
   settlementsForMember,
@@ -14,6 +18,15 @@ import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+function bucketLineLabel(
+  line: BucketLine,
+  nameOf: (id: string) => string,
+): string {
+  const desc = line.description || '(no description)';
+  const names = line.counterpart_ids.map(nameOf);
+  return names.length > 0 ? `${desc} · ${names.join(' + ')}` : desc;
+}
 
 export default function MemberScreen() {
   const { id, memberId } = useLocalSearchParams<{
@@ -47,6 +60,9 @@ export default function MemberScreen() {
 
   const member = (members ?? {})[targetId];
   const isYou = targetId === assumedMemberId;
+  const subjectName = member
+    ? memberLabel(member.display_name, false)
+    : '(unnamed)';
   const title = member
     ? memberLabel(member.display_name, isYou)
     : '(unnamed)';
@@ -64,12 +80,37 @@ export default function MemberScreen() {
     () => settlementsForMember(suggestSettlements(balances), targetId),
     [balances, targetId],
   );
+  const buckets = useMemo(
+    () => memberBuckets(targetId, members ?? {}, expenses ?? {}),
+    [targetId, members, expenses],
+  );
 
-  const nameOf = (id: string, displayName: string) =>
-    memberLabel(displayName, id === assumedMemberId);
+  const nameOf = (id: string) => {
+    const m = (members ?? {})[id];
+    return memberLabel(m?.display_name ?? '', id === assumedMemberId);
+  };
+
+  const currency = group.currency_label;
+  const paidHeading = isYou ? 'You paid for' : `${subjectName} paid for`;
+  const owesHeading = isYou ? 'You owe for' : `${subjectName} owes for`;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Bucket
+        testID="paid-for"
+        heading={paidHeading}
+        lines={buckets.paidFor}
+        currency={currency}
+        nameOf={nameOf}
+      />
+      <Bucket
+        testID="owes-for"
+        heading={owesHeading}
+        lines={buckets.owesFor}
+        currency={currency}
+        nameOf={nameOf}
+      />
+
       <View style={styles.netRow}>
         <Text style={styles.netLabel}>Net balance</Text>
         <Text
@@ -78,20 +119,20 @@ export default function MemberScreen() {
             net > 0 ? styles.amtPos : net < 0 ? styles.amtNeg : null,
           ]}
         >
-          {formatMoney(net, group.currency_label, true)}
+          {formatMoney(net, currency, true)}
         </Text>
       </View>
 
       {transfers.length > 0 ? (
-        <View testID="settle">
+        <View testID="settle" style={styles.settle}>
           <Text style={styles.sec}>Settle</Text>
           <Text style={styles.sub}>
             Suggested efficient transfers for the group
           </Text>
           {transfers.map((s, i) => {
-            const amount = formatMoney(s.amount_cents, group.currency_label);
-            const to = nameOf(s.to_member_id, s.to_display_name);
-            const from = nameOf(s.from_member_id, s.from_display_name);
+            const amount = formatMoney(s.amount_cents, currency);
+            const to = nameOf(s.to_member_id);
+            const from = nameOf(s.from_member_id);
             const label = isYou
               ? `Pay ${amount} to ${to}`
               : `${from} pays ${amount} to ${to}`;
@@ -114,11 +155,82 @@ export default function MemberScreen() {
   );
 }
 
+function Bucket({
+  testID,
+  heading,
+  lines,
+  currency,
+  nameOf,
+}: {
+  testID: string;
+  heading: string;
+  lines: BucketLine[];
+  currency: string;
+  nameOf: (id: string) => string;
+}) {
+  return (
+    <View testID={testID} style={styles.bucket}>
+      <Text style={styles.sec}>{heading}</Text>
+      {lines.length === 0 ? (
+        <Text style={styles.empty}>None</Text>
+      ) : (
+        lines.map((line) => {
+          const left = bucketLineLabel(line, nameOf);
+          return (
+            <View key={line.expense_id} testID="bucket-line" style={styles.line}>
+              <Text style={styles.lineLeft}>{left}</Text>
+              <Text
+                style={[
+                  styles.lineAmt,
+                  line.amount_cents > 0
+                    ? styles.amtPos
+                    : line.amount_cents < 0
+                      ? styles.amtNeg
+                      : null,
+                ]}
+              >
+                {formatMoney(line.amount_cents, currency, true)}
+              </Text>
+            </View>
+          );
+        })
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     padding: 14,
     paddingBottom: 48,
     backgroundColor: colors.bg,
+  },
+  bucket: {
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  empty: {
+    marginTop: 4,
+    fontSize: 14,
+    color: colors.muted,
+  },
+  line: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  lineLeft: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.muted,
+  },
+  lineAmt: {
+    fontFamily: 'monospace',
+    fontSize: 14,
+    color: colors.ink,
   },
   netRow: {
     flexDirection: 'row',
@@ -130,8 +242,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   netLabel: {
-    color: colors.muted,
+    color: colors.ink,
     fontSize: 14,
+    fontWeight: '700',
   },
   netAmt: {
     fontFamily: 'monospace',
@@ -145,8 +258,11 @@ const styles = StyleSheet.create({
   amtNeg: {
     color: colors.warn,
   },
+  settle: {
+    marginTop: 16,
+  },
   sec: {
-    marginTop: 18,
+    marginBottom: 8,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -169,5 +285,6 @@ const styles = StyleSheet.create({
     color: colors.accentInk,
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'left',
   },
 });
