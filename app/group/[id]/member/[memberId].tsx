@@ -183,8 +183,8 @@ export default function MemberScreen() {
             <View testID="leave-confirm">
               <Text style={styles.confirmTitle}>Leave group?</Text>
               <Text style={styles.confirmCopy}>
-                You’ll leave {group.name || '(unnamed)'}. Outstanding balances
-                stay until settled.
+                You’ll leave {group.name.trim() || 'this group'}. Outstanding
+                balances stay until settled.
               </Text>
               <View style={styles.confirmActions}>
                 <Pressable
