@@ -45,6 +45,7 @@ On You-detail, **Leave group** (after a confirm) unbinds this device and revokes
 | `L-tombstoneBind` | Already tombstoned | Returns null (unit). |
 | `L-efLeave` | Token already revoked | 200 `{ ok: true }` (contract). |
 | `L-leaveGroup` | Flush or revoke fails | Stay on member; typed error; lobby not dropped. |
+| `L-member` | Group name empty | Confirm says “this group”. |
 
 ## Out of scope
 
