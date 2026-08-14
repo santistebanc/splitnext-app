@@ -78,3 +78,7 @@ export const balanceRowOf = (page) => page.getByTestId('balance-row').first();
 
 /** First settle button on a member screen. */
 export const settleRowOf = (page) => page.getByTestId('settle-row').first();
+
+/** Paid-for / owe-for buckets on a member screen. */
+export const paidForOf = (page) => page.getByTestId('paid-for');
+export const owesForOf = (page) => page.getByTestId('owes-for');

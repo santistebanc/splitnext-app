@@ -24,7 +24,6 @@
 - **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — area: invites — raised: bootstrap
 - **Activity feed** — twelve event types; client-authored; flushed last. Hub-chrome.html puts the list in a burger drawer — area: activity — raised: bootstrap · *appetite: next after 0023*
-- **Member detail** — paid-for / owes-for buckets; leave group. Slice 0023 shipped the member *screen* (net + that person's settle buttons) without the buckets — area: membership — raised: bootstrap · *partially 0023* · *appetite: next*
 - **Group settings** — ⚙ FAB: rename, currency relabel; takes bump off the hub — area: groups — raised: bootstrap · *appetite: next after 0023*
 - **Retention / deletion policy** — area: data — raised: bootstrap
 - **Expense note required vs optional** — area: ux — raised: bootstrap
@@ -55,6 +54,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Capture asserts in CI** — delivered in [slice 0022](slices/0022-capture-ci.md); local Worker + `--assert-only`. Failure taxonomy and SQLite-on-web stay parked.
+- **Member-first hub chrome** — delivered in [slice 0023](slices/0023-member-first-hub-chrome.md); balance list, member settle, All expenses, FAB. Activity / settings / leave stay parked.
 
-- **Member-first hub chrome** — delivered in [slice 0023](slices/0023-member-first-hub-chrome.md); balance list, member settle, All expenses, FAB. Buckets / activity / settings / leave stay parked.
+- **Member expense buckets** — delivered in [slice 0024](slices/0024-member-expense-buckets.md); paid-for / owe-for on the member screen, one line per expense, summing to net. Tap-to-edit stays parked.

@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0023
+Last updated: slice 0024
 
 ## Direction
 
@@ -36,6 +36,7 @@ Last updated: slice 0023
 - Split every expense equally across the members chosen at record time (default everyone live), frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md)
 - Choose who paid and who shares on a dedicated new-expense screen; default is You paid and everyone shares — [slice 0018](slices/0018-expense-form.md)
 - See each member's net position on the hub — paid minus owed, most-negative first, You (Name) marked — [slice 0007](slices/0007-allocations-balances.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
+- See a member's expenses as paid-for and owe-for lines that add up to their net — [slice 0024](slices/0024-member-expense-buckets.md)
 - See the fewest transfers that zero those nets on a member's screen (the ones they would pay); derived, identical on every device, never moves money — [slice 0017](slices/0017-settle-up.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Tap a settle button to open the new-expense form already filled for that transfer; saving records it, the tap does not — [slice 0019](slices/0019-settle-prefill.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
@@ -83,7 +84,9 @@ Last updated: slice 0023
 
 **Balance** (derived, never stored) — per live member, Σ paid − Σ owed across live expenses, sorted most-negative first.
 
-**Settlement** (derived, never stored) — the fewest transfers that zero those nets: `{ from_member_id, to_member_id, amount_cents }`. Zero-sum subgroups, then poorest↔richest inside each; unmatched leftover omitted. A member screen shows that person's outgoing transfers; a tap opens the new-expense form; the tap does not move money (D-067, D-069, D-073).
+**Member buckets** (derived, never stored) — per live member, the live expenses they touched as paid-for and owe-for lines. One line per expense; amount is their net on that expense; the lines sum to their balance. Paid-for names the other live allocated members; owe-for names the payer (D-074).
+
+**Settlement** (derived, never stored) — the fewest transfers that zero those nets: `{ from_member_id, to_member_id, amount_cents }`. Zero-sum subgroups, then poorest↔richest inside each; unmatched leftover omitted. A member screen shows that person's outgoing transfers after the buckets; a tap opens the new-expense form; the tap does not move money (D-067, D-069, D-073).
 
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
@@ -98,7 +101,7 @@ Last updated: slice 0023
 | `/` | Lobby: create group, paste-to-join, list local group ids; root AppState sync | slice 0001 / 0002 / 0012 |
 | `/join` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 |
 | `/group/[id]` | Hub: one balance list (You highlighted; Invite on everyone who isn't You; This is me while binding is open); add member; All expenses →; FAB + Expense once bound; bump leftover; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 |
-| `/group/[id]/member/[memberId]` | Member: net, that person's outgoing settle buttons (tap prefills the form) | slice 0023 |
+| `/group/[id]/member/[memberId]` | Member: paid-for / owe-for buckets, net, that person's outgoing settle buttons (tap prefills the form) | slice 0023 / 0024 |
 | `/group/[id]/expenses` | All expenses, newest first | slice 0023 |
 | `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal among selected; default You paid, everyone shares; query can prefill) | slice 0018 / 0019 |
 
@@ -114,12 +117,13 @@ Last updated: slice 0023
 - `splitEqually` / `participantsForSplit` — `src/domain/split.ts` — vitest
 - `computeBalances` — `src/domain/balances.ts` — vitest
 - `suggestSettlements` / `settlementsForMember` — `src/domain/settle.ts` — vitest
+- `memberBuckets` — `src/domain/buckets.ts` — vitest — one member's paid-for / owe-for lines; they sum to that member's net
 - `formatCents` / `formatMoney` / `memberLabel` — `src/ui/format.ts` — integer cents as decimal text; You (Name)
 - `colors` — `src/ui/theme.ts` — prototype palette
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload. `--assert-only` skips writing clips. CI runs that against a local Worker (`npm run capture:ci`).
-- `balancesOf` / `settleOf` / `settleRowOf` / `balanceRowOf` — `docs/scripts/capture-driver.mjs` — unittest via `npm run test:board` for the extractors; capture drives the locators
+- `balancesOf` / `settleOf` / `settleRowOf` / `balanceRowOf` / `paidForOf` / `owesForOf` — `docs/scripts/capture-driver.mjs` — unittest via `npm run test:board` for the extractors; capture drives the locators
 - `parseCaptureArgv` / `contextOptions` — `docs/scripts/capture-opts.mjs` — unittest via `npm run test:board` — whether this run records video
 - `assertLocalOrigin` / `metroEnv` / `isDeployedWorkerUrl` / `webPortOccupied` — `docs/scripts/local-origin.mjs` — unittest via `npm run test:board` — the web bundle talks to the listen origin, not `workers.dev`
 - `jobs` / `job_text` / `secret_names` — `docs/scripts/ci_gates.py` — unittest via `npm run test:board` — `check` stays the four fast gates; the `capture` job has no Cloudflare secrets

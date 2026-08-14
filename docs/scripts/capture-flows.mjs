@@ -33,7 +33,7 @@ const run = promisify(execFile);
 
 import { parseCaptureArgv, contextOptions } from './capture-opts.mjs';
 import { installPointerOverlay } from './capture-overlay.mjs';
-import { VIEWPORT, balanceRowOf, balancesOf, makeDriver, settleOf, settleRowOf } from './capture-driver.mjs';
+import { VIEWPORT, balanceRowOf, balancesOf, makeDriver, owesForOf, paidForOf, settleOf, settleRowOf } from './capture-driver.mjs';
 import { isDeployedWorkerUrl } from './local-origin.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -202,6 +202,15 @@ const FLOWS = [
       await d.press(balanceRowOf(page));
       await d.beat(1600);
 
+      const owes = await owesForOf(page).innerText();
+      if (!/Taxi/.test(owes)) {
+        problems.push(`[F-settle] no owe-for Taxi line (got ${JSON.stringify(owes)})`);
+      }
+      const paid = await paidForOf(page).innerText();
+      if (!/None/.test(paid)) {
+        problems.push(`[F-settle] paid-for should be None for the debtor (got ${JSON.stringify(paid)})`);
+      }
+
       const before = settleOf(await page.innerText('body'));
       if (!before) problems.push('[F-settle] no settle buttons');
       await page.goto(page.url(), { waitUntil: 'networkidle', timeout: 120000 });
@@ -243,6 +252,10 @@ const FLOWS = [
       }
       await d.tap('Add expense');
       await d.beat(2400);
+      const paidAfter = await paidForOf(page).innerText();
+      if (!/Settlement/.test(paidAfter)) {
+        problems.push('[F-settle-record] Settlement did not land in paid-for');
+      }
 
       await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
       await d.beat(800);
