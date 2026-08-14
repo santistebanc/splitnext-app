@@ -31,3 +31,9 @@ export async function setSecret(key: string, value: string): Promise<void> {
   if (s) s.setItem(key, value);
   else memory.set(key, value);
 }
+
+export async function deleteSecret(key: string): Promise<void> {
+  const s = store();
+  if (s) s.removeItem(key);
+  else memory.delete(key);
+}

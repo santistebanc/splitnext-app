@@ -11,7 +11,9 @@ import {
   suggestSettlements,
 } from '@/src/domain/settle';
 import { getGroupStore } from '@/src/store/groupStore';
+import { leaveGroup } from '@/src/sync/leave';
 import { openGroup } from '@/src/sync/groupSync';
+import { coerceSyncError } from '@/src/sync/syncErrors';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -42,7 +44,11 @@ export default function MemberScreen() {
   const members = useValue(store$.members);
   const binds = useValue(store$.binds);
   const expenses = useValue(store$.expenses);
+  const lastErrorRaw = useValue(store$.lastError);
+  const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     if (!groupId) return;
@@ -93,6 +99,19 @@ export default function MemberScreen() {
   const currency = group.currency_label;
   const paidHeading = isYou ? 'You paid for' : `${subjectName} paid for`;
   const owesHeading = isYou ? 'You owe for' : `${subjectName} owes for`;
+  const showLeave = isYou || lastError?.code === 'leave_failed';
+
+  const onLeave = async () => {
+    if (leaving) return;
+    setLeaving(true);
+    const ok = await leaveGroup(groupId);
+    setLeaving(false);
+    if (ok) {
+      router.replace('/' as Href);
+      return;
+    }
+    setConfirming(false);
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -149,6 +168,57 @@ export default function MemberScreen() {
               </Pressable>
             );
           })}
+        </View>
+      ) : null}
+
+      {lastError ? (
+        <Text style={styles.err}>
+          {lastError.code}: {lastError.message}
+        </Text>
+      ) : null}
+
+      {showLeave ? (
+        <View style={styles.danger}>
+          {confirming ? (
+            <View testID="leave-confirm">
+              <Text style={styles.confirmTitle}>Leave group?</Text>
+              <Text style={styles.confirmCopy}>
+                You’ll leave {group.name || '(unnamed)'}. Outstanding balances
+                stay until settled.
+              </Text>
+              <View style={styles.confirmActions}>
+                <Pressable
+                  style={styles.cancel}
+                  onPress={() => setConfirming(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                  disabled={leaving}
+                >
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  testID="leave-confirm-ok"
+                  style={styles.leaveOk}
+                  onPress={() => void onLeave()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Leave group"
+                  disabled={leaving}
+                >
+                  <Text style={styles.leaveOkText}>Leave group</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable
+              testID="leave"
+              style={styles.leave}
+              onPress={() => setConfirming(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Leave group"
+            >
+              <Text style={styles.leaveText}>Leave group</Text>
+            </Pressable>
+          )}
         </View>
       ) : null}
     </ScrollView>
@@ -286,5 +356,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'left',
+  },
+  err: {
+    marginTop: 16,
+    color: colors.danger,
+    fontSize: 13,
+  },
+  danger: {
+    marginTop: 24,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  leave: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    padding: 14,
+  },
+  leaveText: {
+    color: colors.danger,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.ink,
+    marginBottom: 8,
+  },
+  confirmCopy: {
+    fontSize: 14,
+    color: colors.muted,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cancel: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: 14,
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  leaveOk: {
+    flex: 1,
+    backgroundColor: colors.danger,
+    padding: 14,
+    alignItems: 'center',
+  },
+  leaveOkText: {
+    color: colors.accentInk,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

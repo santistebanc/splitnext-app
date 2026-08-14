@@ -144,3 +144,14 @@ export async function startWakeSubscription(
     };
   });
 }
+
+/** Stop listening and do not retry — used when this device leaves the group. */
+export function stopWakeSubscription(groupId: string): void {
+  clearReconnectTimer(groupId);
+  reconnectByGroup.delete(groupId);
+  failedAttemptsByGroup.delete(groupId);
+  lastStatusByGroup.delete(groupId);
+  const socket = sockets.get(groupId);
+  sockets.delete(groupId);
+  socket?.close();
+}

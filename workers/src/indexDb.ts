@@ -86,6 +86,20 @@ export async function hasLiveTokenForDevice(
   return row != null;
 }
 
+export async function revokeAccessToken(
+  db: IndexDb,
+  accessToken: string,
+  revokedAt: string,
+): Promise<void> {
+  const hash = await sha256Hex(accessToken);
+  await db
+    .prepare(
+      'UPDATE access_tokens SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL',
+    )
+    .bind(revokedAt, hash)
+    .run();
+}
+
 export async function insertInvite(
   db: IndexDb,
   token: string,

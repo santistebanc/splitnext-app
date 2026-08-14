@@ -7,8 +7,10 @@ import {
   hasLiveTokenForDevice,
   insertAccessToken,
   insertInvite,
+  lookupAccess,
   lookupInvite,
   resolveAccessToken,
+  revokeAccessToken,
 } from './indexDb';
 import { inviteRedeemBlock } from './access';
 import type { MergeItem } from './entities';
@@ -28,6 +30,7 @@ const ROUTES = [
   'list-roster',
   'mint-invite',
   'join-group',
+  'leave-group',
 ] as const;
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -59,6 +62,7 @@ export default {
       if (route === 'fetch-entity') return await handleFetch(request, env);
       if (route === 'list-roster') return await handleRoster(request, env);
       if (route === 'mint-invite') return await handleMintInvite(request, env);
+      if (route === 'leave-group') return await handleLeave(request, env);
       return await handleJoin(request, env);
     } catch (err) {
       console.error(route, err);
@@ -276,6 +280,28 @@ async function handleJoin(request: Request, env: Env): Promise<Response> {
   });
 
   return jsonResponse({ access_token: accessToken, group, bind });
+}
+
+async function handleLeave(request: Request, env: Env): Promise<Response> {
+  const body = (await request.json()) as { group_id?: string };
+  const groupId = body.group_id;
+  if (!groupId) return jsonResponse({ error: 'invalid_body' }, 400);
+
+  const accessToken = bearerToken(request);
+  const deviceUserId = request.headers.get('x-device-user-id');
+  if (!accessToken || !deviceUserId) {
+    return jsonResponse({ error: 'unauthorized' }, 401);
+  }
+
+  const row = await lookupAccess(env.INDEX, accessToken);
+  if (!row || row.group_id !== groupId || row.device_user_id !== deviceUserId) {
+    return jsonResponse({ error: 'unauthorized' }, 401);
+  }
+
+  if (row.revoked_at == null) {
+    await revokeAccessToken(env.INDEX, accessToken, new Date().toISOString());
+  }
+  return jsonResponse({ ok: true });
 }
 
 async function handleWake(request: Request, env: Env, url: URL): Promise<Response> {

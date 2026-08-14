@@ -173,3 +173,18 @@ export async function joinGroupRemote(input: {
     device_user_id: input.device_user_id,
   });
 }
+
+export async function leaveGroupRemote(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+}): Promise<{ ok: true }> {
+  return callFunction(
+    'leave-group',
+    { group_id: input.group_id },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}
