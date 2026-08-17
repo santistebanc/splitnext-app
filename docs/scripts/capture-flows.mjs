@@ -246,6 +246,37 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-delete-expense',
+    from: 'spent',
+    async run(d, page) {
+      await d.tap('View all expenses');
+      await d.beat(800);
+      const before = await page.getByTestId('expense-row').count();
+      if (before === 0) {
+        problems.push('[F-delete-expense] no expenses to delete');
+        return;
+      }
+      await d.press(page.getByTestId('expense-row').first());
+      await d.beat(800);
+      await d.press(page.getByTestId('expense-delete'));
+      await d.beat(400);
+      await d.press(page.getByTestId('expense-delete-confirm-ok'));
+      await d.beat(2000);
+      const after = await page.getByTestId('expense-row').count();
+      if (after >= before) {
+        problems.push(
+          `[F-delete-expense] expense still listed (${before} → ${after})`,
+        );
+      }
+      await page.goBack({ waitUntil: 'networkidle', timeout: 120000 });
+      await d.beat(1600);
+      const hub = await page.innerText('body');
+      if (/Taxi/.test(hub)) {
+        problems.push('[F-delete-expense] hub still mentions deleted expense');
+      }
+    },
+  },
+  {
     id: 'F-mixed-split',
     from: 'bound',
     async run(d, page) {

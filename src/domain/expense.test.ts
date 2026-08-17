@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ExpenseEntity } from '@/src/types/group';
-import { patchExpense } from './expense';
+import { patchExpense, tombstoneExpense } from './expense';
 
 const live = ['m1', 'm2', 'm3'];
 
@@ -178,5 +178,21 @@ describe('patchExpense', () => {
         '2026-08-17T12:00:00.000Z',
       ),
     ).toBeNull();
+  });
+});
+
+describe('tombstoneExpense', () => {
+  it('soft-deletes a live expense at the next version', () => {
+    expect(tombstoneExpense(taxi, '2026-08-17T12:00:00.000Z')).toEqual({
+      ...taxi,
+      version: 2,
+      updated_at: '2026-08-17T12:00:00.000Z',
+      deleted_at: '2026-08-17T12:00:00.000Z',
+    });
+  });
+
+  it('returns null when the expense is already tombstoned', () => {
+    const gone = { ...taxi, deleted_at: '2026-08-02T00:00:00.000Z' };
+    expect(tombstoneExpense(gone, '2026-08-17T12:00:00.000Z')).toBeNull();
   });
 });

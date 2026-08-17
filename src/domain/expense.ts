@@ -124,3 +124,19 @@ export function patchExpense(
     updated_at: updatedAt,
   };
 }
+
+/**
+ * Soft-delete a live expense at the next version. Already-tombstoned → null.
+ */
+export function tombstoneExpense(
+  expense: ExpenseEntity,
+  deletedAt: string,
+): ExpenseEntity | null {
+  if (expense.deleted_at != null) return null;
+  return {
+    ...expense,
+    version: expense.version + 1,
+    updated_at: deletedAt,
+    deleted_at: deletedAt,
+  };
+}
