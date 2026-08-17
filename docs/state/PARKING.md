@@ -10,13 +10,13 @@
 
 ## Core value
 
-- **Reopen the binding choice after an expense exists** — dropped: "make it so its no never possible to change assumed member (you can however rename any member and edit expenses normally)". Bind is once (create or join); leave unbinds; rename and expense edit are the fixes. D-020 reversed to lock-on-first-bind (D-076). — area: membership — raised: slice 0005 · restated: slice 0027
+- **Reopen the binding choice after an expense exists** — dropped: "make it so its no never possible to change assumed member (you can however rename any member and edit expenses normally)". Bind is once (create or join); leave unbinds; rename (0028) and equal-split expense edit (0029) are the fixes. D-020 reversed to lock-on-first-bind (D-076). — area: membership — raised: slice 0005 · restated: slice 0027
 
 - **This is me as a Settings field** — dropped: "ok lets drop the field at settings to change assumed member" — area: membership — raised: slice 0026
 
 - **Member rename / soft-delete** — "you can however rename any member" / "on edit then you show the list of members (name + button to edit name + button to remove/kickout)" — rename delivered in 0028; soft-delete / kick stays parked; never hard-delete while referenced — area: membership — raised: bootstrap · restated: slice 0027 · *partially delivered in 0028*
 
-- **Expense editor + invariants** — "edit expenses normally" / edit an existing expense from the list or a bucket line; uneven / share-based splits. Prototype edits in a sheet; add stays `L-expenseNew` until that chrome earns its keep. Slice 0018 shipped the add form; 0019 shipped settle-up tap → prefill — area: ledger — raised: bootstrap · restated: slice 0027 · *appetite: next after 0027*
+- **Expense editor + invariants** — "edit expenses normally" / edit an existing expense from the list or a bucket line; uneven / share-based splits. Equal-only edit of the whole expense delivered in 0029; custom amounts stay parked. Prototype edits in a sheet; add stays `L-expenseNew` until that chrome earns its keep. Slice 0018 shipped the add form; 0019 shipped settle-up tap → prefill — area: ledger — raised: bootstrap · restated: slice 0027 · *partially delivered in 0029*
 
 - **Member invites** — HTTPS deep link join; joiner-side picker / add-new; claimed exclusive slot. Slice 0012 shipped mint + redeem for a named member (`/join` + lobby paste); app links and group-wide invite stay parked — area: invites — raised: bootstrap · *partially delivered in 0012*
 - **Kick out** — "button to remove/kickout" on the edit-members list (was: member detail in hub-chrome.html) — soft-delete a member; never hard-delete while referenced — area: membership — raised: slice 0023 · restated: slice 0025

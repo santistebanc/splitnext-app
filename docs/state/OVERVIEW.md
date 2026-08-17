@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0028
+Last updated: slice 0029
 
 ## Direction
 
@@ -31,6 +31,7 @@ Last updated: slice 0028
 - Add name-slot members, bind this device to one (assumed member), show You on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
 - Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version` — [slice 0004](slices/0004-sync-quality-harden.md)
 - Record an expense against the member who paid — integer cents, listed under All expenses, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
+- Edit an existing expense from the list or a bucket line; the split stays equal among the checked set — [slice 0029](slices/0029-expense-editor.md)
 - Assumed member is set at create or join and cannot be changed; leave unbinds — [slice 0005](slices/0005-expense-spine.md) / [slice 0027](slices/0027-first-run.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
 - Split every expense equally across the members chosen at record time (default everyone live), frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md)
@@ -106,9 +107,10 @@ Last updated: slice 0028
 | `/join` | Same redeem as `/j/[token]`, via `?token=` (legacy) | slice 0012 |
 | `/group/[id]` | Hub: group name as large centered type above the list (header is home + settings); names until the first expense (rows open member detail; no expense list link), then balances (You highlighted; tap opens member detail); add member + under the list; **View all expenses** at the bottom once spent; FAB + Expense once bound; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 / 0027 / 0028 |
 | `/group/[id]/settings` | Group name and currency; Done once named and bound; Leave group | slice 0027 |
-| `/group/[id]/member/[memberId]` | Member: name + edit in the header; join link + copy/share if unclaimed; paid-for / owe-for / net / suggested settlement once the group has an expense | slice 0023 / 0024 / 0025 / 0027 / 0028 |
-| `/group/[id]/expenses` | All expenses, newest first | slice 0023 |
+| `/group/[id]/member/[memberId]` | Member: name + edit in the header; join link + copy/share if unclaimed; paid-for / owe-for / net / suggested settlement once the group has an expense; a bucket line opens that expense | slice 0023 / 0024 / 0025 / 0027 / 0028 / 0029 |
+| `/group/[id]/expenses` | All expenses, newest first; a row opens equal-split edit | slice 0023 / 0029 |
 | `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal among selected; default You paid, everyone shares; query can prefill) | slice 0018 / 0019 |
+| `/group/[id]/expense/[expenseId]` | Same form, filled from a stored expense; save writes the next version | slice 0029 |
 
 ## Seams
 
@@ -121,6 +123,7 @@ Last updated: slice 0028
 - `getSecret` / `setSecret` / `deleteSecret` — `src/secrets/secureStorage.ts` — the platform split for secrets; a fake here replaces the keychain
 - `persistPlugin` — `src/store/persistPlugin.ts` — the platform split for durability
 - `splitEqually` / `participantsForSplit` — `src/domain/split.ts` — vitest
+- `patchExpense` — `src/domain/expense.ts` — vitest — next expense version for an equal-split edit; unchanged or an invalid share set is null
 - `computeBalances` — `src/domain/balances.ts` — vitest
 - `suggestSettlements` / `settlementsForMember` — `src/domain/settle.ts` — vitest
 - `memberBuckets` — `src/domain/buckets.ts` — vitest — one member's paid-for / owe-for lines; they sum to that member's net

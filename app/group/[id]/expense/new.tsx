@@ -1,17 +1,18 @@
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
+import { patchExpense } from '@/src/domain/expense';
 import {
   expensePrefillFromSearchParams,
   type ExpensePrefill,
 } from '@/src/domain/expensePrefill';
 import { getGroupStore } from '@/src/store/groupStore';
-import { addExpense, openGroup } from '@/src/sync/groupSync';
+import { addExpense, openGroup, updateExpense } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { currencySymbol } from '@/src/domain/currency';
 import { formatCents, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -43,20 +44,28 @@ function parseCents(text: string): number | null {
 export default function NewExpenseScreen() {
   const params = useLocalSearchParams<{
     id: string;
+    expenseId?: string;
     payer?: string;
     amount?: string;
     participants?: string;
     what?: string;
   }>();
   const groupId = params.id ?? '';
-  const prefill = expensePrefillFromSearchParams(params);
+  const editingId =
+    typeof params.expenseId === 'string' ? params.expenseId : '';
   const router = useRouter();
+  const navigation = useNavigation();
   const store$ = getGroupStore(groupId);
   const group = useValue(store$.group);
   const members = useValue(store$.members);
   const binds = useValue(store$.binds);
+  const expenses = useValue(store$.expenses);
   const lastErrorRaw = useValue(store$.lastError);
   const lastError = coerceSyncError(lastErrorRaw);
+  const editingRaw = editingId ? (expenses ?? {})[editingId] : undefined;
+  const editing =
+    editingRaw && editingRaw.deleted_at == null ? editingRaw : undefined;
+  const prefill = editing ? null : expensePrefillFromSearchParams(params);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
   const [amount, setAmount] = useState(() =>
     prefill ? formatCents(prefill.amountCents) : '',
@@ -69,6 +78,7 @@ export default function NewExpenseScreen() {
     null,
   );
   const [busy, setBusy] = useState(false);
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!groupId) return;
@@ -93,25 +103,64 @@ export default function NewExpenseScreen() {
   );
 
   useEffect(() => {
-    if (payerId != null) return;
-    if (assumedMemberId) setPayerId(assumedMemberId);
-  }, [assumedMemberId, payerId]);
+    navigation.setOptions({
+      title: editing ? 'Edit expense' : 'New expense',
+    });
+  }, [navigation, editing]);
 
   useEffect(() => {
+    if (!editing || memberList.length === 0) return;
+    if (hydratedId === editing.id) return;
+    setAmount(formatCents(editing.amount_cents));
+    setWhat(editing.description);
+    setPayerId(editing.payer_member_id);
+    const allocated = new Set(
+      (editing.allocations ?? []).map((a) => a.member_id),
+    );
+    setSharing(
+      Object.fromEntries(memberList.map((m) => [m.id, allocated.has(m.id)])),
+    );
+    setHydratedId(editing.id);
+  }, [editing, hydratedId, memberList]);
+
+  useEffect(() => {
+    if (payerId != null) return;
+    if (editing) return;
+    if (assumedMemberId) setPayerId(assumedMemberId);
+  }, [assumedMemberId, payerId, editing]);
+
+  useEffect(() => {
+    if (editing) return;
     if (sharing != null || memberList.length === 0) return;
     setSharing(sharingFromPrefill(memberList.map((m) => m.id), prefill));
-  }, [memberList, sharing, prefill]);
+  }, [memberList, sharing, prefill, editing]);
 
   const cents = parseCents(amount);
   const participantIds = Object.entries(sharing ?? {})
     .filter(([, on]) => on)
     .map(([memberId]) => memberId);
+  const liveIds = memberList.map((m) => m.id);
+  const draft =
+    editing && cents !== null && cents > 0 && payerId != null
+      ? patchExpense(
+          editing,
+          liveIds,
+          {
+            payerMemberId: payerId,
+            amountCents: cents,
+            description: what,
+            participantMemberIds: participantIds,
+          },
+          editing.updated_at,
+        )
+      : undefined;
   const canSave =
     !busy &&
     cents !== null &&
     cents > 0 &&
     payerId != null &&
-    participantIds.length > 0;
+    participantIds.length > 0 &&
+    (!editing || draft != null);
 
   const labelOf = (memberId: string, displayName: string) =>
     memberLabel(displayName, memberId === assumedMemberId);
@@ -127,6 +176,16 @@ export default function NewExpenseScreen() {
     if (!canSave || cents === null || payerId == null) return;
     setBusy(true);
     try {
+      if (editing) {
+        await updateExpense(groupId, editing.id, {
+          payerMemberId: payerId,
+          amountCents: cents,
+          description: what,
+          participantMemberIds: participantIds,
+        });
+        router.back();
+        return;
+      }
       const expenseId = await addExpense(groupId, {
         payerMemberId: payerId,
         amountCents: cents,
@@ -209,8 +268,11 @@ export default function NewExpenseScreen() {
         onPress={() => void onSave()}
         accessibilityRole="button"
         disabled={!canSave}
+        testID="expense-save"
       >
-        <Text style={styles.buttonText}>Add expense</Text>
+        <Text style={styles.buttonText}>
+          {editing ? 'Save' : 'Add expense'}
+        </Text>
       </Pressable>
     </ScrollView>
   );

@@ -216,6 +216,36 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-edit-expense',
+    from: 'spent',
+    async run(d, page) {
+      await d.tap('View all expenses');
+      await d.beat(800);
+      await d.press(page.getByTestId('expense-row').first());
+      await d.beat(800);
+      const field = page.getByPlaceholder(/^Amount/);
+      await field.fill('');
+      await field.pressSequentially('12.00', { delay: 45 });
+      await d.beat(400);
+      await d.tap('Save');
+      await d.beat(2000);
+      const list = await page.innerText('body');
+      if (!/12\.00/.test(list)) {
+        problems.push(
+          `[F-edit-expense] all-expenses list did not show the new amount (got ${JSON.stringify(list.slice(0, 400))})`,
+        );
+      }
+      await page.goBack({ waitUntil: 'networkidle', timeout: 120000 });
+      await d.beat(1600);
+      const hub = await page.innerText('body');
+      if (!/8\.00/.test(hub) && !/\+8\.00/.test(hub)) {
+        problems.push(
+          `[F-edit-expense] hub nets did not refold after the edit (got ${JSON.stringify(hub.slice(0, 400))})`,
+        );
+      }
+    },
+  },
+  {
     id: 'F-balances',
     from: 'spent',
     async run(d, page) {
@@ -496,8 +526,20 @@ async function stills(browser, storageState, hubUrl, number) {
   await page.waitForTimeout(2000);
   await page.screenshot({ path: join(SHOTS, `${number}-hub.png`) });
   console.log('still', `${number}-hub.png`);
+  if (number === '0029') {
+    await page.getByRole('button', { name: 'View all expenses' }).click();
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: join(SHOTS, `${number}-expenses.png`) });
+    console.log('still', `${number}-expenses.png`);
+    await page.getByTestId('expense-row').first().click();
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: join(SHOTS, `${number}-edit.png`) });
+    console.log('still', `${number}-edit.png`);
+    await context.close();
+    return;
+  }
   if (number === '0028') {
-    await page.getByText('You', { exact: true }).first().click();
+    await page.getByText('You', { exact: true }).click();
     await page.waitForTimeout(1200);
     await page.screenshot({ path: join(SHOTS, `${number}-member.png`) });
     console.log('still', `${number}-member.png`);

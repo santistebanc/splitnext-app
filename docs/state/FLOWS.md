@@ -91,6 +91,16 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 7. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
 8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets. After this first live expense, `L-hub` shows balances, **View all expenses** at the bottom, and the + to add a member.
 
+## F-edit-expense — Edit an expense
+
+**Trigger** — On All expenses, or on a member's paid-for / owe-for line, the person opens an expense, changes amount, payer, who shares, or what-for, and taps **Save**.  
+**Outcome** — That expense is the same id at the next version, split equally among the checked set. Hub nets and buckets refold. A second expense is not created.
+
+1. `L-expenses` or a `L-member` bucket line opens `L-expenseNew` on `/expense/{id}` with the stored expense loaded — live members who were not in the original split stay unchecked.
+2. Save calls `L-updateExpense`. `L-patchExpense` rebuilds allocations via `L-participantsForSplit` and `L-splitEqually`, or returns null when nothing changed — then nothing is written and Save stays off.
+3. A successful write updates the store and queues the expense; `L-flushQueue` pushes it as one item, same as add.
+4. `L-balances` and `L-memberBuckets` refold from the new version. The list still shows one row for that id.
+
 ## F-balances — See who owes what
 
 **Trigger** — The hub is on screen and the group has at least one expense.  

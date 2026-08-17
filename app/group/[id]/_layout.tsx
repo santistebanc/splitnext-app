@@ -15,6 +15,10 @@ export default function GroupLayout() {
       <Stack.Screen name="member/[memberId]" options={{ title: 'Member' }} />
       <Stack.Screen name="expenses" options={{ title: 'All expenses' }} />
       <Stack.Screen name="expense/new" options={{ title: 'New expense' }} />
+      <Stack.Screen
+        name="expense/[expenseId]"
+        options={{ title: 'Edit expense' }}
+      />
     </Stack>
   );
 }
