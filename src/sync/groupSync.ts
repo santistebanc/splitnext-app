@@ -2,9 +2,8 @@ import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
 import { bindOnce } from '@/src/domain/bind';
 import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPatch } from '@/src/domain/group';
-import { patchExpense } from '@/src/domain/expense';
+import { buildExpenseAllocations, patchExpense, type SplitAmongEntry } from '@/src/domain/expense';
 import { patchMember } from '@/src/domain/member';
-import { participantsForSplit, splitEqually } from '@/src/domain/split';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   addLobbyGroupId,
@@ -185,14 +184,29 @@ export type NewExpense = {
   /** Integer cents. Rejected outright if it is not — money never rounds here. */
   amountCents: number;
   description: string;
-  /** Who shares. Omitted means every live member, which is the form's default. */
+  splitAmong?: SplitAmongEntry[];
+  /** Who shares equally. Omitted means every live member. Ignored when splitAmong is set. */
   participantMemberIds?: string[];
 };
 
+function splitAmongForWrite(
+  liveIds: string[],
+  input: Pick<NewExpense, 'splitAmong' | 'participantMemberIds'>,
+): SplitAmongEntry[] {
+  if (input.splitAmong) return [...input.splitAmong];
+  const selected = input.participantMemberIds ?? liveIds;
+  return selected.map((memberId) => ({
+    memberId,
+    shareUnits: 1,
+    fixedCents: null,
+  }));
+}
+
 export async function addExpense(
   groupId: string,
-  { payerMemberId, amountCents, description, participantMemberIds }: NewExpense,
+  input: NewExpense,
 ): Promise<string> {
+  const { payerMemberId, amountCents, description } = input;
   if (!Number.isInteger(amountCents)) {
     throw new Error('amount must be integer cents');
   }
@@ -211,13 +225,16 @@ export async function addExpense(
   const liveIds = Object.values(members)
     .filter((m) => m.deleted_at == null)
     .map((m) => m.id);
-  const selected = participantMemberIds ?? liveIds;
-  const split = participantsForSplit(liveIds, selected);
-  if (!split.ok) {
+  const splitAmong = splitAmongForWrite(liveIds, input);
+  const allocations = buildExpenseAllocations(
+    amountCents,
+    liveIds,
+    splitAmong,
+  );
+  if (!allocations) {
     store$.lastError.set(syncError('member_missing'));
     return '';
   }
-  const allocations = splitEqually(amountCents, split.memberIds);
 
   const expense: ExpenseEntity = {
     id: Crypto.randomUUID(),
@@ -247,8 +264,9 @@ export async function addExpense(
 export async function updateExpense(
   groupId: string,
   expenseId: string,
-  { payerMemberId, amountCents, description, participantMemberIds }: NewExpense,
+  input: NewExpense,
 ): Promise<void> {
+  const { payerMemberId, amountCents, description } = input;
   if (!Number.isInteger(amountCents)) {
     throw new Error('amount must be integer cents');
   }
@@ -271,7 +289,7 @@ export async function updateExpense(
       payerMemberId,
       amountCents,
       description,
-      participantMemberIds: participantMemberIds ?? liveIds,
+      splitAmong: splitAmongForWrite(liveIds, input),
     },
     new Date().toISOString(),
   );

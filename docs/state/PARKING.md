@@ -1,39 +1,53 @@
 # Parking
 
+Steering after 0029 (v1 feature pass): take the old app's remaining product, keep this app's surfaces, drop four v1 shapes. Recorded as D-084.
+
 ## Foundation-risk
 
+- **Activity as a merge entity** — typed events (expense add/edit/delete, member join/leave/rename/kick, group rename, …), client-authored, flushed last, optional `undo_snapshot`. Toast, push, and undo sit on this. Hub-chrome.html puts the list in a burger drawer (keep this app's hub; do not add a primary Activity tab). — area: activity — raised: bootstrap · restated: steering after 0029 · *appetite: needed for toast/push/undo*
+- **Mixed / uneven splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
+
+- **Soft-delete an expense** — tombstone (`deleted_at`); never hard-delete. UI + `L-deleteExpense` path; undo later rides activity. — area: ledger — raised: bootstrap · restated: steering after 0029
+- **Kick / soft-delete a member** — "button to remove/kickout"; never hard-delete while referenced. Rename shipped in 0028. — area: membership — raised: bootstrap · restated: slice 0027 / steering after 0029
 - **Browser-driven flow tests** — CI now asserts a clean console plus balances/settle surviving a reload against a local Worker (slice 0022); it is still not in `npm test`, has no fuller failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007 / 0022*
 - **Driving `startWakeSubscription` against a local Worker** — the wake *wire* is contract-tested (slice 0021); the client orchestrator (token store, inbound fetch, module Maps) is not — area: sync — raised: slice 0021
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
+- **Push notifications** — Expo push keyed off activity (non-actors); per-group mute. Was a non-goal; D-084 puts it in destination. Needs device-token Worker routes after activity exists. — area: awareness — raised: steering after 0029
 
 ## Core value
 
-- **Reopen the binding choice after an expense exists** — dropped: "make it so its no never possible to change assumed member (you can however rename any member and edit expenses normally)". Bind is once (create or join); leave unbinds; rename (0028) and equal-split expense edit (0029) are the fixes. D-020 reversed to lock-on-first-bind (D-076). — area: membership — raised: slice 0005 · restated: slice 0027
+- **Reopen the binding choice after an expense exists** — dropped: "make it so its no never possible to change assumed member (you can however rename any member and edit expenses normally)". Bind is once (create or join); leave unbinds; rename (0028) and equal-split expense edit (0029) are the fixes. D-020 reversed to lock-on-first-bind (D-076). Confirmed again: do not take v1's Settings "who I am". — area: membership — raised: slice 0005 · restated: slice 0027 / steering after 0029
 
 - **This is me as a Settings field** — dropped: "ok lets drop the field at settings to change assumed member" — area: membership — raised: slice 0026
 
-- **Member rename / soft-delete** — "you can however rename any member" / "on edit then you show the list of members (name + button to edit name + button to remove/kickout)" — rename delivered in 0028; soft-delete / kick stays parked; never hard-delete while referenced — area: membership — raised: bootstrap · restated: slice 0027 · *partially delivered in 0028*
+- **Create with a whole roster** — dropped (D-084): v1's create form adds several names and picks me. Keep D-077: group name, your name, currency; add others after. — area: membership — raised: steering after 0029
 
-- **Expense editor + invariants** — "edit expenses normally" / edit an existing expense from the list or a bucket line; uneven / share-based splits. Equal-only edit of the whole expense delivered in 0029; custom amounts stay parked. Prototype edits in a sheet; add stays `L-expenseNew` until that chrome earns its keep. Slice 0018 shipped the add form; 0019 shipped settle-up tap → prefill — area: ledger — raised: bootstrap · restated: slice 0027 · *partially delivered in 0029*
+- **Group-wide invite / short join code** — dropped (D-084). Per-member one-use `/j/{token}` stays (D-056, D-080). Joiner-side picker / add-new was the group-invite join shape; not taking it. — area: invites — raised: bootstrap · restated: steering after 0029
 
-- **Member invites** — HTTPS deep link join; joiner-side picker / add-new; claimed exclusive slot. Slice 0012 shipped mint + redeem for a named member (`/join` + lobby paste); app links and group-wide invite stay parked — area: invites — raised: bootstrap · *partially delivered in 0012*
-- **Kick out** — "button to remove/kickout" on the edit-members list (was: member detail in hub-chrome.html) — soft-delete a member; never hard-delete while referenced — area: membership — raised: slice 0023 · restated: slice 0025
-- **Invite page status** — Join link on unclaimed member detail ships in 0027/0028; "if invitation is active or invitation expired" / resend still needs a Worker list of invite metadata — area: invites — raised: slice 0025
+- **Member rename / soft-delete** — rename delivered in 0028; kick stays under Foundation-risk above. — area: membership — raised: bootstrap · restated: slice 0027 · *partially delivered in 0028*
+
+- **Expense editor + invariants** — equal edit (0029), mixed splits (0030); expense delete in flight (0031). Prototype edits in a sheet; add stays `L-expenseNew`. — area: ledger — raised: bootstrap · restated: slice 0027 / steering after 0029 · *partially delivered in 0029 / 0030*
+
+- **Member invites** — mint + redeem for a named member shipped (0012 / 0028). App links / deep-link hosting still parked (breadth). Group-wide invite dropped. — area: invites — raised: bootstrap · *partially delivered in 0012*
+- **Invite page status / resend** — Join link on unclaimed member detail ships in 0027/0028; active / expired / resend still needs a Worker list of invite metadata. Per-member, not a group invite. — area: invites — raised: slice 0025 · restated: steering after 0029
 - **Reactivate invite on leave** — dropped: "or okay the thing about leaving and reactivating the link maybe its not good idea, forget that". Invite stays one-use (D-056); leave unbinds and the slot stays (D-075); a new Invite mints a new link. — area: invites — raised: slice 0027
 
 ## Breadth
 
+- **Last opened group on launch** — if this device has a last group still on the lobby, open that hub instead of landing on the list. Keep the lobby as it is (names, no nets). — area: ux — raised: steering after 0029
+- **Invite landing** — `/j/{token}` on the web: a landing that can send a phone to the app/store and still lets desktop continue to redeem. Not a marketing site. — area: invites — raised: steering after 0029
+- **Legal** — public privacy + terms that match actual behaviour (no accounts, capability tokens, what is stored). Deletion-on-request without a join code is part of this, not v1's join-code verified wipe. — area: legal — raised: steering after 0029
+- **Pending badge** — an expense (or row) that has not been acknowledged by the server is visibly pending. — area: sync — raised: steering after 0029
+- **Activity toast** — a live toast when someone else writes; depends on the activity entity. — area: awareness — raised: steering after 0029
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
 - **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — `/j/{token}` shipped (D-080); the short origin is still parked — area: invites — raised: bootstrap · *partially delivered in 0028*
-- **Activity feed** — twelve event types; client-authored; flushed last. Hub-chrome.html puts the list in a burger drawer — area: activity — raised: bootstrap · *appetite: next after 0023*
-- **Retention / deletion policy** — area: data — raised: bootstrap
+- **Retention / deletion policy** — rides Legal; no join-code wipe. — area: data — raised: bootstrap · restated: steering after 0029
 - **Expense note required vs optional** — area: ux — raised: bootstrap
 - **Close / reopen group UI** — capability rules exist; screens deferred — area: groups — raised: bootstrap
-- **Group-wide invite UI** — deferred from MVP chrome — area: invites — raised: bootstrap
-- **Deep link hosting** — `.well-known` + fallback on splitnext.online; needs dev/prod build (not Expo Go) — area: invites — raised: bootstrap
+- **Deep link hosting** — `.well-known` + fallback on splitnext.online; needs dev/prod build (not Expo Go). Pairs with invite landing. — area: invites — raised: bootstrap · restated: steering after 0029
 - **Expo Go against `wrangler dev`** — "would the expo go in my phone work well with local worker?" Phone keeps the deployed URL; tests boot a separate miniflare Worker — area: dev — raised: slice 0020
 
 ## Polish
@@ -45,12 +59,11 @@
 - **Import-level dependency view** — a second graph on the board, module to module rather than symbol to symbol; the tree draws call sites only — area: board — raised: slice 0009
 - **Wire-hop edges in the symbol graph** — draw `mergeEntities` → `merge` as a distinct kind of edge so the tree can cross the device/server boundary the way Flows does; today it is not a call and so not an edge — area: board — raised: slice 0009
 - **Lobby index out of Secure Store** — move `lobby_group_ids` to Legend/SQLite; Secure Store for secrets only — area: client — raised: slice 0001
-- **Design system application** — locked palette/components in blueprint; apply across screens. Slice 0023 extracts prototype tokens and restacks the hub; lobby / join / expense-form layouts stay — area: ui — raised: bootstrap · *partially 0023*
-- **Activity burger drawer** — "Burger opens Activity drawer (full scrollable list)" from hub-chrome.html — area: ui — raised: slice 0023 · *appetite: next after 0023*
-- **Invite page status** — Join link on unclaimed member detail in 0027/0028; "if invitation is active or invitation expired" / resend still needs a Worker list of invite metadata — area: invites — raised: slice 0025
+- **Design system application** — locked palette/components in blueprint; apply across screens. Slice 0023 extracts prototype tokens and restacks the hub; lobby / join / expense-form layouts stay. Do not take v1 dark mode / fonts / avatar seeds (D-084 keep surfaces). — area: ui — raised: bootstrap · restated: steering after 0029 · *partially 0023*
+- **Activity burger drawer** — "Burger opens Activity drawer (full scrollable list)" from hub-chrome.html — the surface for the activity entity, not a new primary tab. — area: ui — raised: slice 0023 · restated: steering after 0029
 - **Smooth member view transitions** — "smooth view transitions, where each member is smoothly transitioned from view to view" — area: ui — raised: slice 0025
 - **Invite copy/share sheet** — prototype copy/share sheet after mint; today the join link lands on the screen that minted — area: ui — raised: slice 0023
-- **Expense editor as a sheet** — hub-chrome.html adds/edits in a bottom sheet; add stays the dedicated `L-expenseNew` screen — area: ui — raised: slice 0023 · *appetite: next after 0023*
+- **Expense editor as a sheet** — hub-chrome.html adds/edits in a bottom sheet; add stays the dedicated `L-expenseNew` screen (keep this surface). — area: ui — raised: slice 0023
 - **Debug telemetry** — crash reporter; tags group_id + device_user_id only — area: observability — raised: bootstrap
 - **Handoff checklist** — "Final spec section outline and the acceptance checklist proving the design is implementable" — area: meta — raised: bootstrap
 
@@ -62,3 +75,7 @@
 - **First-run create** — delivered in [slice 0027](slices/0027-first-run.md); form then hub of names, bind once, lobby by name, Settings without a roster.
 
 - **Member rename** — delivered in [slice 0028](slices/0028-member-rename.md); any slot’s display name from member detail; bind stays. Kick stays parked.
+
+- **Equal-split expense edit** — delivered in [slice 0029](slices/0029-expense-editor.md); list or bucket line.
+
+- **Mixed splits** — delivered in [slice 0030](slices/0030-mixed-splits.md); share units, fixed cents, mixed editor on the expense form.

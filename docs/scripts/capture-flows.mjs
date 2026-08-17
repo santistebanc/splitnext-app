@@ -209,7 +209,7 @@ const FLOWS = [
     from: 'bound',
     async run(d) {
       await d.tapNewExpense();
-      await d.type(/^Amount/, '10.00');
+      await d.typeAmount('10.00');
       await d.type('What for', 'Taxi');
       await d.tap('Add expense');
       await d.beat(2400);
@@ -223,7 +223,7 @@ const FLOWS = [
       await d.beat(800);
       await d.press(page.getByTestId('expense-row').first());
       await d.beat(800);
-      const field = page.getByPlaceholder(/^Amount/);
+      const field = page.getByTestId('expense-amount');
       await field.fill('');
       await field.pressSequentially('12.00', { delay: 45 });
       await d.beat(400);
@@ -246,13 +246,32 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-mixed-split',
+    from: 'bound',
+    async run(d, page) {
+      await d.tapNewExpense();
+      await d.typeAmount('9.00');
+      await d.beat(400);
+      await d.press(page.getByLabel('Increase share').first());
+      await d.beat(400);
+      await d.tap('Add expense');
+      await d.beat(2400);
+      const hub = await page.innerText('body');
+      if (!/4\.50/.test(hub) && !/\+4\.50/.test(hub)) {
+        problems.push(
+          `[F-mixed-split] hub nets did not show a 2× share (got ${JSON.stringify(hub.slice(0, 400))})`,
+        );
+      }
+    },
+  },
+  {
     id: 'F-balances',
     from: 'spent',
     async run(d, page) {
       // The second expense is what makes the balances interesting: uneven
       // cents, and a payer who is up while everyone else is down.
       await d.tapNewExpense();
-      await d.type(/^Amount/, '4.50');
+      await d.typeAmount('4.50');
       await d.type('What for', 'Coffee');
       await d.tap('Add expense');
       await d.beat(2600);
@@ -448,7 +467,7 @@ async function seed(browser, stage) {
   if (upTo >= STAGES.indexOf('spent')) {
     await page.getByRole('button', { name: 'Add expense' }).click();
     await page.waitForTimeout(1200);
-    await page.getByPlaceholder(/^Amount/).fill('10.00');
+    await page.getByTestId('expense-amount').fill('10.00');
     await page.getByPlaceholder('What for').fill('Taxi');
     await page.getByText('Add expense', { exact: true }).filter({ visible: true }).first().click();
     await page.waitForTimeout(2500);
@@ -526,6 +545,16 @@ async function stills(browser, storageState, hubUrl, number) {
   await page.waitForTimeout(2000);
   await page.screenshot({ path: join(SHOTS, `${number}-hub.png`) });
   console.log('still', `${number}-hub.png`);
+  if (number === '0030') {
+    await page.getByRole('button', { name: 'Add expense' }).click();
+    await page.waitForTimeout(1200);
+    await page.getByTestId('expense-amount').fill('9.00');
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: join(SHOTS, `${number}-split.png`) });
+    console.log('still', `${number}-split.png`);
+    await context.close();
+    return;
+  }
   if (number === '0029') {
     await page.getByRole('button', { name: 'View all expenses' }).click();
     await page.waitForTimeout(1200);

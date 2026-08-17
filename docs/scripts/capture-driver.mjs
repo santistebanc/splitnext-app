@@ -54,11 +54,18 @@ export function makeDriver(page) {
     await beat(400);
   };
 
+  const typeAmount = async (text) => {
+    const field = page.getByTestId('expense-amount');
+    await press(field);
+    await field.pressSequentially(text, { delay: 45 });
+    await beat(400);
+  };
+
   /** Park the pointer on screen so its first move is a travel, not an entrance. */
   const enter = () =>
     page.mouse.move(VIEWPORT.width / 2, VIEWPORT.height - 120);
 
-  return { beat, press, tap, tapNewExpense, tapSettings, type, enter };
+  return { beat, press, tap, tapNewExpense, tapSettings, type, typeAmount, enter };
 }
 
 /** The balances as signed money lines — the thing a reload must not change. */

@@ -83,10 +83,10 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Outcome** — The cost is listed immediately against the member who paid, split among whoever was selected (everyone, if they left the defaults), reaches the server on the next push, and the hub switches from names to balances.
 
 1. `L-hub` opens `L-expenseNew` for that group from the FAB.
-2. `L-expenseNew` defaults the payer to this device's assumed member and checks every live member as sharing.
+2. `L-expenseNew` shows **Paid by** first as a drawer (same shape as currency), defaulting to this device's assumed member, then a large amount field (focused on create, not edit), who shares (everyone 1 share unless the query prefills), and **What for** last.
 3. The person types an amount; `L-expenseNew` parses it into whole cents and calls `L-addExpense` with that payer and the checked members.
 4. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
-5. `L-participantsForSplit` accepts the checked members only when they are all live and at least one remains; `L-splitEqually` divides the cost across that set, every cent. The split is frozen into the expense: a member added later joins the next expense, not this one.
+5. `L-participantsForSplit` accepts the checked members only when they are all live and at least one remains; `L-allocateMixed` (equal 1-share) divides the cost across that set, every cent. The split is frozen into the expense: a member added later joins the next expense, not this one.
 6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and `L-expenses` will list it; the hub's balances update before any network call.
 7. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
 8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets. After this first live expense, `L-hub` shows balances, **View all expenses** at the bottom, and the + to add a member.
@@ -94,12 +94,22 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 ## F-edit-expense — Edit an expense
 
 **Trigger** — On All expenses, or on a member's paid-for / owe-for line, the person opens an expense, changes amount, payer, who shares, or what-for, and taps **Save**.  
-**Outcome** — That expense is the same id at the next version, split equally among the checked set. Hub nets and buckets refold. A second expense is not created.
+**Outcome** — That expense is the same id at the next version, split from the editor (equal 1-share unless they changed units or a fixed amount). Hub nets and buckets refold. A second expense is not created.
 
-1. `L-expenses` or a `L-member` bucket line opens `L-expenseNew` on `/expense/{id}` with the stored expense loaded — live members who were not in the original split stay unchecked.
-2. Save calls `L-updateExpense`. `L-patchExpense` rebuilds allocations via `L-participantsForSplit` and `L-splitEqually`, or returns null when nothing changed — then nothing is written and Save stays off.
+1. `L-expenses` or a `L-member` bucket line opens `L-expenseNew` on `/expense/{id}` with the stored expense loaded — live members who were not in the original split stay out. Cents-only (pre-mixed) rows open as 1 share each.
+2. Save calls `L-updateExpense`. `L-patchExpense` rebuilds allocations via `L-allocateMixed`, or returns null when nothing changed — then nothing is written and Save stays off.
 3. A successful write updates the store and queues the expense; `L-flushQueue` pushes it as one item, same as add.
 4. `L-balances` and `L-memberBuckets` refold from the new version. The list still shows one row for that id.
+
+## F-mixed-split — Unequal split
+
+**Trigger** — On the new-expense form, with at least two members, the person types an amount, taps **Increase share** on one row, and taps **Add expense**.  
+**Outcome** — That member takes two shares; the others keep one. Hub nets match the mixed fold. The expense still has one id.
+
+1. `L-hub` opens `L-expenseNew`. The list starts at 1 share each (`L-splitEditor`).
+2. **+/-** and tap-amount call `L-splitEditor`; `L-allocateMixed` shows the live cents on each row.
+3. `L-addExpense` writes `share_units` and optional `fixed_cents` inside the expense with the frozen `amount_cents`.
+4. `L-balances` refolds from those cents.
 
 ## F-balances — See who owes what
 
