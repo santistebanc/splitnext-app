@@ -6,11 +6,11 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 ## F-create — Create group
 
-**Trigger** — On the lobby screen, the person taps **Create group**, fills group name, their name, and currency, and taps **Create group** again.  
-**Outcome** — The group exists on the server, this device holds its access token, this device is already the named member, and the hub opens on names plus add member — not Settings, not 0.00.
+**Trigger** — On the lobby screen, the person taps **Create group**, fills group name, their name, and currency (a picker, default Euro), and taps **Create group** again.  
+**Outcome** — The group exists on the server, this device holds its access token, this device is already the named member, and the hub opens on names plus a + to add a member — not Settings, not 0.00.
 
 1. `L-lobby` opens `L-create`.
-2. `L-create` calls `L-createGroup` with the typed name, currency, and creator name. Empty name or creator name keeps submit off; empty currency becomes `EUR` via `L-createGroupDraft`.
+2. `L-create` calls `L-createGroup` with the typed name, chosen currency, and creator name. Empty name or creator name keeps submit off; empty currency becomes `EUR` via `L-createGroupDraft`.
 3. `L-deviceUser` reads this install's id through `L-secureStorage`, creating it the first time.
 4. `L-getGroupStore` opens a fresh store for the new group and `L-initLocalGroup` writes version 1 into it — the group is usable offline from this moment. `L-createGroupDraft` also writes the creator member and this device's bind.
 5. `L-edgeCreate` posts the new group to `L-efCreate`, which registers it and returns an access token.
@@ -18,7 +18,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
    - returns `{ access_token, group }`
 6. `L-accessToken` writes that token through `L-secureStorage` and `L-lobbyIds` adds the group to this device's lobby list. The member and bind are queued and `L-flushQueue` pushes them.
 7. `L-wakeSub` opens a hibernating WebSocket on the group's Durable Object so other devices' changes arrive. If the socket is unavailable the group still works — only live updates are lost.
-8. `L-create` opens `L-hub` for the new group. `L-assumedMember` already resolves, so the hub shows You (Name) and add member.
+8. `L-create` opens `L-hub` for the new group. `L-assumedMember` already resolves, so the hub shows You and a + to add a member.
 
 ## F-open — Open group
 
@@ -58,13 +58,24 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 ## F-add-member — Add member
 
-**Trigger** — On the hub, the person types a name and adds a member — the full field while there are no expenses, or the quiet **Add member** once balances are showing.  
+**Trigger** — On the hub, the person taps the + under the list, types a name, and submits.  
 **Outcome** — The person appears in the list immediately and reaches the server on the next push.
 
-1. `L-hub` is already open.
-2. `L-hub` calls `L-addMember` with the typed name.
+1. `L-hub` is already open. The + **add member** control sits under the names or balances, on the right.
+2. Tapping it opens a name field. Submit calls `L-addMember` with the typed name.
 3. The member is written into the store at version 1 and queued — the list updates before any network call.
 4. `L-flushQueue` pushes it, exactly as in Sync one group step 2.
+
+## F-rename — Rename a member
+
+**Trigger** — On a member screen, the person taps the edit icon, types a new name, and submits or leaves the field.  
+**Outcome** — That slot’s display name updates on their screen and anywhere the name itself is shown. This device’s hub row stays You. Who they are (the bind) does not change.
+
+1. `L-hub` opens `L-member` — a names row or a balance row.
+2. `L-member` shows the display name and an edit icon in the header. Tapping the icon turns the title into a focused field.
+3. Blur or enter calls `L-updateMember`. `L-patchMember` builds the next version, or returns null when the trimmed name is empty or unchanged — then nothing is written.
+4. The header title is restored with the new display name. A successful write updates the store and queues the member; `L-flushQueue` pushes it.
+5. Back on `L-hub`, `L-memberLabel` still writes You for this device's member; other rows and `L-lobbyMembers` show the new name. Expenses and the bind still point at the same member id.
 
 ## F-add-expense — Add expense
 
@@ -78,7 +89,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 5. `L-participantsForSplit` accepts the checked members only when they are all live and at least one remains; `L-splitEqually` divides the cost across that set, every cent. The split is frozen into the expense: a member added later joins the next expense, not this one.
 6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and `L-expenses` will list it; the hub's balances update before any network call.
 7. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
-8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets. After this first live expense, `L-hub` shows balances, All expenses, and a quiet Add member; Invite is gone.
+8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets. After this first live expense, `L-hub` shows balances, **View all expenses** at the bottom, and the + to add a member.
 
 ## F-balances — See who owes what
 
@@ -87,7 +98,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-hub` reads the group's members and expenses straight from the store, so the list is as fresh as the last sync and needs no network of its own.
 2. `L-balances` credits each payer the full amount and debits each member their share. Because a split always sums to its expense, the nets cancel out across the group.
-3. `L-assumedMember` marks which row is yours; `L-memberLabel` writes You (Name) and signs the net. The hub colours a negative the warn colour and a positive the accent.
+3. `L-assumedMember` marks which row is yours; `L-memberLabel` writes You and signs the net. The hub colours a negative the warn colour and a positive the accent.
 4. Anything arriving later — a wake, a roster pull — lands in the store and the list refolds on its own.
 
 ## F-settle — See who should pay whom
@@ -97,8 +108,8 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-hub` already has the nets from `L-balances`, so settle-up needs no network of its own.
 2. `L-settle` drops members at zero, partitions the rest into as many zero-sum subgroups as exist, and pairs poorest with richest inside each. Two devices holding the same nets list the same transfers.
-3. Tapping a balance row opens `L-member`. `L-memberBuckets` lists that person's expenses as paid-for and owe-for lines that sum to their net. `L-settlementsForMember` keeps only that person's outgoing transfers. Each button pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
-4. When that member has no outgoing transfer — they are square, or only owed — the settle block is absent. Empty buckets say **None**.
+3. Tapping a balance row opens `L-member`. `L-memberBuckets` lists that person's expenses as paid-for and owe-for lines that sum to their net. `L-settlementsForMember` keeps only that person's outgoing transfers under **Suggested settlement**. Each row is the transfer as text and a **Settle** button that pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
+4. When that member has no outgoing transfer — they are square, or only owed — the settle block is absent. An empty paid-for or owe-for section is omitted.
 
 ## F-settle-record — Record a suggested transfer
 
@@ -119,32 +130,32 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 1. Create runs `L-createGroupDraft` and writes the bind with the group. Join runs `L-joinGroup`, which inserts the bind on the server for the named member.
 2. `L-bindOnce` allows a first live bind, no-ops the same member again, and refuses any other member. A tombstoned bind does not count as live, so leave is what lets this install bind again.
 3. `L-bindMe` applies that rule and records `binding_locked` when a live bind already exists. A missing member records `member_missing`. There is no UI that calls it after create or join.
-4. `L-assumedMember` resolves this device to that member, which is what puts You (Name) on the hub.
+4. `L-assumedMember` resolves this device to that member, which is what puts You on the hub.
 
 ## F-invite — Invite a member
 
-**Trigger** — On a hub with no expenses, the person taps **Invite** on an unclaimed name; or, after the first expense, they open that member and tap **Invite**.  
-**Outcome** — A join link for that member is shown on that screen (and copied when the platform allows). Another device can redeem it once, within seven days.
+**Trigger** — The person opens an unclaimed member.  
+**Outcome** — A join link for that member is already on that screen. Copy or share sends it; another device can redeem it once, within seven days.
 
-1. `L-memberClaimed` marks the slot; **Invite** is only on Unclaimed. `L-hub` (names list) or `L-member` calls `L-mintInvite` with that member.
+1. `L-hub` opens `L-member`. `L-memberClaimed` marks the slot; the invite row is only on Unclaimed. `L-member` calls `L-mintInvite` with that member when the screen opens.
 2. `L-edgeMintInvite` posts to `L-efMintInvite`, which checks this device's access token, refuses a missing or tombstoned member, stores the hash, and returns the plaintext once.
-3. That screen shows the `/join?token=` link (web) or the raw token (native) via `L-inviteShare`. The secret is not kept on the device after that.
+3. That screen shows **invite link** above the `/j/{token}` link (web) or the raw token (native) via `L-inviteShare` in a read-only field, with copy and share. The secret is not kept on the device after that.
 
 ## F-join — Join from an invite
 
 **Trigger** — On another device, the person opens the join link, or expands **Join with link** on the lobby, pastes, and submits.  
 **Outcome** — The group is on this device, this device is already that member, and there is no This is me to tap.
 
-1. `L-join` (from the URL) or `L-lobby` (from the expanded join field) calls `L-joinGroup`. `L-parseInviteToken` accepts either a raw token or a `/join?token=` URL.
+1. `L-join` (from the URL) or `L-lobby` (from the expanded join field) calls `L-joinGroup`. `L-parseInviteToken` accepts a raw token, a `/j/{token}` URL, or a `/join?token=` URL.
 2. `L-edgeJoin` posts the secret and this install's `device_user_id` to `L-efJoin`.
 3. `L-efJoin` looks up the hash. `L-inviteIsLive` (the same three checks, on the server) refuses a spent, expired, or tombstoned-member invite. A device that already has a live token for the group is refused without consuming the invite.
 4. On success it mints an access token, inserts a v1 bind for the named member, marks the invite redeemed, and `L-efWake` tells the group's other devices.
 5. `L-joinGroup` stores the token, adds the group to the lobby, and commits the bind. The hub then `L-openGroup`s — subscribe for wakes, then pull the roster — so the live socket is started on the screen that stays open, not on the join spinner that unmounts.
-6. `L-assumedMember` already resolves, so `L-hub` shows You (Name). `L-bindOnce` would refuse a later pick.
+6. `L-assumedMember` already resolves, so `L-hub` shows You. `L-bindOnce` would refuse a later pick.
 
 ## F-bump — Rename group
 
-**Trigger** — On the hub, the person taps **Settings**, changes the group name, and taps **Done**.  
+**Trigger** — On the hub, the person taps the settings icon, changes the group name, and taps **Done**.  
 **Outcome** — The new name shows at once here and reaches the other devices without them asking.
 
 1. `L-hub` opens `L-settings`.

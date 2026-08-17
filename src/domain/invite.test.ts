@@ -62,6 +62,24 @@ describe('parseInviteToken', () => {
     ).toBe('abc-DEF_123');
   });
 
+  it('pulls token out of a /j/ path', () => {
+    expect(parseInviteToken('http://127.0.0.1:8081/j/xK3mP9qL2nQ')).toBe(
+      'xK3mP9qL2nQ',
+    );
+  });
+
+  it('pulls token out of a pasted /j/ path with no origin', () => {
+    expect(parseInviteToken('/j/xK3mP9qL2nQ')).toBe('xK3mP9qL2nQ');
+  });
+
+  it('pulls token out of a Pages /j/ URL', () => {
+    expect(
+      parseInviteToken(
+        'https://santistebanc.github.io/splitnext-app/app/j/xK3mP9qL2nQ',
+      ),
+    ).toBe('xK3mP9qL2nQ');
+  });
+
   it('pulls token out of a pasted path with no origin', () => {
     expect(parseInviteToken('/join?token=abc-DEF_123')).toBe('abc-DEF_123');
   });
@@ -85,13 +103,13 @@ describe('parseInviteToken', () => {
 });
 
 describe('joinPathForToken', () => {
-  it('is /join?token= on a local path', () => {
-    expect(joinPathForToken('abc', '/group/g1')).toBe('/join?token=abc');
+  it('is /j/{token} on a local path', () => {
+    expect(joinPathForToken('abc', '/group/g1')).toBe('/j/abc');
   });
 
   it('keeps the Pages base path so a copied link still opens the app', () => {
     expect(joinPathForToken('abc', '/splitnext-app/app/group/g1')).toBe(
-      '/splitnext-app/app/join?token=abc',
+      '/splitnext-app/app/j/abc',
     );
   });
 });

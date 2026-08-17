@@ -1,6 +1,7 @@
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   assumedMemberIdFromBinds,
+  bindingIsOpen,
   memberIsClaimed,
 } from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
@@ -9,6 +10,7 @@ import {
   type BucketLine,
 } from '@/src/domain/buckets';
 import { settlementHref } from '@/src/domain/expensePrefill';
+import { patchMember } from '@/src/domain/member';
 import {
   settlementsForMember,
   suggestSettlements,
@@ -16,14 +18,15 @@ import {
 import { getGroupStore } from '@/src/store/groupStore';
 import { mintInvite } from '@/src/sync/invite';
 import { inviteShareText } from '@/src/sync/inviteShareText';
-import { openGroup } from '@/src/sync/groupSync';
+import { openGroup, updateMember } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
+import { SymbolView } from 'expo-symbols';
 import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 
 async function copyText(text: string): Promise<void> {
   try {
@@ -32,6 +35,14 @@ async function copyText(text: string): Promise<void> {
     }
   } catch {
     // The visible join link is the fallback.
+  }
+}
+
+async function shareText(text: string): Promise<void> {
+  try {
+    await Share.share({ message: text });
+  } catch {
+    // Dismissed, or this platform has no share sheet.
   }
 }
 
@@ -61,8 +72,12 @@ export default function MemberScreen() {
   const lastErrorRaw = useValue(store$.lastError);
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [joinLink, setJoinLink] = useState<string | null>(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const editingRef = useRef(false);
+  const draftNameRef = useRef('');
+  const nameRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (!groupId) return;
@@ -82,16 +97,17 @@ export default function MemberScreen() {
   const isYou = targetId === assumedMemberId;
   const claimed = memberIsClaimed(binds ?? {}, targetId);
   const showInvite = !claimed && member != null && member.deleted_at == null;
+  const namesOnly = bindingIsOpen(expenses ?? {});
   const subjectName = member
     ? memberLabel(member.display_name, false)
     : '(unnamed)';
-  const title = member
-    ? memberLabel(member.display_name, isYou)
-    : '(unnamed)';
+  const canEditName = member != null && member.deleted_at == null;
 
   useEffect(() => {
-    navigation.setOptions({ title });
-  }, [navigation, title]);
+    if (member && !editingRef.current) {
+      draftNameRef.current = member.display_name;
+    }
+  }, [member?.display_name]);
 
   const balances = useMemo(
     () => computeBalances(members ?? {}, expenses ?? {}),
@@ -116,48 +132,166 @@ export default function MemberScreen() {
   const paidHeading = isYou ? 'You paid for' : `${subjectName} paid for`;
   const owesHeading = isYou ? 'You owe for' : `${subjectName} owes for`;
 
-  const onInvite = async () => {
-    if (busy || !showInvite) return;
-    setBusy(true);
-    try {
-      const token = await mintInvite(groupId, targetId);
-      if (!token) {
-        setJoinLink(null);
-        return;
-      }
-      const link = inviteShareText(token);
-      setJoinLink(link);
-      await copyText(link);
-    } finally {
-      setBusy(false);
+  useEffect(() => {
+    if (!showInvite || !groupId || !targetId) {
+      setJoinLink(null);
+      setInviteBusy(false);
+      return;
+    }
+    let cancelled = false;
+    setInviteBusy(true);
+    void mintInvite(groupId, targetId).then((token) => {
+      if (cancelled) return;
+      setJoinLink(token ? inviteShareText(token) : null);
+      setInviteBusy(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showInvite, groupId, targetId]);
+
+  const openEdit = () => {
+    if (member == null || member.deleted_at != null) return;
+    draftNameRef.current = member.display_name;
+    editingRef.current = true;
+    setEditing(true);
+  };
+
+  const closeEdit = async () => {
+    if (!editingRef.current) return;
+    editingRef.current = false;
+    setEditing(false);
+    const next = draftNameRef.current;
+    if (
+      member != null &&
+      member.deleted_at == null &&
+      patchMember(member, next, member.updated_at) != null
+    ) {
+      await updateMember(groupId, targetId, next);
+    } else if (member) {
+      draftNameRef.current = member.display_name;
     }
   };
+
+  useLayoutEffect(() => {
+    if (editing && canEditName) {
+      navigation.setOptions({
+        title: subjectName,
+        headerTitleAlign: 'left',
+        headerTitle: () => (
+          <TextInput
+            ref={nameRef}
+            testID="member-name"
+            style={styles.headerField}
+            defaultValue={draftNameRef.current}
+            onChangeText={(text) => {
+              draftNameRef.current = text;
+            }}
+            placeholder="Name"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="words"
+            autoFocus
+            selectTextOnFocus
+            returnKeyType="done"
+            onSubmitEditing={() => void closeEdit()}
+            onBlur={() => void closeEdit()}
+          />
+        ),
+        headerRight: () => null,
+      });
+      return;
+    }
+    navigation.setOptions({
+      title: subjectName,
+      headerTitleAlign: 'center',
+      headerTitle: () => (
+        <Text
+          testID="member-name-label"
+          style={styles.headerTitle}
+          numberOfLines={1}
+        >
+          {subjectName}
+        </Text>
+      ),
+      headerRight: canEditName
+        ? () => (
+            <Pressable
+              testID="member-edit"
+              style={styles.editBtn}
+              onPress={openEdit}
+              accessibilityRole="button"
+              accessibilityLabel="Edit name"
+            >
+              <Text style={styles.editIcon}>✎</Text>
+            </Pressable>
+          )
+        : () => null,
+    });
+  }, [navigation, editing, subjectName, canEditName, member]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {showInvite ? (
-        <View style={styles.inviteBlock}>
-          <Pressable
-            style={[styles.invite, busy ? styles.disabled : null]}
-            onPress={() => void onInvite()}
-            accessibilityRole="button"
-            disabled={busy}
-          >
-            <Text style={styles.inviteText}>Invite</Text>
-          </Pressable>
-          {joinLink ? (
-            <View style={styles.joinBlock}>
-              <Text style={styles.joinHint}>
-                Join link copied — paste it on the other device, or open it there.
-              </Text>
-              <Text selectable style={styles.mono} accessibilityLabel="Join link">
-                {joinLink}
-              </Text>
-            </View>
-          ) : null}
+        <View style={styles.invite}>
+          <Text style={styles.sec}>invite link</Text>
+          <View style={styles.inviteRow}>
+            <TextInput
+              testID="invite-link"
+              style={styles.inviteField}
+              value={joinLink ?? ''}
+              editable={false}
+              selectTextOnFocus
+              placeholder="Invite link"
+              placeholderTextColor={colors.muted}
+              accessibilityLabel="Join link"
+            />
+            <Pressable
+              testID="invite-copy"
+              style={[styles.inviteIconBtn, !joinLink ? styles.disabled : null]}
+              onPress={() => {
+                if (joinLink) void copyText(joinLink);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Copy invite link"
+              disabled={!joinLink || inviteBusy}
+            >
+              <SymbolView
+              name={{
+                ios: 'doc.on.doc',
+                android: 'content_copy',
+                web: 'content_copy',
+              }}
+              size={22}
+              tintColor={colors.accent}
+            />
+            </Pressable>
+            <Pressable
+              testID="invite-share"
+              style={[styles.inviteIconBtn, !joinLink ? styles.disabled : null]}
+              onPress={() => {
+                if (joinLink) void shareText(joinLink);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Share invite link"
+              disabled={!joinLink || inviteBusy}
+            >
+              <SymbolView
+              name={{
+                ios: 'square.and.arrow.up',
+                android: 'ios_share',
+                web: 'ios_share',
+              }}
+              size={22}
+              tintColor={colors.accent}
+            />
+            </Pressable>
+          </View>
         </View>
       ) : null}
 
+      {!namesOnly ? (
+        <>
+      {buckets.paidFor.length > 0 ? (
       <Bucket
         testID="paid-for"
         heading={paidHeading}
@@ -165,6 +299,8 @@ export default function MemberScreen() {
         currency={currency}
         nameOf={nameOf}
       />
+      ) : null}
+      {buckets.owesFor.length > 0 ? (
       <Bucket
         testID="owes-for"
         heading={owesHeading}
@@ -172,6 +308,7 @@ export default function MemberScreen() {
         currency={currency}
         nameOf={nameOf}
       />
+      ) : null}
 
       <View style={styles.netRow}>
         <Text style={styles.netLabel}>Net balance</Text>
@@ -187,10 +324,7 @@ export default function MemberScreen() {
 
       {transfers.length > 0 ? (
         <View testID="settle" style={styles.settle}>
-          <Text style={styles.sec}>Settle</Text>
-          <Text style={styles.sub}>
-            Suggested efficient transfers for the group
-          </Text>
+          <Text style={styles.sec}>Suggested settlement</Text>
           {transfers.map((s, i) => {
             const amount = formatMoney(s.amount_cents, currency);
             const to = nameOf(s.to_member_id);
@@ -199,19 +333,26 @@ export default function MemberScreen() {
               ? `Pay ${amount} to ${to}`
               : `${from} pays ${amount} to ${to}`;
             return (
-              <Pressable
+              <View
                 key={`${s.from_member_id}-${s.to_member_id}-${i}`}
-                testID="settle-row"
-                style={styles.pay}
-                onPress={() => router.push(settlementHref(groupId, s) as Href)}
-                accessibilityRole="button"
-                accessibilityLabel={label}
+                style={styles.settleRow}
               >
-                <Text style={styles.payText}>{label}</Text>
-              </Pressable>
+                <Text style={styles.settleText}>{label}</Text>
+                <Pressable
+                  testID="settle-row"
+                  style={styles.settleBtn}
+                  onPress={() => router.push(settlementHref(groupId, s) as Href)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Settle: ${label}`}
+                >
+                  <Text style={styles.settleBtnText}>Settle</Text>
+                </Pressable>
+              </View>
             );
           })}
         </View>
+      ) : null}
+        </>
       ) : null}
 
       {lastError ? (
@@ -239,10 +380,7 @@ function Bucket({
   return (
     <View testID={testID} style={styles.bucket}>
       <Text style={styles.sec}>{heading}</Text>
-      {lines.length === 0 ? (
-        <Text style={styles.empty}>None</Text>
-      ) : (
-        lines.map((line) => {
+      {lines.map((line) => {
           const left = bucketLineLabel(line, nameOf);
           return (
             <View key={line.expense_id} testID="bucket-line" style={styles.line}>
@@ -261,8 +399,7 @@ function Bucket({
               </Text>
             </View>
           );
-        })
-      )}
+        })}
     </View>
   );
 }
@@ -273,37 +410,56 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     backgroundColor: colors.bg,
   },
-  inviteBlock: {
-    marginBottom: 16,
-    gap: 10,
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.ink,
+    maxWidth: 220,
+  },
+  headerField: {
+    minWidth: 140,
+    maxWidth: 240,
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.ink,
+    paddingVertical: 4,
+    paddingHorizontal: 0,
+  },
+  editBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editIcon: {
+    fontSize: 18,
+    color: colors.muted,
   },
   invite: {
+    marginBottom: 16,
+  },
+  inviteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  inviteField: {
+    flex: 1,
+    minWidth: 0,
     borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.youRow,
-    paddingHorizontal: 12,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 10,
     paddingVertical: 10,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
-  },
-  inviteText: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  joinBlock: {
-    gap: 6,
-  },
-  joinHint: {
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-  },
-  mono: {
     fontFamily: 'monospace',
     fontSize: 13,
     color: colors.ink,
+  },
+  inviteIconBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   disabled: {
     opacity: 0.5,
@@ -313,11 +469,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
-  },
-  empty: {
-    marginTop: 4,
-    fontSize: 14,
-    color: colors.muted,
   },
   line: {
     flexDirection: 'row',
@@ -364,6 +515,29 @@ const styles = StyleSheet.create({
   settle: {
     marginTop: 16,
   },
+  settleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 6,
+  },
+  settleText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  settleBtn: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: 14,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settleBtnText: {
+    color: colors.accentInk,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   sec: {
     marginBottom: 8,
     fontSize: 12,
@@ -371,24 +545,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: colors.muted,
-  },
-  sub: {
-    marginTop: 4,
-    marginBottom: 10,
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-  },
-  pay: {
-    backgroundColor: colors.accent,
-    padding: 14,
-    marginTop: 8,
-  },
-  payText: {
-    color: colors.accentInk,
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'left',
   },
   err: {
     marginTop: 16,

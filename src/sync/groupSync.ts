@@ -1,12 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
 import { bindOnce } from '@/src/domain/bind';
-import {
-  createGroupDraft,
-  patchGroup,
-  type CreateGroupDraftInput,
-  type GroupPatch,
-} from '@/src/domain/group';
+import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPatch } from '@/src/domain/group';
+import { patchMember } from '@/src/domain/member';
 import { participantsForSplit, splitEqually } from '@/src/domain/split';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
@@ -157,6 +153,29 @@ export async function addMember(
   ]);
   await flushQueue(groupId);
   return memberId;
+}
+
+export async function updateMember(
+  groupId: string,
+  memberId: string,
+  displayName: string,
+): Promise<void> {
+  const store$ = getGroupStore(groupId);
+  const current = (store$.members.get() ?? {})[memberId];
+  if (!current || current.deleted_at != null) return;
+  const next = patchMember(current, displayName, new Date().toISOString());
+  if (!next) return;
+  store$.members.set({ ...(store$.members.get() ?? {}), [memberId]: next });
+  store$.queue.set([
+    ...(store$.queue.get() ?? []),
+    {
+      entity_type: 'members',
+      id: memberId,
+      version: next.version,
+      payload: next,
+    },
+  ]);
+  await flushQueue(groupId);
 }
 
 /** What the form knows when someone records a cost. */

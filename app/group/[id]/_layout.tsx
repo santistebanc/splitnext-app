@@ -10,7 +10,7 @@ export default function GroupLayout() {
         contentStyle: { backgroundColor: colors.bg },
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Group' }} />
+      <Stack.Screen name="index" options={{ title: '' }} />
       <Stack.Screen name="settings" options={{ title: 'Settings' }} />
       <Stack.Screen name="member/[memberId]" options={{ title: 'Member' }} />
       <Stack.Screen name="expenses" options={{ title: 'All expenses' }} />

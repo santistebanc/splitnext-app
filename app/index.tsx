@@ -11,6 +11,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -85,8 +86,21 @@ export default function LobbyScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.brand}>SplitNext</Text>
+
+      {groupIds.length > 0 ? (
+        <View>
+          <Text style={styles.section}>groups</Text>
+          {groupIds.map((id) => (
+            <LobbyGroupRow key={id} groupId={id} />
+          ))}
+        </View>
+      ) : null}
 
       <Pressable
         style={styles.button}
@@ -95,13 +109,6 @@ export default function LobbyScreen() {
       >
         <Text style={styles.buttonText}>Create group</Text>
       </Pressable>
-
-      <Text style={styles.section}>On this device</Text>
-      {groupIds.length === 0 ? (
-        <Text style={styles.empty}>No groups yet.</Text>
-      ) : (
-        groupIds.map((id) => <LobbyGroupRow key={id} groupId={id} />)
-      )}
 
       {joinOpen ? (
         <TextInput
@@ -129,13 +136,17 @@ export default function LobbyScreen() {
       )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
+  },
+  container: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: 24,
     gap: 12,
   },
@@ -166,11 +177,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   joinLink: {
-    marginTop: 8,
     color: colors.muted,
     fontSize: 14,
     fontWeight: '600',
     textDecorationLine: 'underline',
+    textAlign: 'center',
   },
   error: {
     color: colors.danger,
@@ -182,10 +193,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  empty: {
-    color: colors.ink,
-    opacity: 0.6,
   },
   row: {
     borderBottomWidth: StyleSheet.hairlineWidth,

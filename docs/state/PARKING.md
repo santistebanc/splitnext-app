@@ -14,20 +14,20 @@
 
 - **This is me as a Settings field** — dropped: "ok lets drop the field at settings to change assumed member" — area: membership — raised: slice 0026
 
-- **Member rename / soft-delete** — "you can however rename any member" / "on edit then you show the list of members (name + button to edit name + button to remove/kickout)" — rename any member; soft-delete; never hard-delete while referenced — area: membership — raised: bootstrap · restated: slice 0027 · *appetite: next after 0027*
+- **Member rename / soft-delete** — "you can however rename any member" / "on edit then you show the list of members (name + button to edit name + button to remove/kickout)" — rename delivered in 0028; soft-delete / kick stays parked; never hard-delete while referenced — area: membership — raised: bootstrap · restated: slice 0027 · *partially delivered in 0028*
 
 - **Expense editor + invariants** — "edit expenses normally" / edit an existing expense from the list or a bucket line; uneven / share-based splits. Prototype edits in a sheet; add stays `L-expenseNew` until that chrome earns its keep. Slice 0018 shipped the add form; 0019 shipped settle-up tap → prefill — area: ledger — raised: bootstrap · restated: slice 0027 · *appetite: next after 0027*
 
 - **Member invites** — HTTPS deep link join; joiner-side picker / add-new; claimed exclusive slot. Slice 0012 shipped mint + redeem for a named member (`/join` + lobby paste); app links and group-wide invite stay parked — area: invites — raised: bootstrap · *partially delivered in 0012*
 - **Kick out** — "button to remove/kickout" on the edit-members list (was: member detail in hub-chrome.html) — soft-delete a member; never hard-delete while referenced — area: membership — raised: slice 0023 · restated: slice 0025
-- **Invite page status** — Invite on the names hub or on unclaimed member detail ships in 0027; "if invitation is active or invitation expired" / resend still needs a Worker list of invite metadata — area: invites — raised: slice 0025
+- **Invite page status** — Join link on unclaimed member detail ships in 0027/0028; "if invitation is active or invitation expired" / resend still needs a Worker list of invite metadata — area: invites — raised: slice 0025
 - **Reactivate invite on leave** — dropped: "or okay the thing about leaving and reactivating the link maybe its not good idea, forget that". Invite stays one-use (D-056); leave unbinds and the slot stays (D-075); a new Invite mints a new link. — area: invites — raised: slice 0027
 
 ## Breadth
 
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
 - **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
-- **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — area: invites — raised: bootstrap
+- **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — `/j/{token}` shipped (D-080); the short origin is still parked — area: invites — raised: bootstrap · *partially delivered in 0028*
 - **Activity feed** — twelve event types; client-authored; flushed last. Hub-chrome.html puts the list in a burger drawer — area: activity — raised: bootstrap · *appetite: next after 0023*
 - **Retention / deletion policy** — area: data — raised: bootstrap
 - **Expense note required vs optional** — area: ux — raised: bootstrap
@@ -47,7 +47,7 @@
 - **Lobby index out of Secure Store** — move `lobby_group_ids` to Legend/SQLite; Secure Store for secrets only — area: client — raised: slice 0001
 - **Design system application** — locked palette/components in blueprint; apply across screens. Slice 0023 extracts prototype tokens and restacks the hub; lobby / join / expense-form layouts stay — area: ui — raised: bootstrap · *partially 0023*
 - **Activity burger drawer** — "Burger opens Activity drawer (full scrollable list)" from hub-chrome.html — area: ui — raised: slice 0023 · *appetite: next after 0023*
-- **Invite page status** — Invite on hub names / unclaimed member detail in 0027; "if invitation is active or invitation expired" / resend still needs a Worker list of invite metadata — area: invites — raised: slice 0025
+- **Invite page status** — Join link on unclaimed member detail in 0027/0028; "if invitation is active or invitation expired" / resend still needs a Worker list of invite metadata — area: invites — raised: slice 0025
 - **Smooth member view transitions** — "smooth view transitions, where each member is smoothly transitioned from view to view" — area: ui — raised: slice 0025
 - **Invite copy/share sheet** — prototype copy/share sheet after mint; today the join link lands on the screen that minted — area: ui — raised: slice 0023
 - **Expense editor as a sheet** — hub-chrome.html adds/edits in a bottom sheet; add stays the dedicated `L-expenseNew` screen — area: ui — raised: slice 0023 · *appetite: next after 0023*
@@ -59,6 +59,6 @@
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Leave group** — delivered in [slice 0025](slices/0025-leave-group.md); unbind + revoke this device’s token; member and expenses stay. Surface moved to Settings in 0027. Kick and reclaim-slot stay parked.
-
 - **First-run create** — delivered in [slice 0027](slices/0027-first-run.md); form then hub of names, bind once, lobby by name, Settings without a roster.
+
+- **Member rename** — delivered in [slice 0028](slices/0028-member-rename.md); any slot’s display name from member detail; bind stays. Kick stays parked.

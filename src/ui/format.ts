@@ -1,3 +1,5 @@
+import { currencySymbol } from '@/src/domain/currency';
+
 /** Integer cents as decimal text. Remainder is `% 100`, not a float. */
 export function formatCents(cents: number): string {
   const abs = Math.abs(cents);
@@ -12,11 +14,10 @@ export function formatMoney(
   signed = false,
 ): string {
   const sign = !signed || cents === 0 ? '' : cents > 0 ? '+' : '−';
-  return `${sign}${formatCents(cents)} ${currency}`;
+  return `${sign}${formatCents(cents)} ${currencySymbol(currency)}`;
 }
 
 export function memberLabel(displayName: string, isYou: boolean): string {
-  const shown = displayName === '' ? '(unnamed)' : displayName;
-  if (!isYou) return shown;
-  return displayName === '' ? 'You (unnamed)' : `You (${displayName})`;
+  if (isYou) return 'You';
+  return displayName === '' ? '(unnamed)' : displayName;
 }

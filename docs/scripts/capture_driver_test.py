@@ -35,24 +35,23 @@ process.stdout.write(JSON.stringify(out));
 
 HUB = """
 (empty)
-You (Ana)
+You
 +6.67 EUR
 Bo
 −3.33 EUR
 Cy
 −3.34 EUR
-Settings
-All expenses →
+View all expenses
 + Expense
 """
 
 MEMBER = """
-You (Ana)
+You
 Net balance
 +6.67 EUR
+Suggested settlement
+Bo pays 3.33 EUR to You
 Settle
-Suggested efficient transfers for the group
-Bo pays 3.33 EUR to You (Ana)
 """
 
 
@@ -64,14 +63,14 @@ class BalancesOf(unittest.TestCase):
         )
 
     def test_empty_when_nothing_is_spent(self):
-        self.assertEqual(call_extract("balancesOf", "All expenses →\nAdd member"), "")
+        self.assertEqual(call_extract("balancesOf", "View all expenses\nAdd member"), "")
 
 
 class SettleOf(unittest.TestCase):
     def test_keeps_pay_lines_and_drops_the_net(self):
         self.assertEqual(
             call_extract("settleOf", MEMBER),
-            "Bo pays 3.33 EUR to You (Ana)",
+            "Bo pays 3.33 EUR to You",
         )
 
     def test_keeps_a_you_pay_button(self):

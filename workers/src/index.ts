@@ -1,5 +1,5 @@
 import { corsHeaders, jsonResponse } from './cors';
-import { randomToken } from './crypto';
+import { randomInviteToken, randomToken } from './crypto';
 import { healthPayload, isHealthRequest } from './health';
 import { GroupObject } from './groupObject';
 import {
@@ -204,7 +204,7 @@ async function handleMintInvite(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ error: 'member_missing' }, 404);
   }
 
-  const token = randomToken();
+  const token = randomInviteToken();
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
   await insertInvite(env.INDEX, token, groupId, memberId, expiresAt);
   return jsonResponse({ token, expires_at: expiresAt, member_id: memberId });
