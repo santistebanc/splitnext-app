@@ -13,15 +13,22 @@ export function assumedMemberIdFromBinds(
   return null;
 }
 
+/** A live bind pointing at this member means someone has joined that slot. */
+export function memberIsClaimed(
+  binds: Record<string, BindEntity>,
+  memberId: string,
+): boolean {
+  return Object.values(binds).some(
+    (bind) => bind.member_id === memberId && bind.deleted_at == null,
+  );
+}
+
 /**
- * Whether this device may still say which member it is.
+ * Whether the group still has no live expense.
  *
- * Choosing is free until the group has money in it: before the first expense
- * a wrong tap costs nothing, so every member stays offerable and the choice
- * can be changed. The first live expense closes it, because expenses are
- * recorded against the payer and moving a bind after that would silently
- * re-attribute them. Reopening it later is a deliberate, explicit act — a
- * different rule, not this one.
+ * The hub shows names and add member in that state; the first live expense
+ * switches it to balances and tap-to-detail. Soft-deleted expenses do not
+ * count.
  */
 export function bindingIsOpen(
   expenses: Record<string, ExpenseEntity>,

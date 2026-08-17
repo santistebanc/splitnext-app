@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   assumedMemberIdFromBinds,
   bindingIsOpen,
-} from './assumedMember';
-import type { BindEntity, ExpenseEntity } from '../types/group';
+  memberIsClaimed,
+} from '@/src/domain/assumedMember';
+import type { BindEntity, ExpenseEntity } from '@/src/types/group';
 
 function expense(
   partial: Partial<ExpenseEntity> & Pick<ExpenseEntity, 'id'>,
@@ -53,6 +54,29 @@ describe('assumedMemberIdFromBinds', () => {
       }),
     };
     expect(assumedMemberIdFromBinds(binds, 'd1')).toBeNull();
+  });
+});
+
+describe('memberIsClaimed', () => {
+  it('is claimed when a live bind points at the member', () => {
+    const binds = {
+      a: bind({ id: 'a', member_id: 'm1', device_user_id: 'd2' }),
+    };
+    expect(memberIsClaimed(binds, 'm1')).toBe(true);
+  });
+
+  it('is unclaimed when no live bind points at the member', () => {
+    const binds = {
+      a: bind({ id: 'a', member_id: 'm1', device_user_id: 'd1' }),
+      b: bind({
+        id: 'b',
+        member_id: 'm2',
+        device_user_id: 'd2',
+        deleted_at: '2026-01-02T00:00:00.000Z',
+      }),
+    };
+    expect(memberIsClaimed(binds, 'm2')).toBe(false);
+    expect(memberIsClaimed(binds, 'm3')).toBe(false);
   });
 });
 

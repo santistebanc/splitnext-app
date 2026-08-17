@@ -2,15 +2,12 @@ import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   assumedMemberIdFromBinds,
   bindingIsOpen,
+  memberIsClaimed,
 } from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
+import { lobbyGroupTitle } from '@/src/domain/lobby';
 import { getGroupStore } from '@/src/store/groupStore';
-import {
-  addMember,
-  bindMe,
-  bumpGroupName,
-  openGroup,
-} from '@/src/sync/groupSync';
+import { addMember, openGroup } from '@/src/sync/groupSync';
 import { mintInvite } from '@/src/sync/invite';
 import { inviteShareText } from '@/src/sync/inviteShareText';
 import { coerceSyncError } from '@/src/sync/syncErrors';
@@ -18,15 +15,8 @@ import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 async function copyText(text: string): Promise<void> {
   try {
@@ -65,9 +55,11 @@ export default function GroupHubScreen() {
   const lastErrorRaw = useValue(store$.lastError);
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
+  const addRef = useRef<TextInput>(null);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [joinLink, setJoinLink] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     if (!groupId) return;
@@ -75,9 +67,10 @@ export default function GroupHubScreen() {
     void getOrCreateDeviceUserId().then(setDeviceUserId);
   }, [groupId]);
 
-  const title = group.name === '' ? '(empty)' : group.name;
+  const title = lobbyGroupTitle(group.name);
   useEffect(() => {
     navigation.setOptions({
+      headerShown: true,
       title,
       headerLeft: () => (
         <Pressable
@@ -92,6 +85,10 @@ export default function GroupHubScreen() {
     });
   }, [navigation, router, title]);
 
+  useEffect(() => {
+    if (addOpen) addRef.current?.focus();
+  }, [addOpen]);
+
   const assumedMemberId = useMemo(
     () =>
       deviceUserId
@@ -99,18 +96,13 @@ export default function GroupHubScreen() {
         : null,
     [binds, deviceUserId],
   );
-  /** Every member stays offerable until the first expense lands. */
-  const canChoose = useMemo(() => bindingIsOpen(expenses ?? {}), [expenses]);
 
   const balances = useMemo(
     () => computeBalances(members ?? {}, expenses ?? {}),
     [members, expenses],
   );
+  const namesOnly = bindingIsOpen(expenses ?? {});
   const scale = balScale(balances.length);
-
-  const onBump = () => {
-    void bumpGroupName(groupId, 'Demo ' + (group.version + 1));
-  };
 
   const onAdd = async () => {
     if (!newName.trim() || busy) return;
@@ -118,16 +110,7 @@ export default function GroupHubScreen() {
     try {
       await addMember(groupId, newName);
       setNewName('');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onBind = async (memberId: string) => {
-    if (busy || !canChoose) return;
-    setBusy(true);
-    try {
-      await bindMe(groupId, memberId);
+      setAddOpen(false);
     } finally {
       setBusy(false);
     }
@@ -162,19 +145,52 @@ export default function GroupHubScreen() {
           </Text>
         ) : null}
 
-        {joinLink ? (
-          <>
-            <Text style={styles.hint}>
+        {namesOnly && joinLink ? (
+          <View style={styles.joinBlock}>
+            <Text style={styles.joinHint}>
               Join link copied — paste it on the other device, or open it there.
             </Text>
             <Text selectable style={styles.mono} accessibilityLabel="Join link">
               {joinLink}
             </Text>
-          </>
+          </View>
         ) : null}
 
         {balances.length === 0 ? (
-          <Text style={styles.hint}>No members yet — add yourself first.</Text>
+          <Text style={styles.hint}>No members yet.</Text>
+        ) : namesOnly ? (
+          balances.map((b) => {
+            const isYou = b.member_id === assumedMemberId;
+            const claimed = memberIsClaimed(binds ?? {}, b.member_id);
+            const label = memberLabel(b.display_name, isYou);
+            return (
+              <View
+                key={b.member_id}
+                style={[styles.balRow, isYou ? styles.balRowYou : null]}
+              >
+                <Text
+                  style={[
+                    styles.rosterName,
+                    isYou ? styles.balNameYou : null,
+                    { fontSize: (isYou ? 17 : 15) * scale },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
+                {!claimed ? (
+                  <Pressable
+                    style={[styles.chip, busy ? styles.disabled : null]}
+                    onPress={() => void onInvite(b.member_id)}
+                    accessibilityRole="button"
+                    disabled={busy}
+                  >
+                    <Text style={styles.chipText}>Invite</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            );
+          })
         ) : (
           balances.map((b) => {
             const isYou = b.member_id === assumedMemberId;
@@ -187,114 +203,116 @@ export default function GroupHubScreen() {
                   ? styles.amtNeg
                   : styles.amt;
             return (
-              <View
+              <Pressable
                 key={b.member_id}
+                testID="balance-row"
                 style={[styles.balRow, isYou ? styles.balRowYou : null]}
+                onPress={() =>
+                  router.push(`/group/${groupId}/member/${b.member_id}` as Href)
+                }
+                accessibilityRole="button"
+                accessibilityLabel={label}
               >
-                <Pressable
-                  testID="balance-row"
-                  style={styles.balOpen}
-                  onPress={() =>
-                    router.push(`/group/${groupId}/member/${b.member_id}` as Href)
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel={label}
+                <Text
+                  style={[
+                    styles.balName,
+                    isYou ? styles.balNameYou : null,
+                    { fontSize: (isYou ? 17 : 15) * scale },
+                  ]}
+                  numberOfLines={1}
                 >
-                  <Text
-                    style={[
-                      styles.balName,
-                      isYou ? styles.balNameYou : null,
-                      { fontSize: (isYou ? 17 : 15) * scale },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {label}
-                  </Text>
-                  <Text
-                    style={[
-                      amtStyle,
-                      isYou ? styles.amtYou : null,
-                      { fontSize: (isYou ? 18 : 16) * scale },
-                    ]}
-                  >
-                    {amt}
-                  </Text>
-                </Pressable>
-                <View style={styles.chips}>
-                  {!isYou ? (
-                    <Pressable
-                      style={styles.chip}
-                      onPress={() => void onInvite(b.member_id)}
-                      accessibilityRole="button"
-                      disabled={busy}
-                    >
-                      <Text style={styles.chipText}>Invite</Text>
-                    </Pressable>
-                  ) : null}
-                  {canChoose && !isYou ? (
-                    <Pressable
-                      style={styles.chip}
-                      onPress={() => void onBind(b.member_id)}
-                      accessibilityRole="button"
-                      disabled={busy}
-                    >
-                      <Text style={styles.chipText}>This is me</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              </View>
+                  {label}
+                </Text>
+                <Text
+                  style={[
+                    amtStyle,
+                    isYou ? styles.amtYou : null,
+                    { fontSize: (isYou ? 18 : 16) * scale },
+                  ]}
+                >
+                  {amt}
+                </Text>
+              </Pressable>
             );
           })
         )}
 
-        <View style={styles.footer}>
-          <Pressable
-            onPress={() => router.push(`/group/${groupId}/expenses` as Href)}
-            accessibilityRole="button"
-          >
-            <Text style={styles.balLink}>All expenses →</Text>
-          </Pressable>
-        </View>
+        {namesOnly ? (
+          <View style={styles.addBlock}>
+            <TextInput
+              style={styles.addField}
+              value={newName}
+              onChangeText={setNewName}
+              placeholder="Member name"
+              placeholderTextColor={colors.muted}
+              autoCapitalize="words"
+            />
+            <Pressable
+              style={[styles.add, busy ? styles.disabled : null]}
+              onPress={() => void onAdd()}
+              accessibilityRole="button"
+              disabled={busy}
+            >
+              <Text style={styles.addText}>Add member</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
-        <TextInput
-          style={styles.input}
-          value={newName}
-          onChangeText={setNewName}
-          placeholder="Member name"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="words"
-        />
-        <Pressable
-          style={[styles.addMember, busy ? styles.buttonDisabled : null]}
-          onPress={() => void onAdd()}
-          accessibilityRole="button"
-          disabled={busy}
-        >
-          <Text style={styles.addMemberText}>Add member</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.bump}
-          onPress={onBump}
-          accessibilityRole="button"
-        >
-          <Text style={styles.bumpText}>Bump name (merge + wake)</Text>
-        </Pressable>
+        {!namesOnly ? (
+          <View style={styles.footer}>
+            {addOpen ? (
+              <TextInput
+                ref={addRef}
+                style={styles.addQuietField}
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="Member name"
+                placeholderTextColor={colors.muted}
+                autoCapitalize="words"
+                returnKeyType="done"
+                onSubmitEditing={() => void onAdd()}
+                onBlur={() => setAddOpen(false)}
+                editable={!busy}
+              />
+            ) : (
+              <Pressable
+                onPress={() => setAddOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Add member"
+              >
+                <Text style={styles.addQuiet}>Add member</Text>
+              </Pressable>
+            )}
+            <Pressable
+              onPress={() => router.push(`/group/${groupId}/expenses` as Href)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.balLink}>All expenses →</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </ScrollView>
 
-      {assumedMemberId ? (
-        <View style={styles.fabBar}>
+      <View style={styles.fabBar}>
+        <Pressable
+          style={styles.fabIcon}
+          onPress={() => router.push(`/group/${groupId}/settings` as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+        >
+          <Text style={styles.fabIconText}>⚙</Text>
+        </Pressable>
+        {assumedMemberId ? (
           <Pressable
-            style={[styles.fab, busy ? styles.buttonDisabled : null]}
+            style={styles.fab}
             onPress={() => router.push(`/group/${groupId}/expense/new` as Href)}
             accessibilityRole="button"
             accessibilityLabel="Add expense"
-            disabled={busy}
           >
             <Text style={styles.fabText}>+ Expense</Text>
           </Pressable>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -329,17 +347,10 @@ const styles = StyleSheet.create({
     color: colors.muted,
     lineHeight: 20,
   },
-  mono: {
-    fontFamily: 'monospace',
-    fontSize: 13,
-    color: colors.ink,
-    paddingHorizontal: 14,
-    paddingTop: 6,
-  },
   balRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -348,12 +359,38 @@ const styles = StyleSheet.create({
   balRowYou: {
     backgroundColor: colors.youRow,
   },
-  balOpen: {
+  joinBlock: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    gap: 6,
+  },
+  joinHint: {
+    fontSize: 14,
+    color: colors.muted,
+    lineHeight: 20,
+  },
+  mono: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    color: colors.ink,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.youRow,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  chipText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  rosterName: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minWidth: 0,
+    fontWeight: '600',
+    color: colors.ink,
+    textAlign: 'left',
   },
   balName: {
     flex: 1,
@@ -382,38 +419,12 @@ const styles = StyleSheet.create({
   amtYou: {
     fontWeight: '700',
   },
-  chips: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.youRow,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  chipText: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  addBlock: {
     paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingTop: 16,
+    gap: 8,
   },
-  balLink: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  input: {
-    marginHorizontal: 14,
+  addField: {
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.bg,
@@ -421,41 +432,73 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     color: colors.ink,
-    textAlign: 'center',
   },
-  addMember: {
-    marginHorizontal: 14,
-    marginTop: 8,
+  add: {
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    minHeight: 44,
+    justifyContent: 'center',
     alignSelf: 'flex-end',
   },
-  addMemberText: {
+  addText: {
     color: colors.ink,
     fontSize: 13,
     fontWeight: '600',
   },
-  bump: {
-    marginTop: 24,
-    marginHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  bumpText: {
-    color: colors.muted,
-    fontSize: 13,
-  },
-  buttonDisabled: {
+  disabled: {
     opacity: 0.5,
   },
   fabBar: {
     position: 'absolute',
     right: 16,
     bottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     pointerEvents: 'box-none',
+  },
+  fabIcon: {
+    width: 48,
+    height: 48,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabIconText: {
+    fontSize: 22,
+    color: colors.accent,
+    lineHeight: 26,
+  },
+  footer: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  addQuiet: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  addQuietField: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.bg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  balLink: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   fab: {
     backgroundColor: colors.accent,

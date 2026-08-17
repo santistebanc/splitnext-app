@@ -25,13 +25,16 @@ Screens and routes the person touches.
 
 | Id | Name | Kind | Where | What it is for |
 | --- | --- | --- | --- | --- |
-| L-lobby | Lobby screen | Screen | `app/index.tsx` | The first screen: lists every group this device knows, offers Create group or Join group (paste a token), and opens one into the hub. |
-| L-hub | Group hub | Screen | `app/group/[id]/index.tsx` | One group's home: a list of members as balances (You highlighted), Invite and This is me as chips, add a member, All expenses, and a FAB to record a cost; bump is a muted leftover until settings; surfaces the last sync error. |
-| L-member | Member screen | Screen | `app/group/[id]/member/[memberId].tsx` | One member's screen: what they paid for, what they owe for, their net, the settle transfers they would pay, and Leave group on You (after a confirm). |
+| L-lobby | Lobby screen | Screen | `app/index.tsx` | The first screen: lists every group this device knows by name with a one-line member summary, offers Create group (opens the create form) or a quiet Join with link (expands to a focused field), and opens an existing group into the hub. |
+| L-create | Create group screen | Screen | `app/create.tsx` | The create form: group name, your name, currency. Submit runs `L-createGroup` and opens the hub already named and bound. |
+| L-hub | Group hub | Screen | `app/group/[id]/index.tsx` | One group's home: names plus Invite on unclaimed and add member until the first expense, then balances (You highlighted, tap opens member detail), a quiet Add member, and All expenses; a settings icon beside the FAB; a FAB to record a cost once bound; surfaces the last sync error. |
+| L-settings | Settings screen | Screen | `app/group/[id]/settings.tsx` | Group name and currency, Done once the group is named and this device is someone, and Leave group (after a confirm). |
+| L-member | Member screen | Screen | `app/group/[id]/member/[memberId].tsx` | One member's screen: Invite if that slot is unclaimed, what they paid for, what they owe for, their net, and the settle transfers they would pay. |
 | L-expenses | All expenses | Screen | `app/group/[id]/expenses.tsx` | The group's expense list, pushed from the hub, newest first. |
 | L-expenseNew | New expense | Screen | `app/group/[id]/expense/new.tsx` | Records a cost: who paid, how much, what for, and who shares equally among the selected members. Defaults to You paid and everyone shares, unless the query names a prefill. |
 | L-join | Join screen | Screen | `app/join.tsx` | Redeems a `/join?token=` invite, stores the new access token, and opens the hub already bound to the named member. |
 | L-rootLayout | Root layout | Screen | `app/_layout.tsx` | The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app. |
+| L-webFrame | `phoneFrame` | Screen | `src/ui/phoneFrame.ts` | On a wide browser window the app sits in a fixed 420×900 phone frame (`app/+html.tsx`); if that does not fit, the page scrolls. A phone-width window (including capture) stays full-bleed. Native is unchanged (`src/ui/phoneFrame.web.ts` is the web half of the import). |
 
 ## Device
 
@@ -42,8 +45,10 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-shouldAcceptVersion | `shouldAcceptVersion` | Pure | `src/domain/version.ts` | Decides who wins when two copies of an entity disagree: the incoming one, but only if its version number is strictly higher. |
 | L-sortByFlushOrder | `sortByFlushOrder` | Pure | `src/domain/version.ts` | Orders pending changes so parents reach the server before their children — a group before its members, a member before the bind pointing at it. |
 | L-assumedMember | `assumedMemberIdFromBinds` | Pure | `src/domain/assumedMember.ts` | Answers "which member am I in this group?" by finding this device's live bind. |
+| L-memberClaimed | `memberIsClaimed` | Pure | `src/domain/assumedMember.ts` | Answers whether a member slot is joined — a live bind points at them — which is what offers Invite on an unclaimed name. |
 | L-tombstoneBind | `tombstoneBind` | Pure | `src/domain/bind.ts` | Soft-deletes a live bind at the next version so the member slot remains and this device is no longer that person. |
-| L-bindingOpen | `bindingIsOpen` | Pure | `src/domain/assumedMember.ts` | Answers "can this device still say which member it is?" — yes until the group's first live expense, which is what shows or hides the This is me button. |
+| L-bindOnce | `bindOnce` | Pure | `src/domain/bind.ts` | Answers whether this device may bind: allowed with no live bind, a no-op for the same member, refused for any other. A tombstone does not count as live. |
+| L-bindingOpen | `bindingIsOpen` | Pure | `src/domain/assumedMember.ts` | Answers whether the group still has no live expense — the hub shows names and add member until the first one, then balances. |
 | L-splitEqually | `splitEqually` | Pure | `src/domain/split.ts` | Divides a cost equally, to the cent, across the members given. Leftover cents go out in member-id order, so two devices splitting the same cost agree exactly. One participant receives the whole amount. |
 | L-participantsForSplit | `participantsForSplit` | Pure | `src/domain/split.ts` | Answers who shares an expense: the selected members, but only if every one of them is live and at least one remains. A missing member is refused, not dropped. |
 | L-balances | `computeBalances` | Pure | `src/domain/balances.ts` | Works out what each member is up or down overall — what they paid minus what they owe — most-negative first. |
@@ -56,14 +61,19 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-settlementHref | `settlementHref` | Pure | `src/domain/expensePrefill.ts` | Builds the path a settle button opens: same transfer, same href on every device, amount in integer cents, what-for `Settlement`. |
 | L-inviteIsLive | `inviteIsLive` | Pure | `src/domain/invite.ts` | Answers whether an invite can still be redeemed — not spent, not past `expires_at`, and the named member still live. |
 | L-parseInviteToken | `parseInviteToken` | Pure | `src/domain/invite.ts` | Pulls the invite secret out of a raw token or a `/join?token=` URL so lobby paste and the join route share one parser. |
-| L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group: writes it locally first, registers it on the server, stores the returned access token, adds it to the lobby, and starts a wake subscription without waiting for the socket to open. |
+| L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group from a name, currency, and creator name: writes the group, that member, and this device's bind locally first, registers the group on the server, stores the returned access token, adds it to the lobby, flushes the member and bind, and starts a wake subscription without waiting for the socket to open. |
 | L-openGroup | `openGroup` | Job | `src/sync/groupSync.ts` | Opens a group for viewing — subscribes for wakes, then runs a full sync. The wake socket being down does not block opening. |
 | L-syncGroup | `syncGroup` | Job | `src/sync/groupSync.ts` | One full round trip for a group: push everything pending, pull the group back, then pull its roster. Runs alone per group so nothing races. |
 | L-syncAllLobby | `syncAllLobbyGroups` | Job | `src/sync/groupSync.ts` | Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest. |
-| L-bumpName | `bumpGroupName` | Job | `src/sync/groupSync.ts` | Renames a group: the new name shows immediately, then goes to the server as the next version. |
+| L-patchGroup | `patchGroup` | Pure | `src/domain/group.ts` | Next version of a group with a new name and/or currency; omitted fields stay, and an empty currency label keeps the current one. |
+| L-createGroupDraft | `createGroupDraft` | Pure | `src/domain/group.ts` | Builds the local v1 group, creator member, and this device's bind, or null when the group name or creator name is empty. An empty currency label becomes EUR. |
+| L-lobbyTitle | `lobbyGroupTitle` | Pure | `src/domain/lobby.ts` | The lobby row's title: the trimmed group name, or (empty) when it has none. |
+| L-lobbyMembers | `lobbyMemberSummary` | Pure | `src/domain/lobby.ts` | A one-line list of live member names in member-id order, or null when the group has nobody to name. |
+| L-settingsDone | `settingsDoneEnabled` | Pure | `src/domain/group.ts` | Answers whether Settings **Done** may fire — the group has a non-empty name and this device is already someone. |
+| L-updateGroup | `updateGroup` | Job | `src/sync/groupSync.ts` | Patches the group locally and sends the next version to the server, so Settings never waits on the network to show. |
 | L-addMember | `addMember` | Job | `src/sync/groupSync.ts` | Adds a person to the group locally, then sends them to the server. |
 | L-addExpense | `addExpense` | Job | `src/sync/groupSync.ts` | Records a cost: refuses anything that is not a positive whole number of cents, splits it equally across the members selected at record time (everyone live, if the form did not narrow it), writes it locally against the paying member, then sends it. The payer need not be in the split. |
-| L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person, or moves that claim to a different member — one bind per device, re-pointed rather than duplicated. Refuses once the group has an expense, or if the member is gone. |
+| L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person the first time. Same member again is a no-op; any other member records `binding_locked`. A missing member records `member_missing`. Create and join are the callers that succeed. |
 | L-leaveGroup | `leaveGroup` | Job | `src/sync/leave.ts` | Leaves a group: tombstones this device's bind and flushes it while the token still works, revokes the token, drops it locally, and takes the group off the lobby. |
 | L-mintInvite | `mintInvite` | Job | `src/sync/invite.ts` | Asks the server for a one-use invite bound to one member and returns the plaintext secret to copy. |
 | L-inviteShare | `inviteShareText` | Pure | `src/sync/inviteShareText.ts` | Turns that secret into what you copy: the raw token on native, a `/join?token=` URL on web. |

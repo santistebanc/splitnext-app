@@ -6,6 +6,7 @@ export type SyncErrorCode =
   | 'wake_failed'
   | 'create_failed'
   | 'binding_closed'
+  | 'binding_locked'
   | 'member_missing'
   | 'invite_failed'
   | 'leave_failed'

@@ -56,8 +56,8 @@ export default function ExpensesScreen() {
       {expenseList.length === 0 ? (
         <Text style={styles.hint}>
           {assumedMemberId
-            ? 'No expenses yet — add the first one. Adding it fixes who you are.'
-            : 'Tap This is me on a member first; expenses are recorded against you.'}
+            ? 'No expenses yet — add the first one.'
+            : 'This device is not a member of this group; expenses are recorded against you.'}
         </Text>
       ) : (
         expenseList.map((e) => (

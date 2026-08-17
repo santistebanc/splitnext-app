@@ -1,5 +1,6 @@
 import { useLobbyForegroundSync } from '@/src/sync/appForegroundSync';
 import { colors } from '@/src/ui/theme';
+import '@/src/ui/phoneFrame';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
@@ -17,6 +18,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ title: 'SplitNext' }} />
+        <Stack.Screen name="create" options={{ title: 'Create group' }} />
         <Stack.Screen name="join" options={{ title: 'Join group' }} />
         <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
       </Stack>

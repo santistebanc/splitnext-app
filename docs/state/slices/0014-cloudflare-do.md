@@ -61,7 +61,7 @@ One Worker holds every group: a SQLite Durable Object per `group_id`, D1 for tok
 - `flows/F-create.webm` — create group against the Worker
 - `flows/F-open.webm` — open a group from the lobby
 - `flows/F-add-member.webm` — add a name-slot member
-- `flows/F-bind.webm` — This is me
+- This is me (F-bind clip dropped in 0027 when bind lost its own surface)
 - `flows/F-add-expense.webm` — record an expense
 - `flows/F-balances.webm` — balances survive a reload
 - `flows/F-bump.webm` — bump name (merge + wake)
