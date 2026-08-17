@@ -9,7 +9,7 @@ import {
   memberBuckets,
   type BucketLine,
 } from '@/src/domain/buckets';
-import { settlementHref } from '@/src/domain/expensePrefill';
+import { expenseEditHref, settlementHref } from '@/src/domain/expensePrefill';
 import { patchMember } from '@/src/domain/member';
 import {
   settlementsForMember,
@@ -298,6 +298,9 @@ export default function MemberScreen() {
         lines={buckets.paidFor}
         currency={currency}
         nameOf={nameOf}
+        onOpen={(expenseId) =>
+          router.push(expenseEditHref(groupId, expenseId) as Href)
+        }
       />
       ) : null}
       {buckets.owesFor.length > 0 ? (
@@ -307,6 +310,9 @@ export default function MemberScreen() {
         lines={buckets.owesFor}
         currency={currency}
         nameOf={nameOf}
+        onOpen={(expenseId) =>
+          router.push(expenseEditHref(groupId, expenseId) as Href)
+        }
       />
       ) : null}
 
@@ -370,12 +376,14 @@ function Bucket({
   lines,
   currency,
   nameOf,
+  onOpen,
 }: {
   testID: string;
   heading: string;
   lines: BucketLine[];
   currency: string;
   nameOf: (id: string) => string;
+  onOpen: (expenseId: string) => void;
 }) {
   return (
     <View testID={testID} style={styles.bucket}>
@@ -383,7 +391,14 @@ function Bucket({
       {lines.map((line) => {
           const left = bucketLineLabel(line, nameOf);
           return (
-            <View key={line.expense_id} testID="bucket-line" style={styles.line}>
+            <Pressable
+              key={line.expense_id}
+              testID="bucket-line"
+              style={styles.line}
+              onPress={() => onOpen(line.expense_id)}
+              accessibilityRole="button"
+              accessibilityLabel={left}
+            >
               <Text style={styles.lineLeft}>{left}</Text>
               <Text
                 style={[
@@ -397,7 +412,7 @@ function Bucket({
               >
                 {formatMoney(line.amount_cents, currency, true)}
               </Text>
-            </View>
+            </Pressable>
           );
         })}
     </View>
@@ -473,8 +488,10 @@ const styles = StyleSheet.create({
   line: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     gap: 8,
-    paddingVertical: 4,
+    paddingVertical: 10,
+    minHeight: 44,
   },
   lineLeft: {
     flex: 1,

@@ -46,6 +46,11 @@ export function expensePrefillFromSearchParams(
   return { payerId, amountCents, participantIds, what };
 }
 
+/** Path that opens a stored expense for equal-split edit. */
+export function expenseEditHref(groupId: string, expenseId: string): string {
+  return `/group/${groupId}/expense/${encodeURIComponent(expenseId)}`;
+}
+
 /** Path the hub opens for a settle-up row. Amount is integer cents. */
 export function settlementHref(groupId: string, s: Settlement): string {
   const q = new URLSearchParams({

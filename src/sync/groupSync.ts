@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
 import { bindOnce } from '@/src/domain/bind';
 import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPatch } from '@/src/domain/group';
+import { patchExpense } from '@/src/domain/expense';
 import { patchMember } from '@/src/domain/member';
 import { participantsForSplit, splitEqually } from '@/src/domain/split';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
@@ -241,6 +242,52 @@ export async function addExpense(
   ]);
   await flushQueue(groupId);
   return expense.id;
+}
+
+export async function updateExpense(
+  groupId: string,
+  expenseId: string,
+  { payerMemberId, amountCents, description, participantMemberIds }: NewExpense,
+): Promise<void> {
+  if (!Number.isInteger(amountCents)) {
+    throw new Error('amount must be integer cents');
+  }
+  if (amountCents <= 0) {
+    throw new Error('amount must be greater than zero');
+  }
+
+  const store$ = getGroupStore(groupId);
+  const current = (store$.expenses.get() ?? {})[expenseId];
+  if (!current || current.deleted_at != null) return;
+
+  const members = store$.members.get() ?? {};
+  const liveIds = Object.values(members)
+    .filter((m) => m.deleted_at == null)
+    .map((m) => m.id);
+  const next = patchExpense(
+    current,
+    liveIds,
+    {
+      payerMemberId,
+      amountCents,
+      description,
+      participantMemberIds: participantMemberIds ?? liveIds,
+    },
+    new Date().toISOString(),
+  );
+  if (!next) return;
+
+  store$.expenses.set({ ...(store$.expenses.get() ?? {}), [expenseId]: next });
+  store$.queue.set([
+    ...(store$.queue.get() ?? []),
+    {
+      entity_type: 'expenses',
+      id: expenseId,
+      version: next.version,
+      payload: next,
+    },
+  ]);
+  await flushQueue(groupId);
 }
 
 export async function bindMe(

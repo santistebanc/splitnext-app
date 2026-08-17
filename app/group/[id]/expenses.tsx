@@ -1,18 +1,20 @@
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
+import { expenseEditHref } from '@/src/domain/expensePrefill';
 import { getGroupStore } from '@/src/store/groupStore';
 import { openGroup } from '@/src/sync/groupSync';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function ExpensesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const groupId = id ?? '';
   const navigation = useNavigation();
+  const router = useRouter();
   const store$ = getGroupStore(groupId);
   const group = useValue(store$.group);
   const members = useValue(store$.members);
@@ -61,7 +63,16 @@ export default function ExpensesScreen() {
         </Text>
       ) : (
         expenseList.map((e) => (
-          <View key={e.id} style={styles.row}>
+          <Pressable
+            key={e.id}
+            testID="expense-row"
+            style={styles.row}
+            onPress={() =>
+              router.push(expenseEditHref(groupId, e.id) as Href)
+            }
+            accessibilityRole="button"
+            accessibilityLabel={e.description || '(no description)'}
+          >
             <View style={styles.body}>
               <Text style={styles.title}>
                 {e.description || '(no description)'}
@@ -76,7 +87,7 @@ export default function ExpensesScreen() {
             <Text style={styles.amt}>
               {formatMoney(e.amount_cents, group.currency_label)}
             </Text>
-          </View>
+          </Pressable>
         ))
       )}
     </ScrollView>
