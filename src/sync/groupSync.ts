@@ -3,7 +3,7 @@ import { createGroupRemote } from '@/src/api/edge';
 import { bindOnce } from '@/src/domain/bind';
 import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPatch } from '@/src/domain/group';
 import { buildExpenseAllocations, patchExpense, tombstoneExpense, type SplitAmongEntry } from '@/src/domain/expense';
-import { patchMember } from '@/src/domain/member';
+import { patchMember, tombstoneMember } from '@/src/domain/member';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   addLobbyGroupId,
@@ -325,6 +325,30 @@ export async function deleteExpense(
     {
       entity_type: 'expenses',
       id: expenseId,
+      version: next.version,
+      payload: next,
+    },
+  ]);
+  await flushQueue(groupId);
+}
+
+export async function deleteMember(
+  groupId: string,
+  memberId: string,
+): Promise<void> {
+  const store$ = getGroupStore(groupId);
+  const current = (store$.members.get() ?? {})[memberId];
+  if (!current || current.deleted_at != null) return;
+
+  const next = tombstoneMember(current, new Date().toISOString());
+  if (!next) return;
+
+  store$.members.set({ ...(store$.members.get() ?? {}), [memberId]: next });
+  store$.queue.set([
+    ...(store$.queue.get() ?? []),
+    {
+      entity_type: 'members',
+      id: memberId,
       version: next.version,
       payload: next,
     },

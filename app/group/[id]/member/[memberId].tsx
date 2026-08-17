@@ -18,8 +18,9 @@ import {
 import { getGroupStore } from '@/src/store/groupStore';
 import { mintInvite } from '@/src/sync/invite';
 import { inviteShareText } from '@/src/sync/inviteShareText';
-import { openGroup, updateMember } from '@/src/sync/groupSync';
+import { openGroup, updateMember, deleteMember } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
+import { ConfirmDrawer } from '@/src/ui/ConfirmDrawer';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -75,6 +76,8 @@ export default function MemberScreen() {
   const [joinLink, setJoinLink] = useState<string | null>(null);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const editingRef = useRef(false);
   const draftNameRef = useRef('');
   const nameRef = useRef<TextInput>(null);
@@ -102,6 +105,11 @@ export default function MemberScreen() {
     ? memberLabel(member.display_name, false)
     : '(unnamed)';
   const canEditName = member != null && member.deleted_at == null;
+  const canRemove =
+    member != null &&
+    member.deleted_at == null &&
+    !isYou &&
+    !claimed;
 
   useEffect(() => {
     if (member && !editingRef.current) {
@@ -170,6 +178,18 @@ export default function MemberScreen() {
       await updateMember(groupId, targetId, next);
     } else if (member) {
       draftNameRef.current = member.display_name;
+    }
+  };
+
+  const onRemove = async () => {
+    if (!canRemove || removeBusy) return;
+    setRemoveBusy(true);
+    try {
+      await deleteMember(groupId, targetId);
+      router.replace(`/group/${groupId}` as Href);
+    } finally {
+      setRemoveBusy(false);
+      setConfirmingRemove(false);
     }
   };
 
@@ -366,6 +386,34 @@ export default function MemberScreen() {
           {lastError.code}: {lastError.message}
         </Text>
       ) : null}
+
+      {canRemove ? (
+        <View style={styles.footer}>
+          <Pressable
+            testID="member-remove"
+            style={[styles.remove, removeBusy ? styles.disabled : null]}
+            onPress={() => setConfirmingRemove(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Remove member"
+            disabled={removeBusy}
+          >
+            <Text style={styles.removeText}>Remove member</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <ConfirmDrawer
+        visible={confirmingRemove}
+        onRequestClose={() => setConfirmingRemove(false)}
+        title="Remove member?"
+        message={`${subjectName} will leave the group list. Past expenses stay on the ledger.`}
+        confirmLabel="Remove member"
+        onConfirm={() => void onRemove()}
+        testID="member-remove-confirm"
+        confirmTestID="member-remove-confirm-ok"
+        destructive
+        busy={removeBusy}
+      />
     </ScrollView>
   );
 }
@@ -567,5 +615,24 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: colors.danger,
     fontSize: 13,
+  },
+  footer: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  remove: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    padding: 14,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeText: {
+    color: colors.danger,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

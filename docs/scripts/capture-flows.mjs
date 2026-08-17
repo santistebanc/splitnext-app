@@ -205,6 +205,25 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-kick-member',
+    from: 'spent',
+    async run(d, page) {
+      await d.tap('Bo');
+      await d.beat(800);
+      await d.press(page.getByTestId('member-remove'));
+      await d.beat(400);
+      await d.press(page.getByTestId('member-remove-confirm-ok'));
+      await d.beat(2000);
+      const body = await page.innerText('body');
+      if (/\bBo\b/.test(body)) {
+        problems.push('[F-kick-member] hub still shows Bo');
+      }
+      if (!/\bCy\b/.test(body)) {
+        problems.push('[F-kick-member] hub lost Cy');
+      }
+    },
+  },
+  {
     id: 'F-add-expense',
     from: 'bound',
     async run(d) {

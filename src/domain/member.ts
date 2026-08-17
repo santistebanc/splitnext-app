@@ -18,3 +18,19 @@ export function patchMember(
     updated_at: updatedAt,
   };
 }
+
+/**
+ * Soft-delete a live member at the next version. Already-tombstoned → null.
+ */
+export function tombstoneMember(
+  member: MemberEntity,
+  deletedAt: string,
+): MemberEntity | null {
+  if (member.deleted_at != null) return null;
+  return {
+    ...member,
+    version: member.version + 1,
+    updated_at: deletedAt,
+    deleted_at: deletedAt,
+  };
+}

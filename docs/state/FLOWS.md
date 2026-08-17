@@ -77,6 +77,16 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 4. The header title is restored with the new display name. A successful write updates the store and queues the member; `L-flushQueue` pushes it.
 5. Back on `L-hub`, `L-memberLabel` still writes You for this device's member; other rows and `L-lobbyMembers` show the new name. Expenses and the bind still point at the same member id.
 
+## F-kick-member — Remove a member
+
+**Trigger** — On an unclaimed member's screen, the person taps **Remove member**, reads the confirm drawer, and taps **Remove member** again.  
+**Outcome** — That member id drops off the hub, lobby summary, and pickers. Past expenses and allocations stay; live folds exclude the tombstone.
+
+1. `L-hub` opens `L-member` for a slot that is not You and has no live bind.
+2. **Remove member** sits at the bottom. You and claimed slots omit it.
+3. Confirm drawer (same shape as Leave and Delete) then `L-deleteMember` calls `L-tombstoneMember`, queues the member, and flushes.
+4. `L-member` returns to `L-hub`. `L-balances` and `L-lobbyMembers` no longer list that id.
+
 ## F-add-expense — Add expense
 
 **Trigger** — On the hub, the person taps **+ Expense**, types an amount, and taps **Add expense** on the form.  
