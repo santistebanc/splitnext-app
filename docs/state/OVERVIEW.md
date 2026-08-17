@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0030
+Last updated: slice 0031
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: expense delete, kick, activity + toast + push, last-opened group, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: kick, activity + toast + push, last-opened group, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -32,6 +32,7 @@ Last updated: slice 0030
 - Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version` — [slice 0004](slices/0004-sync-quality-harden.md)
 - Record an expense against the member who paid — integer cents, listed under All expenses, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Edit an existing expense from the list or a bucket line — equal or mixed split, share units and fixed cents restored on open — [slice 0029](slices/0029-expense-editor.md) / [slice 0030](slices/0030-mixed-splits.md)
+- Soft-delete an expense from the edit form; lists and balances refold without it — [slice 0031](slices/0031-expense-delete.md)
 - Assumed member is set at create or join and cannot be changed; leave unbinds — [slice 0005](slices/0005-expense-spine.md) / [slice 0027](slices/0027-first-run.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
 - Split every expense across the members chosen at record time (default everyone live), or by share units and fixed cents — frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md) / [slice 0030](slices/0030-mixed-splits.md)

@@ -7,7 +7,8 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Activity as a merge entity** — typed events (expense add/edit/delete, member join/leave/rename/kick, group rename, …), client-authored, flushed last, optional `undo_snapshot`. Toast, push, and undo sit on this. Hub-chrome.html puts the list in a burger drawer (keep this app's hub; do not add a primary Activity tab). — area: activity — raised: bootstrap · restated: steering after 0029 · *appetite: needed for toast/push/undo*
 - **Mixed / uneven splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
 
-- **Soft-delete an expense** — tombstone (`deleted_at`); never hard-delete. UI + `L-deleteExpense` path; undo later rides activity. — area: ledger — raised: bootstrap · restated: steering after 0029
+- **Soft-delete an expense** — delivered in [slice 0031](slices/0031-expense-delete.md).
+
 - **Kick / soft-delete a member** — "button to remove/kickout"; never hard-delete while referenced. Rename shipped in 0028. — area: membership — raised: bootstrap · restated: slice 0027 / steering after 0029
 - **Browser-driven flow tests** — CI now asserts a clean console plus balances/settle surviving a reload against a local Worker (slice 0022); it is still not in `npm test`, has no fuller failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007 / 0022*
 - **Driving `startWakeSubscription` against a local Worker** — the wake *wire* is contract-tested (slice 0021); the client orchestrator (token store, inbound fetch, module Maps) is not — area: sync — raised: slice 0021
@@ -28,7 +29,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 - **Member rename / soft-delete** — rename delivered in 0028; kick stays under Foundation-risk above. — area: membership — raised: bootstrap · restated: slice 0027 · *partially delivered in 0028*
 
-- **Expense editor + invariants** — equal edit (0029), mixed splits (0030); expense delete in flight (0031). Prototype edits in a sheet; add stays `L-expenseNew`. — area: ledger — raised: bootstrap · restated: slice 0027 / steering after 0029 · *partially delivered in 0029 / 0030*
+- **Expense editor + invariants** — equal edit (0029), mixed splits (0030), delete (0031). Prototype edits in a sheet; add stays `L-expenseNew`. — area: ledger — raised: bootstrap · restated: slice 0027 / steering after 0029 · *delivered through 0031*
 
 - **Member invites** — mint + redeem for a named member shipped (0012 / 0028). App links / deep-link hosting still parked (breadth). Group-wide invite dropped. — area: invites — raised: bootstrap · *partially delivered in 0012*
 - **Invite page status / resend** — Join link on unclaimed member detail ships in 0027/0028; active / expired / resend still needs a Worker list of invite metadata. Per-member, not a group invite. — area: invites — raised: slice 0025 · restated: steering after 0029
@@ -78,4 +79,6 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 - **Equal-split expense edit** — delivered in [slice 0029](slices/0029-expense-editor.md); list or bucket line.
 
-- **Mixed splits** — delivered in [slice 0030](slices/0030-mixed-splits.md); share units, fixed cents, mixed editor on the expense form.
+- **Mixed splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
+
+- **Expense delete** — delivered in [slice 0031](slices/0031-expense-delete.md).

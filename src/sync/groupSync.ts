@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
 import { bindOnce } from '@/src/domain/bind';
 import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPatch } from '@/src/domain/group';
-import { buildExpenseAllocations, patchExpense, type SplitAmongEntry } from '@/src/domain/expense';
+import { buildExpenseAllocations, patchExpense, tombstoneExpense, type SplitAmongEntry } from '@/src/domain/expense';
 import { patchMember } from '@/src/domain/member';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
@@ -293,6 +293,30 @@ export async function updateExpense(
     },
     new Date().toISOString(),
   );
+  if (!next) return;
+
+  store$.expenses.set({ ...(store$.expenses.get() ?? {}), [expenseId]: next });
+  store$.queue.set([
+    ...(store$.queue.get() ?? []),
+    {
+      entity_type: 'expenses',
+      id: expenseId,
+      version: next.version,
+      payload: next,
+    },
+  ]);
+  await flushQueue(groupId);
+}
+
+export async function deleteExpense(
+  groupId: string,
+  expenseId: string,
+): Promise<void> {
+  const store$ = getGroupStore(groupId);
+  const current = (store$.expenses.get() ?? {})[expenseId];
+  if (!current || current.deleted_at != null) return;
+
+  const next = tombstoneExpense(current, new Date().toISOString());
   if (!next) return;
 
   store$.expenses.set({ ...(store$.expenses.get() ?? {}), [expenseId]: next });

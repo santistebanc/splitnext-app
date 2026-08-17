@@ -12,7 +12,7 @@ import {
   type ExpensePrefill,
 } from '@/src/domain/expensePrefill';
 import { getGroupStore } from '@/src/store/groupStore';
-import { addExpense, openGroup, updateExpense } from '@/src/sync/groupSync';
+import { addExpense, deleteExpense, openGroup, updateExpense } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { currencySymbol } from '@/src/domain/currency';
 import { ExpenseAmountInput } from '@/src/ui/ExpenseAmountInput';
@@ -22,7 +22,7 @@ import { formatCents } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -88,6 +88,7 @@ export default function NewExpenseScreen() {
   );
   const [splitState, setSplitState] = useState<SplitEditorState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [hydratedId, setHydratedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -115,8 +116,34 @@ export default function NewExpenseScreen() {
   useEffect(() => {
     navigation.setOptions({
       title: editing ? 'Edit expense' : 'New expense',
+      headerRight: editing
+        ? () => (
+            <Pressable
+              testID="expense-delete"
+              onPress={() => setConfirmingDelete(true)}
+              disabled={busy || confirmingDelete}
+              accessibilityRole="button"
+              accessibilityLabel="Delete expense"
+              style={{ paddingHorizontal: 12, opacity: busy || confirmingDelete ? 0.5 : 1 }}
+            >
+              <Text style={styles.deleteHeader}>Delete</Text>
+            </Pressable>
+          )
+        : undefined,
     });
-  }, [navigation, editing]);
+  }, [navigation, editing, busy, confirmingDelete]);
+
+  const onDelete = useCallback(async () => {
+    if (!editing) return;
+    setBusy(true);
+    try {
+      await deleteExpense(groupId, editing.id);
+      router.back();
+    } finally {
+      setBusy(false);
+      setConfirmingDelete(false);
+    }
+  }, [editing, groupId, router]);
 
   useEffect(() => {
     if (!editing || memberList.length === 0) return;
@@ -247,6 +274,37 @@ export default function NewExpenseScreen() {
         placeholderTextColor={colors.muted}
       />
 
+      {editing && confirmingDelete ? (
+        <View testID="expense-delete-confirm">
+          <Text style={styles.confirmTitle}>Delete expense?</Text>
+          <Text style={styles.confirmCopy}>
+            This removes the expense from balances and lists. It cannot be undone
+            yet.
+          </Text>
+          <View style={styles.confirmActions}>
+            <Pressable
+              style={styles.cancel}
+              onPress={() => setConfirmingDelete(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel delete"
+              disabled={busy}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              testID="expense-delete-confirm-ok"
+              style={styles.deleteOk}
+              onPress={() => void onDelete()}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm delete expense"
+              disabled={busy}
+            >
+              <Text style={styles.deleteOkText}>Delete expense</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       <Pressable
         style={[styles.button, !canSave ? styles.buttonDisabled : null]}
         onPress={() => void onSave()}
@@ -301,6 +359,53 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   buttonText: {
+    color: colors.accentInk,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteHeader: {
+    color: colors.danger,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmTitle: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.ink,
+  },
+  confirmCopy: {
+    marginTop: 8,
+    fontSize: 14,
+    color: colors.muted,
+    lineHeight: 20,
+  },
+  confirmActions: {
+    marginTop: 12,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancel: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.line,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteOk: {
+    flex: 1,
+    backgroundColor: colors.danger,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteOkText: {
     color: colors.accentInk,
     fontSize: 16,
     fontWeight: '600',
