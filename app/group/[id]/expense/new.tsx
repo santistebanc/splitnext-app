@@ -15,6 +15,7 @@ import { getGroupStore } from '@/src/store/groupStore';
 import { addExpense, deleteExpense, openGroup, updateExpense } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { currencySymbol } from '@/src/domain/currency';
+import { ConfirmDrawer } from '@/src/ui/ConfirmDrawer';
 import { ExpenseAmountInput } from '@/src/ui/ExpenseAmountInput';
 import { ExpenseSplitList } from '@/src/ui/expenseSplitList';
 import { PayerSelect } from '@/src/ui/PayerSelect';
@@ -274,37 +275,6 @@ export default function NewExpenseScreen() {
         placeholderTextColor={colors.muted}
       />
 
-      {editing && confirmingDelete ? (
-        <View testID="expense-delete-confirm">
-          <Text style={styles.confirmTitle}>Delete expense?</Text>
-          <Text style={styles.confirmCopy}>
-            This removes the expense from balances and lists. It cannot be undone
-            yet.
-          </Text>
-          <View style={styles.confirmActions}>
-            <Pressable
-              style={styles.cancel}
-              onPress={() => setConfirmingDelete(false)}
-              accessibilityRole="button"
-              accessibilityLabel="Cancel delete"
-              disabled={busy}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              testID="expense-delete-confirm-ok"
-              style={styles.deleteOk}
-              onPress={() => void onDelete()}
-              accessibilityRole="button"
-              accessibilityLabel="Confirm delete expense"
-              disabled={busy}
-            >
-              <Text style={styles.deleteOkText}>Delete expense</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
-
       <Pressable
         style={[styles.button, !canSave ? styles.buttonDisabled : null]}
         onPress={() => void onSave()}
@@ -316,6 +286,19 @@ export default function NewExpenseScreen() {
           {editing ? 'Save' : 'Add expense'}
         </Text>
       </Pressable>
+
+      <ConfirmDrawer
+        visible={Boolean(editing && confirmingDelete)}
+        onRequestClose={() => setConfirmingDelete(false)}
+        title="Delete expense?"
+        message="This removes the expense from balances and lists. It cannot be undone yet."
+        confirmLabel="Delete expense"
+        onConfirm={() => void onDelete()}
+        testID="expense-delete-confirm"
+        confirmTestID="expense-delete-confirm-ok"
+        destructive
+        busy={busy}
+      />
     </ScrollView>
   );
 }
@@ -365,48 +348,6 @@ const styles = StyleSheet.create({
   },
   deleteHeader: {
     color: colors.danger,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  confirmTitle: {
-    marginTop: 12,
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.ink,
-  },
-  confirmCopy: {
-    marginTop: 8,
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-  },
-  confirmActions: {
-    marginTop: 12,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancel: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.line,
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: colors.ink,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  deleteOk: {
-    flex: 1,
-    backgroundColor: colors.danger,
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deleteOkText: {
-    color: colors.accentInk,
     fontSize: 16,
     fontWeight: '600',
   },
