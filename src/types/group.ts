@@ -34,6 +34,10 @@ export type BindEntity = {
 export type Allocation = {
   member_id: string;
   amount_cents: number;
+  /** Share weight; omitted on expenses recorded before mixed splits. */
+  share_units?: number;
+  /** Fixed cents; omitted or null when this member is on shares. */
+  fixed_cents?: number | null;
 };
 
 export type ExpenseEntity = {

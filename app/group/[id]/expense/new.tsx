@@ -2,6 +2,12 @@ import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
 import { patchExpense } from '@/src/domain/expense';
 import {
+  equalSplitState,
+  deriveSplitEditor,
+  splitStateFromAllocations,
+  type SplitEditorState,
+} from '@/src/domain/splitEditor';
+import {
   expensePrefillFromSearchParams,
   type ExpensePrefill,
 } from '@/src/domain/expensePrefill';
@@ -9,7 +15,10 @@ import { getGroupStore } from '@/src/store/groupStore';
 import { addExpense, openGroup, updateExpense } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { currencySymbol } from '@/src/domain/currency';
-import { formatCents, memberLabel } from '@/src/ui/format';
+import { ExpenseAmountInput } from '@/src/ui/ExpenseAmountInput';
+import { ExpenseSplitList } from '@/src/ui/expenseSplitList';
+import { PayerSelect } from '@/src/ui/PayerSelect';
+import { formatCents } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
@@ -23,15 +32,18 @@ import {
   View,
 } from 'react-native';
 
-function sharingFromPrefill(
+function splitStateFromPrefill(
   memberIds: readonly string[],
   prefill: ExpensePrefill | null,
-): Record<string, boolean> {
-  if (!prefill) {
-    return Object.fromEntries(memberIds.map((id) => [id, true]));
-  }
+): SplitEditorState {
+  if (!prefill) return equalSplitState(memberIds);
   const want = new Set(prefill.participantIds);
-  return Object.fromEntries(memberIds.map((id) => [id, want.has(id)]));
+  return {
+    shares: Object.fromEntries(
+      memberIds.map((id) => [id, want.has(id) ? 1 : 0]),
+    ),
+    fixedCents: {},
+  };
 }
 
 /** "12,34" and "12.34" both mean 1234 cents; anything else is not money. */
@@ -74,9 +86,7 @@ export default function NewExpenseScreen() {
   const [payerId, setPayerId] = useState<string | null>(
     () => prefill?.payerId ?? null,
   );
-  const [sharing, setSharing] = useState<Readonly<Record<string, boolean>> | null>(
-    null,
-  );
+  const [splitState, setSplitState] = useState<SplitEditorState | null>(null);
   const [busy, setBusy] = useState(false);
   const [hydratedId, setHydratedId] = useState<string | null>(null);
 
@@ -114,11 +124,11 @@ export default function NewExpenseScreen() {
     setAmount(formatCents(editing.amount_cents));
     setWhat(editing.description);
     setPayerId(editing.payer_member_id);
-    const allocated = new Set(
-      (editing.allocations ?? []).map((a) => a.member_id),
-    );
-    setSharing(
-      Object.fromEntries(memberList.map((m) => [m.id, allocated.has(m.id)])),
+    setSplitState(
+      splitStateFromAllocations(
+        editing.allocations ?? [],
+        memberList.map((m) => m.id),
+      ),
     );
     setHydratedId(editing.id);
   }, [editing, hydratedId, memberList]);
@@ -131,17 +141,22 @@ export default function NewExpenseScreen() {
 
   useEffect(() => {
     if (editing) return;
-    if (sharing != null || memberList.length === 0) return;
-    setSharing(sharingFromPrefill(memberList.map((m) => m.id), prefill));
-  }, [memberList, sharing, prefill, editing]);
+    if (splitState != null || memberList.length === 0) return;
+    setSplitState(splitStateFromPrefill(memberList.map((m) => m.id), prefill));
+  }, [memberList, splitState, prefill, editing]);
 
   const cents = parseCents(amount);
-  const participantIds = Object.entries(sharing ?? {})
-    .filter(([, on]) => on)
-    .map(([memberId]) => memberId);
   const liveIds = memberList.map((m) => m.id);
+  const derived =
+    splitState != null
+      ? deriveSplitEditor(liveIds, cents != null && cents > 0 ? cents : 0, splitState)
+      : null;
   const draft =
-    editing && cents !== null && cents > 0 && payerId != null
+    editing &&
+    cents !== null &&
+    cents > 0 &&
+    payerId != null &&
+    derived != null
       ? patchExpense(
           editing,
           liveIds,
@@ -149,31 +164,19 @@ export default function NewExpenseScreen() {
             payerMemberId: payerId,
             amountCents: cents,
             description: what,
-            participantMemberIds: participantIds,
+            splitAmong: derived.splitAmong,
           },
           editing.updated_at,
         )
       : undefined;
   const canSave =
     !busy &&
-    cents !== null &&
-    cents > 0 &&
     payerId != null &&
-    participantIds.length > 0 &&
+    derived?.canSave === true &&
     (!editing || draft != null);
 
-  const labelOf = (memberId: string, displayName: string) =>
-    memberLabel(displayName, memberId === assumedMemberId);
-
-  const toggleShare = (memberId: string) => {
-    setSharing((current) => ({
-      ...(current ?? {}),
-      [memberId]: !(current ?? {})[memberId],
-    }));
-  };
-
   const onSave = async () => {
-    if (!canSave || cents === null || payerId == null) return;
+    if (!canSave || cents === null || payerId == null || derived == null) return;
     setBusy(true);
     try {
       if (editing) {
@@ -181,7 +184,7 @@ export default function NewExpenseScreen() {
           payerMemberId: payerId,
           amountCents: cents,
           description: what,
-          participantMemberIds: participantIds,
+          splitAmong: derived.splitAmong,
         });
         router.back();
         return;
@@ -190,7 +193,7 @@ export default function NewExpenseScreen() {
         payerMemberId: payerId,
         amountCents: cents,
         description: what,
-        participantMemberIds: participantIds,
+        splitAmong: derived.splitAmong,
       });
       if (expenseId) router.back();
     } finally {
@@ -206,15 +209,36 @@ export default function NewExpenseScreen() {
         </Text>
       ) : null}
 
-      <TextInput
-        style={styles.input}
+      <PayerSelect
+        members={memberList}
+        value={payerId}
+        assumedMemberId={assumedMemberId}
+        onChange={setPayerId}
+      />
+
+      <ExpenseAmountInput
+        currencySymbol={currencySymbol(group.currency_label)}
         value={amount}
         onChangeText={setAmount}
-        placeholder={`Amount (${currencySymbol(group.currency_label)})`}
-        placeholderTextColor={colors.muted}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
+        autoFocus={!editingId}
+        onBlurFormat={() => {
+          if (cents != null) setAmount(formatCents(cents));
+        }}
       />
+
+      <Text style={styles.label}>Split between</Text>
+      {splitState ? (
+        <ExpenseSplitList
+          roster={memberList}
+          memberIds={liveIds}
+          amountCents={cents != null && cents > 0 ? cents : 0}
+          state={splitState}
+          assumedMemberId={assumedMemberId}
+          currency={group.currency_label}
+          onChange={setSplitState}
+        />
+      ) : null}
+
       <TextInput
         style={styles.input}
         value={what}
@@ -222,46 +246,6 @@ export default function NewExpenseScreen() {
         placeholder="What for"
         placeholderTextColor={colors.muted}
       />
-
-      <Text style={styles.label}>Paid by</Text>
-      {memberList.map((m) => {
-        const isPayer = m.id === payerId;
-        const isYou = m.id === assumedMemberId;
-        return (
-          <Pressable
-            key={m.id}
-            style={styles.memberRow}
-            onPress={() => setPayerId(m.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: isPayer }}
-          >
-            <Text style={isYou || isPayer ? styles.you : styles.value}>
-              {labelOf(m.id, m.display_name)}
-            </Text>
-            <Text style={styles.hintInline}>{isPayer ? 'paying' : ''}</Text>
-          </Pressable>
-        );
-      })}
-
-      <Text style={styles.label}>Split between</Text>
-      {memberList.map((m) => {
-        const on = sharing?.[m.id] === true;
-        const isYou = m.id === assumedMemberId;
-        return (
-          <Pressable
-            key={m.id}
-            style={styles.memberRow}
-            onPress={() => toggleShare(m.id)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: on }}
-          >
-            <Text style={isYou ? styles.you : styles.value}>
-              {on ? '✓ ' : '○ '}
-              {labelOf(m.id, m.display_name)}
-            </Text>
-          </Pressable>
-        );
-      })}
 
       <Pressable
         style={[styles.button, !canSave ? styles.buttonDisabled : null]}
@@ -292,24 +276,8 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     textTransform: 'uppercase',
   },
-  value: {
-    fontSize: 18,
-    color: colors.ink,
-  },
-  you: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.accent,
-  },
   error: {
     color: colors.danger,
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 6,
   },
   input: {
     marginTop: 8,
@@ -336,10 +304,5 @@ const styles = StyleSheet.create({
     color: colors.accentInk,
     fontSize: 16,
     fontWeight: '600',
-  },
-  hintInline: {
-    fontSize: 14,
-    color: colors.ink,
-    opacity: 0.7,
   },
 });

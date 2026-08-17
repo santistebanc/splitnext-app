@@ -20,6 +20,12 @@ const taxi: ExpenseEntity = {
   deleted_at: null,
 };
 
+const equalLive = live.map((memberId) => ({
+  memberId,
+  shareUnits: 1,
+  fixedCents: null,
+}));
+
 describe('patchExpense', () => {
   it('rebuilds an equal split at the next version and keeps id / group / deleted_at', () => {
     expect(
@@ -30,7 +36,7 @@ describe('patchExpense', () => {
           payerMemberId: 'm1',
           amountCents: 2000,
           description: 'Taxi',
-          participantMemberIds: live,
+          splitAmong: equalLive,
         },
         '2026-08-17T12:00:00.000Z',
       ),
@@ -41,9 +47,24 @@ describe('patchExpense', () => {
       amount_cents: 2000,
       description: 'Taxi',
       allocations: [
-        { member_id: 'm1', amount_cents: 667 },
-        { member_id: 'm2', amount_cents: 667 },
-        { member_id: 'm3', amount_cents: 666 },
+        {
+          member_id: 'm1',
+          amount_cents: 667,
+          share_units: 1,
+          fixed_cents: null,
+        },
+        {
+          member_id: 'm2',
+          amount_cents: 667,
+          share_units: 1,
+          fixed_cents: null,
+        },
+        {
+          member_id: 'm3',
+          amount_cents: 666,
+          share_units: 1,
+          fixed_cents: null,
+        },
       ],
       version: 2,
       updated_at: '2026-08-17T12:00:00.000Z',
@@ -51,7 +72,46 @@ describe('patchExpense', () => {
     });
   });
 
-  it('returns null when the trimmed fields are unchanged', () => {
+  it('rebuilds a mixed split from share units and fixed cents', () => {
+    expect(
+      patchExpense(
+        taxi,
+        live,
+        {
+          payerMemberId: 'm1',
+          amountCents: 1000,
+          description: 'Taxi',
+          splitAmong: [
+            { memberId: 'm1', shareUnits: 2, fixedCents: null },
+            { memberId: 'm2', shareUnits: 1, fixedCents: null },
+            { memberId: 'm3', shareUnits: 0, fixedCents: 200 },
+          ],
+        },
+        '2026-08-17T12:00:00.000Z',
+      )?.allocations,
+    ).toEqual([
+      {
+        member_id: 'm1',
+        amount_cents: 533,
+        share_units: 2,
+        fixed_cents: null,
+      },
+      {
+        member_id: 'm2',
+        amount_cents: 267,
+        share_units: 1,
+        fixed_cents: null,
+      },
+      {
+        member_id: 'm3',
+        amount_cents: 200,
+        share_units: 1,
+        fixed_cents: 200,
+      },
+    ]);
+  });
+
+  it('returns null when the trimmed fields and split intent are unchanged', () => {
     expect(
       patchExpense(
         taxi,
@@ -60,7 +120,11 @@ describe('patchExpense', () => {
           payerMemberId: 'm1',
           amountCents: 1000,
           description: '  Taxi  ',
-          participantMemberIds: ['m3', 'm1', 'm2'],
+          splitAmong: [
+            { memberId: 'm3', shareUnits: 1, fixedCents: null },
+            { memberId: 'm1', shareUnits: 1, fixedCents: null },
+            { memberId: 'm2', shareUnits: 1, fixedCents: null },
+          ],
         },
         '2026-08-17T12:00:00.000Z',
       ),
@@ -74,18 +138,19 @@ describe('patchExpense', () => {
       description: 'Taxi',
     };
     expect(
-      patchExpense(
-        taxi,
-        live,
-        { ...body, participantMemberIds: [] },
-        '2026-08-17T12:00:00.000Z',
-      ),
+      patchExpense(taxi, live, { ...body, splitAmong: [] }, '2026-08-17T12:00:00.000Z'),
     ).toBeNull();
     expect(
       patchExpense(
         taxi,
         live,
-        { ...body, participantMemberIds: ['m1', 'gone'] },
+        {
+          ...body,
+          splitAmong: [
+            { memberId: 'm1', shareUnits: 1, fixedCents: null },
+            { memberId: 'gone', shareUnits: 1, fixedCents: null },
+          ],
+        },
         '2026-08-17T12:00:00.000Z',
       ),
     ).toBeNull();
@@ -95,7 +160,7 @@ describe('patchExpense', () => {
     const body = {
       payerMemberId: 'm1',
       description: 'Taxi',
-      participantMemberIds: live,
+      splitAmong: equalLive,
     };
     expect(
       patchExpense(
