@@ -10,6 +10,7 @@ function memoryStore(): GroupStore & {
     members: {},
     binds: {},
     expenses: {},
+    activities: {},
   };
   return {
     rows,
@@ -19,6 +20,10 @@ function memoryStore(): GroupStore & {
     },
     getMember(id) {
       const row = rows.members[id];
+      return row ? { id: row.id as string } : null;
+    },
+    getExpense(id) {
+      const row = rows.expenses[id];
       return row ? { id: row.id as string } : null;
     },
     upsert(entityType, row) {
@@ -114,5 +119,41 @@ describe('mergeOne', () => {
       },
     });
     expect(result.reason).toBe('invalid_amount');
+  });
+
+  it('accepts an activity when the actor and expense exist', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    store.upsert('expenses', { id: 'e1', payer_member_id: 'm1', amount_cents: 100 });
+    const result = mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a1',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'expense_added',
+        actor_member_id: 'm1',
+        expense_id: 'e1',
+      },
+    });
+    expect(result.status).toBe('accepted');
+    expect(store.rows.activities.a1.kind).toBe('expense_added');
+  });
+
+  it('rejects an activity when the expense is missing', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    const result = mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a1',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'expense_added',
+        actor_member_id: 'm1',
+        expense_id: 'e-missing',
+      },
+    });
+    expect(result.reason).toBe('expense_not_in_group');
   });
 });

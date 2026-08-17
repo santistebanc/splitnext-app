@@ -250,6 +250,51 @@ describe('local Worker HTTP contract', () => {
   });
 });
 
+describe('local Worker activity contract', () => {
+  it('returns an activity in roster after merge', async () => {
+    const group = await seededGroup();
+    const member = await seededMember(group, 'Ana');
+    const expenseId = crypto.randomUUID();
+    const expense = {
+      id: expenseId,
+      group_id: group.groupId,
+      payer_member_id: member.id,
+      amount_cents: 500,
+      description: 'Lunch',
+      allocations: [{ member_id: member.id, amount_cents: 500, share_units: 1 }],
+      version: 1,
+      updated_at: nowIso(),
+      deleted_at: null,
+    };
+    const activityId = crypto.randomUUID();
+    const activity = {
+      id: activityId,
+      group_id: group.groupId,
+      kind: 'expense_added' as const,
+      actor_member_id: member.id,
+      expense_id: expenseId,
+      version: 1,
+      updated_at: nowIso(),
+      deleted_at: null,
+    };
+    await mergeEntities({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+      items: [
+        { entity_type: 'expenses', id: expenseId, version: 1, payload: expense },
+        { entity_type: 'activities', id: activityId, version: 1, payload: activity },
+      ],
+    });
+    const roster = await listRoster({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+    });
+    expect(roster.activities?.some((a) => a.id === activityId)).toBe(true);
+  });
+});
+
 describe('local Worker leave-group contract', () => {
   it('revokes the token so a later fetch is rejected', async () => {
     const group = await seededGroup();

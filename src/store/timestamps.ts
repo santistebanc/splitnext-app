@@ -48,6 +48,13 @@ export function normalizePersistedTimestamps(state: GroupStore): GroupStore {
   const members = fixMap(state.members ?? {});
   const binds = fixMap(state.binds ?? {});
   const expenses = fixMap(state.expenses ?? {});
+  const activities = fixMap(state.activities ?? {});
 
-  return changed ? { ...state, group, members, binds, expenses } : state;
+  if (!state.activities) changed = true;
+
+  return changed
+    ? { ...state, group, members, binds, expenses, activities }
+    : state.activities
+      ? state
+      : { ...state, activities };
 }

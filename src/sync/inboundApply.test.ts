@@ -41,14 +41,16 @@ describe('applyRemoteEntity', () => {
       group: group(1),
       members: {},
       binds: {},
-    expenses: {},
+      expenses: {},
+      activities: {},
     };
     const next = applyRemoteEntity(state, 'groups', group(2));
     expect(next).toEqual({
       group: group(2),
       members: {},
       binds: {},
-    expenses: {},
+      expenses: {},
+      activities: {},
     });
   });
 
@@ -57,7 +59,8 @@ describe('applyRemoteEntity', () => {
       group: group(3),
       members: {},
       binds: {},
-    expenses: {},
+      expenses: {},
+      activities: {},
     };
     expect(applyRemoteEntity(state, 'groups', group(3))).toBeNull();
     expect(applyRemoteEntity(state, 'groups', group(2))).toBeNull();
@@ -68,7 +71,8 @@ describe('applyRemoteEntity', () => {
       group: group(1),
       members: { m1: member('m1', 1) },
       binds: {},
-    expenses: {},
+      expenses: {},
+      activities: {},
     };
     const next = applyRemoteEntity(state, 'members', member('m1', 2));
     expect(next?.members.m1.version).toBe(2);
@@ -79,7 +83,8 @@ describe('applyRemoteEntity', () => {
       group: group(1),
       members: {},
       binds: {},
-    expenses: {},
+      expenses: {},
+      activities: {},
     };
     const next = applyRemoteEntity(state, 'binds', bind('b1', 1));
     expect(next?.binds.b1).toEqual(bind('b1', 1));

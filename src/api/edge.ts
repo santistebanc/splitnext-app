@@ -1,5 +1,6 @@
 import { env } from '@/src/config/env';
 import type {
+  ActivityEntity,
   BindEntity,
   ExpenseEntity,
   GroupEntity,
@@ -133,6 +134,7 @@ export async function listRoster(input: {
   members: MemberEntity[];
   binds: BindEntity[];
   expenses?: ExpenseEntity[];
+  activities?: ActivityEntity[];
 }> {
   return callFunction(
     'list-roster',

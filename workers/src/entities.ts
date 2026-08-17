@@ -48,6 +48,20 @@ export function bindRow(item: MergeItem, groupId: string) {
   };
 }
 
+export function activityRow(item: MergeItem, groupId: string) {
+  return {
+    id: item.id,
+    group_id: groupId,
+    kind: String(item.payload.kind ?? ''),
+    actor_member_id: String(item.payload.actor_member_id ?? ''),
+    expense_id: String(item.payload.expense_id ?? ''),
+    version: item.version,
+    updated_at:
+      (item.payload.updated_at as string) ?? new Date().toISOString(),
+    deleted_at: (item.payload.deleted_at as string | null) ?? null,
+  };
+}
+
 export function expenseRow(item: MergeItem, groupId: string) {
   return {
     id: item.id,

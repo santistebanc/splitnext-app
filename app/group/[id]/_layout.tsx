@@ -14,6 +14,7 @@ export default function GroupLayout() {
       <Stack.Screen name="settings" options={{ title: 'Settings' }} />
       <Stack.Screen name="member/[memberId]" options={{ title: 'Member' }} />
       <Stack.Screen name="expenses" options={{ title: 'All expenses' }} />
+      <Stack.Screen name="activity" options={{ title: 'Activity' }} />
       <Stack.Screen name="expense/new" options={{ title: 'New expense' }} />
       <Stack.Screen
         name="expense/[expenseId]"

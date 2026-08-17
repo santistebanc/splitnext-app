@@ -50,6 +50,17 @@ export type ExpenseRecord = {
   deleted_at: string | null;
 };
 
+export type ActivityRecord = {
+  id: string;
+  group_id: string;
+  kind: string;
+  actor_member_id: string;
+  expense_id: string;
+  version: number;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
 export class GroupObject extends DurableObject {
   private get sql(): Sql {
     return this.ctx.storage.sql as unknown as Sql;
@@ -94,6 +105,16 @@ export class GroupObject extends DurableObject {
         updated_at TEXT NOT NULL,
         deleted_at TEXT
       )`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS activities (
+        id TEXT PRIMARY KEY,
+        group_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        actor_member_id TEXT NOT NULL,
+        expense_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      )`);
     this.sql.exec(
       `CREATE UNIQUE INDEX IF NOT EXISTS binds_one_active_per_device
         ON binds (device_user_id) WHERE deleted_at IS NULL`,
@@ -115,6 +136,13 @@ export class GroupObject extends DurableObject {
       getMember(id) {
         const rows = sql.exec<{ id: string }>(
           'SELECT id FROM members WHERE id = ?',
+          id,
+        ).toArray();
+        return rows[0] ?? null;
+      },
+      getExpense(id) {
+        const rows = sql.exec<{ id: string }>(
+          'SELECT id FROM expenses WHERE id = ?',
           id,
         ).toArray();
         return rows[0] ?? null;
@@ -202,6 +230,13 @@ export class GroupObject extends DurableObject {
       if (!row) return { error: 'not_found', status: 404 };
       return { entity: expenseEntity(row) };
     }
+    if (entityType === 'activities') {
+      const row = this.sql
+        .exec<ActivityRecord>('SELECT * FROM activities WHERE id = ? AND group_id = ?', id, groupId)
+        .toArray()[0];
+      if (!row) return { error: 'not_found', status: 404 };
+      return { entity: activityEntity(row) };
+    }
     return { error: 'unsupported', status: 400 };
   }
 
@@ -209,6 +244,7 @@ export class GroupObject extends DurableObject {
     members: Record<string, unknown>[];
     binds: Record<string, unknown>[];
     expenses: Record<string, unknown>[];
+    activities: Record<string, unknown>[];
   }> {
     this.ensureSchema();
     const members = this.sql
@@ -223,7 +259,11 @@ export class GroupObject extends DurableObject {
       .exec<ExpenseRecord>('SELECT * FROM expenses WHERE group_id = ?', groupId)
       .toArray()
       .map(expenseEntity);
-    return { members, binds, expenses };
+    const activities = this.sql
+      .exec<ActivityRecord>('SELECT * FROM activities WHERE group_id = ?', groupId)
+      .toArray()
+      .map(activityEntity);
+    return { members, binds, expenses, activities };
   }
 
   async getMember(
@@ -315,6 +355,7 @@ function tableFor(entityType: string): string | null {
   if (entityType === 'members') return 'members';
   if (entityType === 'binds') return 'binds';
   if (entityType === 'expenses') return 'expenses';
+  if (entityType === 'activities') return 'activities';
   return null;
 }
 
@@ -377,6 +418,28 @@ function upsertRow(
       groupId,
       row.device_user_id,
       row.member_id,
+      row.version,
+      row.updated_at,
+      row.deleted_at,
+    );
+    return;
+  }
+  if (entityType === 'activities') {
+    sql.exec(
+      `INSERT INTO activities (id, group_id, kind, actor_member_id, expense_id, version, updated_at, deleted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         kind = excluded.kind,
+         actor_member_id = excluded.actor_member_id,
+         expense_id = excluded.expense_id,
+         version = excluded.version,
+         updated_at = excluded.updated_at,
+         deleted_at = excluded.deleted_at`,
+      row.id,
+      groupId,
+      row.kind,
+      row.actor_member_id,
+      row.expense_id,
       row.version,
       row.updated_at,
       row.deleted_at,
@@ -455,6 +518,19 @@ function expenseEntity(row: ExpenseRecord) {
     amount_cents: row.amount_cents,
     description: row.description,
     allocations: Array.isArray(allocations) ? allocations : [],
+    version: row.version,
+    updated_at: row.updated_at,
+    deleted_at: row.deleted_at,
+  };
+}
+
+function activityEntity(row: ActivityRecord) {
+  return {
+    id: row.id,
+    group_id: row.group_id,
+    kind: row.kind,
+    actor_member_id: row.actor_member_id,
+    expense_id: row.expense_id,
     version: row.version,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,

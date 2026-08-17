@@ -3,11 +3,13 @@ import {
   assumedMemberIdFromBinds,
   bindingIsOpen,
 } from '@/src/domain/assumedMember';
+import { activityLines } from '@/src/domain/activity';
 import { computeBalances } from '@/src/domain/balances';
 import { lobbyGroupTitle } from '@/src/domain/lobby';
 import { getGroupStore } from '@/src/store/groupStore';
 import { addMember, openGroup } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
+import { ActivityLineText } from '@/src/ui/ActivityLineText';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -67,6 +69,7 @@ export default function GroupHubScreen() {
   const members = useValue(store$.members);
   const binds = useValue(store$.binds);
   const expenses = useValue(store$.expenses);
+  const activities = useValue(store$.activities);
   const lastErrorRaw = useValue(store$.lastError);
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
@@ -144,6 +147,19 @@ export default function GroupHubScreen() {
     titleH,
   );
   const typeLine = Math.round(typeSize * TYPE_LINE);
+
+  const allActivityLines = useMemo(
+    () =>
+      activityLines(
+        activities ?? {},
+        members ?? {},
+        expenses ?? {},
+        currency,
+        assumedMemberId,
+      ),
+    [activities, members, expenses, currency, assumedMemberId],
+  );
+  const recentActivityLines = allActivityLines.slice(0, 3);
 
   const onAdd = async () => {
     if (!newName.trim() || busy) return;
@@ -304,9 +320,38 @@ export default function GroupHubScreen() {
                 </Pressable>
               )}
             </View>
+
+            <View style={styles.titleSpacer} pointerEvents="none" />
+
+            {!namesOnly && recentActivityLines.length > 0 ? (
+              <View testID="activity-recent" style={styles.activitySection}>
+                <Text style={styles.activityHeading}>Recent activity</Text>
+                {recentActivityLines.map((line, index) => (
+                  <ActivityLineText
+                    key={`${line.description}-${line.amount}-${index}`}
+                    line={line}
+                    style={styles.activityLine}
+                    testID="activity-recent-row"
+                  />
+                ))}
+                <Pressable
+                  testID="activity-view-all"
+                  style={styles.activityViewAll}
+                  onPress={() =>
+                    router.push(`/group/${groupId}/activity` as Href)
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel="View all events"
+                >
+                  <Text style={styles.activityViewAllText}>View all events</Text>
+                </Pressable>
+              </View>
+            ) : null}
             </>
           )}
-          <View style={styles.titleSpacer} pointerEvents="none" />
+          {balances.length === 0 ? (
+            <View style={styles.titleSpacer} pointerEvents="none" />
+          ) : null}
         </View>
       </View>
 
@@ -333,6 +378,7 @@ export default function GroupHubScreen() {
           <Text style={styles.expensesBarText}>View all expenses</Text>
         </Pressable>
       ) : null}
+
     </View>
   );
 }
@@ -449,6 +495,36 @@ const styles = StyleSheet.create({
   },
   amtYou: {
     fontWeight: '700',
+  },
+  activitySection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  activityHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.muted,
+    marginBottom: 8,
+  },
+  activityLine: {
+    fontSize: 14,
+    color: colors.muted,
+    lineHeight: 20,
+    paddingVertical: 4,
+  },
+  activityViewAll: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  activityViewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.accent,
   },
   addRow: {
     flexDirection: 'row',

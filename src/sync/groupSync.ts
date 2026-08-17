@@ -1,6 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
 import { bindOnce } from '@/src/domain/bind';
+import { activityForExpenseAdded } from '@/src/domain/activity';
+import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
 import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPatch } from '@/src/domain/group';
 import { buildExpenseAllocations, patchExpense, tombstoneExpense, type SplitAmongEntry } from '@/src/domain/expense';
 import { patchMember, tombstoneMember } from '@/src/domain/member';
@@ -24,6 +26,7 @@ import type {
   ExpenseEntity,
   GroupEntity,
   MemberEntity,
+  OutboundItem,
 } from '@/src/types/group';
 
 export { flushQueue } from '@/src/sync/outbound';
@@ -248,15 +251,41 @@ export async function addExpense(
     deleted_at: null,
   };
   store$.expenses.set({ ...(store$.expenses.get() ?? {}), [expense.id]: expense });
-  store$.queue.set([
-    ...(store$.queue.get() ?? []),
+  const queueItems: OutboundItem[] = [
     {
       entity_type: 'expenses',
       id: expense.id,
       version: expense.version,
       payload: expense,
     },
-  ]);
+  ];
+
+  const binds = store$.binds.get() ?? {};
+  const deviceUserId = await getOrCreateDeviceUserId();
+  const actorMemberId = assumedMemberIdFromBinds(binds, deviceUserId);
+  const activity = actorMemberId
+    ? activityForExpenseAdded({
+        id: Crypto.randomUUID(),
+        groupId,
+        actorMemberId,
+        expense,
+        at: expense.updated_at,
+      })
+    : null;
+  if (activity) {
+    store$.activities.set({
+      ...(store$.activities.get() ?? {}),
+      [activity.id]: activity,
+    });
+    queueItems.push({
+      entity_type: 'activities',
+      id: activity.id,
+      version: activity.version,
+      payload: activity,
+    });
+  }
+
+  store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
   await flushQueue(groupId);
   return expense.id;
 }
