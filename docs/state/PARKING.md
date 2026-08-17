@@ -9,7 +9,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 - **Soft-delete an expense** — delivered in [slice 0031](slices/0031-expense-delete.md).
 
-- **Kick / soft-delete a member** — "button to remove/kickout"; never hard-delete while referenced. Rename shipped in 0028. — area: membership — raised: bootstrap · restated: slice 0027 / steering after 0029
+- **Kick / soft-delete a member** — delivered in [slice 0033](slices/0033-kick-member.md).
 - **Browser-driven flow tests** — CI now asserts a clean console plus balances/settle surviving a reload against a local Worker (slice 0022); it is still not in `npm test`, has no fuller failure taxonomy, and web still does not exercise the SQLite persist adapter — area: testing — raised: slice 0006 · *partially delivered in 0007 / 0022*
 - **Driving `startWakeSubscription` against a local Worker** — the wake *wire* is contract-tested (slice 0021); the client orchestrator (token store, inbound fetch, module Maps) is not — area: sync — raised: slice 0021
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
@@ -82,3 +82,5 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Mixed splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
 
 - **Expense delete** — delivered in [slice 0031](slices/0031-expense-delete.md).
+
+- **Kick member** — delivered in [slice 0033](slices/0033-kick-member.md).

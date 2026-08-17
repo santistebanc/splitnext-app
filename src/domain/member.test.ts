@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MemberEntity } from '@/src/types/group';
-import { patchMember } from './member';
+import { patchMember, tombstoneMember } from './member';
 
 const live: MemberEntity = {
   id: 'm1',
@@ -36,5 +36,21 @@ describe('patchMember', () => {
         '2026-08-17T12:00:00.000Z',
       ),
     ).toBeNull();
+  });
+});
+
+describe('tombstoneMember', () => {
+  it('soft-deletes a live member at the next version', () => {
+    expect(tombstoneMember(live, '2026-08-17T12:00:00.000Z')).toEqual({
+      ...live,
+      version: 4,
+      updated_at: '2026-08-17T12:00:00.000Z',
+      deleted_at: '2026-08-17T12:00:00.000Z',
+    });
+  });
+
+  it('returns null when the member is already tombstoned', () => {
+    const gone = { ...live, deleted_at: '2026-08-02T00:00:00.000Z' };
+    expect(tombstoneMember(gone, '2026-08-17T12:00:00.000Z')).toBeNull();
   });
 });
