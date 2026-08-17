@@ -62,14 +62,29 @@ export type ExpenseEntity = {
   deleted_at: string | null;
 };
 
+export type ActivityEntity = {
+  id: string;
+  group_id: string;
+  kind: 'expense_added';
+  actor_member_id: string;
+  expense_id: string;
+  version: number;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
 export type SyncEntity =
   | GroupEntity
   | MemberEntity
   | BindEntity
-  | ExpenseEntity;
+  | ExpenseEntity
+  | ActivityEntity;
 
 export type OutboundItem = {
-  entity_type: Extract<EntityType, 'groups' | 'members' | 'binds' | 'expenses'>;
+  entity_type: Extract<
+    EntityType,
+    'groups' | 'members' | 'binds' | 'expenses' | 'activities'
+  >;
   id: string;
   version: number;
   payload: SyncEntity;
@@ -88,6 +103,7 @@ export type GroupStore = {
   members: Record<string, MemberEntity>;
   binds: Record<string, BindEntity>;
   expenses: Record<string, ExpenseEntity>;
+  activities: Record<string, ActivityEntity>;
   syncStatus: SyncStatus;
   /** Typed sync error; may briefly be a legacy string from older persists. */
   lastError: SyncError | string | null;

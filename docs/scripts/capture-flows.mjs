@@ -235,6 +235,33 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-activity',
+    from: 'bound',
+    async run(d, page) {
+      await d.tapNewExpense();
+      await d.typeAmount('5.00');
+      await d.type('What for', 'Lunch');
+      await d.tap('Add expense');
+      await d.beat(2400);
+      const recent = page.getByTestId('activity-recent');
+      const text = await recent.innerText();
+      if (!/Lunch/.test(text)) {
+        problems.push(
+          `[F-activity] recent activity did not show the new expense (got ${JSON.stringify(text.slice(0, 200))})`,
+        );
+      }
+      await d.press(page.getByTestId('activity-view-all'));
+      await d.beat(800);
+      const activityPage = page.getByTestId('activity-page');
+      const all = await activityPage.innerText();
+      if (!/Lunch/.test(all)) {
+        problems.push(
+          `[F-activity] full list did not show the new expense (got ${JSON.stringify(all.slice(0, 200))})`,
+        );
+      }
+    },
+  },
+  {
     id: 'F-edit-expense',
     from: 'spent',
     async run(d, page) {

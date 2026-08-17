@@ -3,6 +3,7 @@ import {
   expenseRow,
   groupRow,
   memberRow,
+  activityRow,
   shouldAccept,
   type MergeItem,
 } from './entities';
@@ -18,6 +19,7 @@ export type MergeResult = {
 export type GroupStore = {
   getVersion(entityType: string, id: string): number;
   getMember(id: string): { id: string } | null;
+  getExpense(id: string): { id: string } | null;
   upsert(entityType: string, row: Record<string, unknown>): void;
 };
 
@@ -36,7 +38,8 @@ export function mergeOne(
     item.entity_type !== 'groups' &&
     item.entity_type !== 'members' &&
     item.entity_type !== 'binds' &&
-    item.entity_type !== 'expenses'
+    item.entity_type !== 'expenses' &&
+    item.entity_type !== 'activities'
   ) {
     return { ...base, status: 'error', reason: 'unsupported_entity' };
   }
@@ -79,6 +82,24 @@ export function mergeOne(
       return { ...base, status: 'rejected', reason: 'payer_not_in_group' };
     }
     store.upsert('expenses', row);
+    return { ...base, status: 'accepted' };
+  }
+
+  if (item.entity_type === 'activities') {
+    const row = activityRow(item, groupId);
+    if (row.kind !== 'expense_added') {
+      return { ...base, status: 'error', reason: 'invalid_activity' };
+    }
+    if (!row.actor_member_id || !row.expense_id) {
+      return { ...base, status: 'error', reason: 'invalid_activity' };
+    }
+    if (!store.getMember(row.actor_member_id)) {
+      return { ...base, status: 'rejected', reason: 'actor_not_in_group' };
+    }
+    if (!store.getExpense(row.expense_id)) {
+      return { ...base, status: 'rejected', reason: 'expense_not_in_group' };
+    }
+    store.upsert('activities', row);
     return { ...base, status: 'accepted' };
   }
 

@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0033
+Last updated: slice 0034
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: kick, activity + toast + push, last-opened group, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: toast/push/undo on activity, last-opened group, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -25,7 +25,7 @@ Last updated: slice 0033
 ## Capabilities
 
 - Create a group from a form (group name, your name, currency), mint a per-device access token, persist locally with the creator already bound, sync the group to the server, and land on the hub of names — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0027](slices/0027-first-run.md)
-- Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + under the list; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md)
+- Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + directly under the list; **Recent activity** (last three) pinned above the expense CTAs once anything is recorded; **View all events** opens the activity page; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0034](slices/0034-activity-spine.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
 - Add name-slot members, bind this device to one (assumed member), show You on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
@@ -35,6 +35,7 @@ Last updated: slice 0033
 - Soft-delete an expense from the edit form; lists and balances refold without it — [slice 0031](slices/0031-expense-delete.md)
 - Destructive confirms (Leave group, Delete expense) use a bottom drawer — [slice 0032](slices/0032-confirm-drawer.md)
 - Remove an unclaimed member from the group list (soft-delete); You and claimed slots cannot be removed — [slice 0033](slices/0033-kick-member.md)
+- See recent group activity on the hub (last three events) and open a full activity page; recording an expense appends an `expense_added` event when this device has an assumed member — [slice 0034](slices/0034-activity-spine.md)
 - Assumed member is set at create or join and cannot be changed; leave unbinds — [slice 0005](slices/0005-expense-spine.md) / [slice 0027](slices/0027-first-run.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
 - Split every expense across the members chosen at record time (default everyone live), or by share units and fixed cents — frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md) / [slice 0030](slices/0030-mixed-splits.md)
@@ -66,7 +67,7 @@ Last updated: slice 0033
 - UI state — Legend State v3 (`useValue`, per-group observable) — UI source of truth
 - Local durability — `expo-sqlite` kv-store via `observablePersistSqlite` + `configureObservableSync` — write-through persist; web swaps the plugin for `localStorage` (`persistPlugin.web.ts`) because expo-sqlite's web path is wasm over OPFS, which headless Chromium cannot run
 - Secrets — `expo-secure-store` behind `src/secrets/secureStorage.ts` — `device_user_id`, `access_token.{groupId}`; lobby id list also there for now (temporary). Web has no keychain and falls back to `localStorage`
-- Group store — SQLite Durable Object per `group_id` — `groups`, `members`, `binds`, `expenses` (allocations as JSON text); one-threaded merge, no race
+- Group store — SQLite Durable Object per `group_id` — `groups`, `members`, `binds`, `expenses` (allocations as JSON text), `activities`; one-threaded merge, no race
 - Token index — D1 `splitnext-index` — `access_tokens`, `invites` only (`token_hash → group_id`)
 - Server API — Worker routes `create-group`, `merge`, `fetch-entity`, `list-roster`, `mint-invite`, `join-group`, `leave-group` — capability hash-check then the named Durable Object; each answers `GET ?health=1` with the deploy sha (L-efHealth). `npm test` boots the same Worker locally and drives those routes through `src/api/edge.ts` (D-070), plus the wake WebSocket wire (D-071)
 - Wake channel — hibernating WebSocket on the group Durable Object at `/wake/:groupId`; payload is tip only; a drop is retried with backoff, then `OPEN` after `ERROR` / `CLOSED` runs the same catch-up as open (D-054, D-066); joiners subscribe on the hub, not the join spinner. Auth + tip shape are contract-tested against a local Worker.
@@ -98,6 +99,8 @@ Last updated: slice 0033
 
 **Invite** — server only, not a merge entity: `token_hash`, `group_id`, `member_id`, `expires_at`, `redeemed_at`. One-use, 7-day. Secret is 11-char base64url. Redeeming mints an access token and a v1 bind for that member. Plaintext is shown once at mint as a `/j/{token}` URL (web) or the raw token (native).
 
+**Activity** — `id`, `group_id`, `kind`, `actor_member_id`, `expense_id`, `version`, `updated_at`, `deleted_at`. Merge entity; client-authored; flushed after expenses. This slice records `expense_added` only when this device adds a cost and has an assumed member.
+
 **Outbound queue** (client) — per-group `{ entity_type, id, version, payload }` on the Legend store; flushed to `merge` in flush order. Auto-flushed on open, foreground, and wake-socket reconnect via `syncGroup`.
 
 ## Routes / surfaces
@@ -108,7 +111,8 @@ Last updated: slice 0033
 | `/create` | Create form: group name, your name, currency; submit opens the hub named and bound | slice 0027 |
 | `/j/[token]` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 / 0028 |
 | `/join` | Same redeem as `/j/[token]`, via `?token=` (legacy) | slice 0012 |
-| `/group/[id]` | Hub: group name as large centered type above the list (header is home + settings); names until the first expense (rows open member detail; no expense list link), then balances (You highlighted; tap opens member detail); add member + under the list; **View all expenses** at the bottom once spent; FAB + Expense once bound; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 / 0027 / 0028 |
+| `/group/[id]` | Hub: group name as large centered type above the list (header is home + settings); names until the first expense (rows open member detail; no expense list link), then balances (You highlighted; tap opens member detail); add member + directly under the list; **Recent activity** (last three) above the expense CTAs once anything is recorded; **View all expenses** at the bottom once spent; FAB + Expense once bound; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 / 0027 / 0028 / 0034 |
+| `/group/[id]/activity` | Full activity list, newest first; opened from **View all events** on the hub | slice 0034 |
 | `/group/[id]/settings` | Group name and currency; Done once named and bound; Leave group (confirm drawer) | slice 0027 / 0032 |
 | `/group/[id]/member/[memberId]` | Member: name + edit in the header; join link + copy/share if unclaimed; Remove member (confirm drawer) if unclaimed and not You; paid-for / owe-for / net / suggested settlement once the group has an expense; a bucket line opens that expense | slice 0023 / 0024 / 0025 / 0027 / 0028 / 0029 / 0033 |
 | `/group/[id]/expenses` | All expenses, newest first; a row opens the expense editor | slice 0023 / 0029 |
@@ -137,6 +141,8 @@ Last updated: slice 0033
 - `currencySymbol` / `allCurrencies` — `src/domain/currency.ts` — vitest — ISO code to display symbol; picker catalog of tender currencies
 - `lobbyGroupTitle` / `lobbyMemberSummary` — `src/domain/lobby.ts` — vitest — lobby row title and one-line live member list
 - `patchMember` — `src/domain/member.ts` — vitest — next member version for a display-name change; whitespace or unchanged name is null
+- `tombstoneMember` — `src/domain/member.ts` — vitest — soft-delete a live member at the next version
+- `activityForExpenseAdded` / `formatActivityLine` / `sortActivities` — `src/domain/activity.ts` — vitest — build and format `expense_added` events; newest first
 - `phoneFrame` / `InFrameOverlay` / `ConfirmDrawer` — `src/ui/phoneFrame.ts` / `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — web-only: a 420×900 phone frame when the window is wider than 480px, always centered and scaled to fit the viewport (shrinks or grows as the window does); drawers portal into that frame instead of covering the desktop; capture's 420 viewport stays full-bleed. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open

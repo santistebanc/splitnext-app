@@ -25,6 +25,7 @@ export function getGroupStore(groupId: string): Observable<GroupStore> {
     members: {},
     binds: {},
     expenses: {},
+    activities: {},
     syncStatus: 'local',
     lastError: null,
     queue: [],

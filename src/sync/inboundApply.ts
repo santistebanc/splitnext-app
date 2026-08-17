@@ -4,6 +4,7 @@ import type {
   ExpenseEntity,
   GroupEntity,
   MemberEntity,
+  ActivityEntity,
   SyncEntity,
 } from '../types/group';
 
@@ -12,6 +13,7 @@ export type InboundState = {
   members: Record<string, MemberEntity>;
   binds: Record<string, BindEntity>;
   expenses: Record<string, ExpenseEntity>;
+  activities: Record<string, ActivityEntity>;
 };
 
 /** Pure apply: returns next state if remote wins by version, else null. */
@@ -53,6 +55,16 @@ export function applyRemoteEntity(
     return {
       ...state,
       binds: { ...state.binds, [remote.id]: remote },
+    };
+  }
+
+  if (entityType === 'activities') {
+    const remote = entity as ActivityEntity;
+    const localVersion = state.activities[remote.id]?.version ?? -1;
+    if (!shouldAcceptVersion(remote.version, localVersion)) return null;
+    return {
+      ...state,
+      activities: { ...state.activities, [remote.id]: remote },
     };
   }
 

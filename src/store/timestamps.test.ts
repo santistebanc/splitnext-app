@@ -17,6 +17,7 @@ const store = (overrides: Partial<GroupStore> = {}): GroupStore => ({
   members: {},
   binds: {},
   expenses: {},
+  activities: {},
   syncStatus: 'local',
   lastError: null,
   queue: [],

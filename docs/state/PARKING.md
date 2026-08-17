@@ -4,7 +4,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 ## Foundation-risk
 
-- **Activity as a merge entity** — typed events (expense add/edit/delete, member join/leave/rename/kick, group rename, …), client-authored, flushed last, optional `undo_snapshot`. Toast, push, and undo sit on this. Hub-chrome.html puts the list in a burger drawer (keep this app's hub; do not add a primary Activity tab). — area: activity — raised: bootstrap · restated: steering after 0029 · *appetite: needed for toast/push/undo*
+- **Activity spine** — `expense_added` merge entity, hub recent section, Activity page — delivered in [slice 0034](slices/0034-activity-spine.md). Still parked: other event kinds (edit/delete/kick/rename/join/leave/group rename), toast, push, undo / `undo_snapshot`. — area: activity — raised: bootstrap · restated: steering after 0029
 - **Mixed / uneven splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
 
 - **Soft-delete an expense** — delivered in [slice 0031](slices/0031-expense-delete.md).
@@ -15,7 +15,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
-- **Push notifications** — Expo push keyed off activity (non-actors); per-group mute. Was a non-goal; D-084 puts it in destination. Needs device-token Worker routes after activity exists. — area: awareness — raised: steering after 0029
+- **Push notifications** — Expo push keyed off activity (non-actors); per-group mute. Was a non-goal; D-084 puts it in destination. Activity spine exists (0034); device-token Worker routes still needed. — area: awareness — raised: steering after 0029
 
 ## Core value
 
@@ -41,7 +41,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Invite landing** — `/j/{token}` on the web: a landing that can send a phone to the app/store and still lets desktop continue to redeem. Not a marketing site. — area: invites — raised: steering after 0029
 - **Legal** — public privacy + terms that match actual behaviour (no accounts, capability tokens, what is stored). Deletion-on-request without a join code is part of this, not v1's join-code verified wipe. — area: legal — raised: steering after 0029
 - **Pending badge** — an expense (or row) that has not been acknowledged by the server is visibly pending. — area: sync — raised: steering after 0029
-- **Activity toast** — a live toast when someone else writes; depends on the activity entity. — area: awareness — raised: steering after 0029
+- **Activity toast** — a live toast when someone else writes; depends on richer activity events and wake delivery. — area: awareness — raised: steering after 0029
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
 - **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — `/j/{token}` shipped (D-080); the short origin is still parked — area: invites — raised: bootstrap · *partially delivered in 0028*
@@ -61,7 +61,6 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Wire-hop edges in the symbol graph** — draw `mergeEntities` → `merge` as a distinct kind of edge so the tree can cross the device/server boundary the way Flows does; today it is not a call and so not an edge — area: board — raised: slice 0009
 - **Lobby index out of Secure Store** — move `lobby_group_ids` to Legend/SQLite; Secure Store for secrets only — area: client — raised: slice 0001
 - **Design system application** — locked palette/components in blueprint; apply across screens. Slice 0023 extracts prototype tokens and restacks the hub; lobby / join / expense-form layouts stay. Do not take v1 dark mode / fonts / avatar seeds (D-084 keep surfaces). — area: ui — raised: bootstrap · restated: steering after 0029 · *partially 0023*
-- **Activity burger drawer** — "Burger opens Activity drawer (full scrollable list)" from hub-chrome.html — the surface for the activity entity, not a new primary tab. — area: ui — raised: slice 0023 · restated: steering after 0029
 - **Smooth member view transitions** — "smooth view transitions, where each member is smoothly transitioned from view to view" — area: ui — raised: slice 0025
 - **Invite copy/share sheet** — prototype copy/share sheet after mint; today the join link lands on the screen that minted — area: ui — raised: slice 0023
 - **Expense editor as a sheet** — hub-chrome.html adds/edits in a bottom sheet; add stays the dedicated `L-expenseNew` screen (keep this surface). — area: ui — raised: slice 0023
@@ -84,3 +83,5 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Expense delete** — delivered in [slice 0031](slices/0031-expense-delete.md).
 
 - **Kick member** — delivered in [slice 0033](slices/0033-kick-member.md).
+
+- **Activity spine** — delivered in [slice 0034](slices/0034-activity-spine.md).

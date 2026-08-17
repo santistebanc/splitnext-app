@@ -13,6 +13,7 @@ function readInboundState(groupId: string) {
     members: store$.members.get() ?? {},
     binds: store$.binds.get() ?? {},
     expenses: store$.expenses.get() ?? {},
+    activities: store$.activities.get() ?? {},
   };
 }
 
@@ -32,6 +33,7 @@ export function commitRemoteEntity(
   store$.members.set(next.members);
   store$.binds.set(next.binds);
   store$.expenses.set(next.expenses);
+  store$.activities.set(next.activities);
   store$.syncStatus.set('fetched');
   return true;
 }
@@ -76,7 +78,7 @@ export async function pullRoster(groupId: string): Promise<void> {
   if (!accessToken) return;
 
   try {
-    const { members, binds, expenses = [] } = await listRoster({
+    const { members, binds, expenses = [], activities = [] } = await listRoster({
       group_id: groupId,
       device_user_id: deviceUserId,
       access_token: accessToken,
@@ -89,6 +91,9 @@ export async function pullRoster(groupId: string): Promise<void> {
     }
     for (const expense of expenses) {
       commitRemoteEntity(groupId, 'expenses', expense);
+    }
+    for (const activity of activities) {
+      commitRemoteEntity(groupId, 'activities', activity);
     }
     store$.lastError.set(errorAfterOutcome('success', null));
   } catch (err) {

@@ -97,9 +97,18 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 3. The person types an amount; `L-expenseNew` parses it into whole cents and calls `L-addExpense` with that payer and the checked members.
 4. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
 5. `L-participantsForSplit` accepts the checked members only when they are all live and at least one remains; `L-allocateMixed` (equal 1-share) divides the cost across that set, every cent. The split is frozen into the expense: a member added later joins the next expense, not this one.
-6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and `L-expenses` will list it; the hub's balances update before any network call.
-7. `L-flushQueue` pushes it as one item, so the split can never arrive half-applied. `L-sortByFlushOrder` puts it after members, so the payer exists on the server before the expense that names them, and `L-efMerge` rejects it outright if that member belongs to another group.
+6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and `L-expenses` will list it; the hub's balances update before any network call. When this device has an assumed member, `L-addExpense` also queues an `expense_added` activity (flush order puts it after the expense).
+7. `L-flushQueue` pushes both items, so the split can never arrive half-applied. `L-sortByFlushOrder` puts the expense after members and the activity after expenses, so the payer and expense exist on the server before the activity that names them.
 8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets. After this first live expense, `L-hub` shows balances, **View all expenses** at the bottom, and the + to add a member.
+
+## F-activity — Activity feed
+
+**Trigger** — After recording a cost, the person sees **Recent activity** on the hub (last three events) and can tap **View all events** for the full list.  
+**Outcome** — One line for that add (“You added …” with description and amount). Newest first.
+
+1. `L-addExpense` already wrote the `expense_added` activity when this device has an assumed member.
+2. `L-hub` shows up to three lines pinned above the expense CTAs via `L-formatActivityLine` and `L-activityLineText`.
+3. **View all events** opens `L-activity` with every live event.
 
 ## F-edit-expense — Edit an expense
 
