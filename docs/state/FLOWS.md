@@ -107,7 +107,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Outcome** — That id drops out of All expenses, member buckets, and balance folds. The same expense is not hard-deleted.
 
 1. `L-expenses` or a bucket line opens edit; **Delete** is in the header.
-2. Inline confirm (same shape as Leave in Settings) then `L-deleteExpense` calls `L-tombstoneExpense`, queues the expense, and flushes.
+2. Confirm drawer (same shape as Leave in Settings) then `L-deleteExpense` calls `L-tombstoneExpense`, queues the expense, and flushes.
 3. `L-expenseNew` returns to the previous screen; lists and `L-balances` no longer include that expense.
 
 ## F-mixed-split — Unequal split
@@ -198,7 +198,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On Settings, the person taps **Leave group**, reads the confirm, and taps **Leave group** again.  
 **Outcome** — This device is unbound and its access token is revoked. The member slot and expenses stay. The group is gone from this device’s lobby.
 
-1. `L-hub` opens `L-settings`. **Leave group** is at the bottom. Cancel closes the confirm and writes nothing.
+1. `L-hub` opens `L-settings`. **Leave group** is at the bottom. Cancel or backdrop closes the confirm drawer and writes nothing.
 2. Confirm calls `L-leaveGroup`. `L-tombstoneBind` soft-deletes this device’s live bind at the next version; `L-flushQueue` pushes it while the token still works.
 3. `L-edgeLeave` posts to `L-efLeave`, which checks the token belongs to this group and this device, then sets `revoked_at`. A second leave is still success.
 4. `L-leaveGroup` drops the token through `L-accessToken` / `L-secureStorage`, takes the group off `L-lobbyIds`, and `L-wakeSub` closes the socket so it does not retry. `L-settings` returns to `L-lobby`.

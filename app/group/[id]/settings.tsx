@@ -5,6 +5,7 @@ import { getGroupStore } from '@/src/store/groupStore';
 import { openGroup, updateGroup } from '@/src/sync/groupSync';
 import { leaveGroup } from '@/src/sync/leave';
 import { coerceSyncError } from '@/src/sync/syncErrors';
+import { ConfirmDrawer } from '@/src/ui/ConfirmDrawer';
 import { CurrencySelect } from '@/src/ui/CurrencySelect';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -145,48 +146,30 @@ export default function GroupSettingsScreen() {
       </View>
 
       <View style={styles.danger}>
-        {confirming ? (
-          <View testID="leave-confirm">
-            <Text style={styles.confirmTitle}>Leave group?</Text>
-            <Text style={styles.confirmCopy}>
-              You’ll leave {group.name.trim() || 'this group'}. Outstanding
-              balances stay until settled.
-            </Text>
-            <View style={styles.confirmActions}>
-              <Pressable
-                style={styles.cancel}
-                onPress={() => setConfirming(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Cancel"
-                disabled={leaving}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                testID="leave-confirm-ok"
-                style={styles.leaveOk}
-                onPress={() => void onLeave()}
-                accessibilityRole="button"
-                accessibilityLabel="Leave group"
-                disabled={leaving}
-              >
-                <Text style={styles.leaveOkText}>Leave group</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : (
-          <Pressable
-            testID="leave"
-            style={[styles.leave, busy ? styles.disabled : null]}
-            onPress={() => setConfirming(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Leave group"
-            disabled={busy}
-          >
-            <Text style={styles.leaveText}>Leave group</Text>
-          </Pressable>
-        )}
+        <Pressable
+          testID="leave"
+          style={[styles.leave, busy || leaving ? styles.disabled : null]}
+          onPress={() => setConfirming(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Leave group"
+          disabled={busy || leaving}
+        >
+          <Text style={styles.leaveText}>Leave group</Text>
+        </Pressable>
       </View>
+
+      <ConfirmDrawer
+        visible={confirming}
+        onRequestClose={() => setConfirming(false)}
+        title="Leave group?"
+        message={`You’ll leave ${group.name.trim() || 'this group'}. Outstanding balances stay until settled.`}
+        confirmLabel="Leave group"
+        onConfirm={() => void onLeave()}
+        testID="leave-confirm"
+        confirmTestID="leave-confirm-ok"
+        destructive
+        busy={leaving}
+      />
     </ScrollView>
   );
 }
@@ -269,45 +252,6 @@ const styles = StyleSheet.create({
   },
   leaveText: {
     color: colors.danger,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.ink,
-    marginBottom: 8,
-  },
-  confirmCopy: {
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-    marginBottom: 14,
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  cancel: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 14,
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  leaveOk: {
-    flex: 1,
-    backgroundColor: colors.danger,
-    padding: 14,
-    alignItems: 'center',
-  },
-  leaveOkText: {
-    color: colors.accentInk,
     fontSize: 14,
     fontWeight: '600',
   },

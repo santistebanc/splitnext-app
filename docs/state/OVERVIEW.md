@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0031
+Last updated: slice 0032
 
 ## Direction
 
@@ -33,6 +33,7 @@ Last updated: slice 0031
 - Record an expense against the member who paid — integer cents, listed under All expenses, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Edit an existing expense from the list or a bucket line — equal or mixed split, share units and fixed cents restored on open — [slice 0029](slices/0029-expense-editor.md) / [slice 0030](slices/0030-mixed-splits.md)
 - Soft-delete an expense from the edit form; lists and balances refold without it — [slice 0031](slices/0031-expense-delete.md)
+- Destructive confirms (Leave group, Delete expense) use a bottom drawer — [slice 0032](slices/0032-confirm-drawer.md)
 - Assumed member is set at create or join and cannot be changed; leave unbinds — [slice 0005](slices/0005-expense-spine.md) / [slice 0027](slices/0027-first-run.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
 - Split every expense across the members chosen at record time (default everyone live), or by share units and fixed cents — frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md) / [slice 0030](slices/0030-mixed-splits.md)
@@ -107,10 +108,10 @@ Last updated: slice 0031
 | `/j/[token]` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 / 0028 |
 | `/join` | Same redeem as `/j/[token]`, via `?token=` (legacy) | slice 0012 |
 | `/group/[id]` | Hub: group name as large centered type above the list (header is home + settings); names until the first expense (rows open member detail; no expense list link), then balances (You highlighted; tap opens member detail); add member + under the list; **View all expenses** at the bottom once spent; FAB + Expense once bound; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 / 0027 / 0028 |
-| `/group/[id]/settings` | Group name and currency; Done once named and bound; Leave group | slice 0027 |
+| `/group/[id]/settings` | Group name and currency; Done once named and bound; Leave group (confirm drawer) | slice 0027 / 0032 |
 | `/group/[id]/member/[memberId]` | Member: name + edit in the header; join link + copy/share if unclaimed; paid-for / owe-for / net / suggested settlement once the group has an expense; a bucket line opens that expense | slice 0023 / 0024 / 0025 / 0027 / 0028 / 0029 |
 | `/group/[id]/expenses` | All expenses, newest first; a row opens the expense editor | slice 0023 / 0029 |
-| `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal 1-share default; +/- shares and tap amount for fixed) | slice 0018 / 0019 / 0030 |
+| `/group/[id]/expense/new` | New expense: payer, amount, description, who shares (equal 1-share default; +/- shares and tap amount for fixed); edit adds Delete (confirm drawer) | slice 0018 / 0019 / 0030 / 0031 / 0032 |
 | `/group/[id]/expense/[expenseId]` | Same form, filled from a stored expense; save writes the next version | slice 0029 |
 
 ## Seams
@@ -135,7 +136,7 @@ Last updated: slice 0031
 - `currencySymbol` / `allCurrencies` — `src/domain/currency.ts` — vitest — ISO code to display symbol; picker catalog of tender currencies
 - `lobbyGroupTitle` / `lobbyMemberSummary` — `src/domain/lobby.ts` — vitest — lobby row title and one-line live member list
 - `patchMember` — `src/domain/member.ts` — vitest — next member version for a display-name change; whitespace or unchanged name is null
-- `phoneFrame` / `InFrameOverlay` — `src/ui/phoneFrame.ts` / `src/ui/inFrameOverlay.tsx` / `app/+html.tsx` — web-only: a 420×900 phone frame when the window is wider than 480px, always centered and scaled to fit the viewport (shrinks or grows as the window does); drawers portal into that frame instead of covering the desktop; capture's 420 viewport stays full-bleed
+- `phoneFrame` / `InFrameOverlay` / `ConfirmDrawer` — `src/ui/phoneFrame.ts` / `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — web-only: a 420×900 phone frame when the window is wider than 480px, always centered and scaled to fit the viewport (shrinks or grows as the window does); drawers portal into that frame instead of covering the desktop; capture's 420 viewport stays full-bleed. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload. `--assert-only` skips writing clips. CI runs that against a local Worker (`npm run capture:ci`).
