@@ -1,5 +1,8 @@
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
-import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
+import {
+  assumedMemberIdFromBinds,
+  memberIsClaimed,
+} from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
 import {
   memberBuckets,
@@ -11,7 +14,8 @@ import {
   suggestSettlements,
 } from '@/src/domain/settle';
 import { getGroupStore } from '@/src/store/groupStore';
-import { leaveGroup } from '@/src/sync/leave';
+import { mintInvite } from '@/src/sync/invite';
+import { inviteShareText } from '@/src/sync/inviteShareText';
 import { openGroup } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { formatMoney, memberLabel } from '@/src/ui/format';
@@ -20,6 +24,16 @@ import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+async function copyText(text: string): Promise<void> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    }
+  } catch {
+    // The visible join link is the fallback.
+  }
+}
 
 function bucketLineLabel(
   line: BucketLine,
@@ -47,9 +61,8 @@ export default function MemberScreen() {
   const lastErrorRaw = useValue(store$.lastError);
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [leaving, setLeaving] = useState(false);
-  const [offerLeave, setOfferLeave] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [joinLink, setJoinLink] = useState<string | null>(null);
 
   useEffect(() => {
     if (!groupId) return;
@@ -67,6 +80,8 @@ export default function MemberScreen() {
 
   const member = (members ?? {})[targetId];
   const isYou = targetId === assumedMemberId;
+  const claimed = memberIsClaimed(binds ?? {}, targetId);
+  const showInvite = !claimed && member != null && member.deleted_at == null;
   const subjectName = member
     ? memberLabel(member.display_name, false)
     : '(unnamed)';
@@ -100,22 +115,49 @@ export default function MemberScreen() {
   const currency = group.currency_label;
   const paidHeading = isYou ? 'You paid for' : `${subjectName} paid for`;
   const owesHeading = isYou ? 'You owe for' : `${subjectName} owes for`;
-  const showLeave = isYou || offerLeave;
 
-  const onLeave = async () => {
-    if (leaving) return;
-    setLeaving(true);
-    const ok = await leaveGroup(groupId);
-    setLeaving(false);
-    if (ok) {
-      router.replace('/' as Href);
-      return;
+  const onInvite = async () => {
+    if (busy || !showInvite) return;
+    setBusy(true);
+    try {
+      const token = await mintInvite(groupId, targetId);
+      if (!token) {
+        setJoinLink(null);
+        return;
+      }
+      const link = inviteShareText(token);
+      setJoinLink(link);
+      await copyText(link);
+    } finally {
+      setBusy(false);
     }
-    setConfirming(false);
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {showInvite ? (
+        <View style={styles.inviteBlock}>
+          <Pressable
+            style={[styles.invite, busy ? styles.disabled : null]}
+            onPress={() => void onInvite()}
+            accessibilityRole="button"
+            disabled={busy}
+          >
+            <Text style={styles.inviteText}>Invite</Text>
+          </Pressable>
+          {joinLink ? (
+            <View style={styles.joinBlock}>
+              <Text style={styles.joinHint}>
+                Join link copied — paste it on the other device, or open it there.
+              </Text>
+              <Text selectable style={styles.mono} accessibilityLabel="Join link">
+                {joinLink}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       <Bucket
         testID="paid-for"
         heading={paidHeading}
@@ -177,54 +219,6 @@ export default function MemberScreen() {
           {lastError.code}: {lastError.message}
         </Text>
       ) : null}
-
-      {showLeave ? (
-        <View style={styles.danger}>
-          {confirming ? (
-            <View testID="leave-confirm">
-              <Text style={styles.confirmTitle}>Leave group?</Text>
-              <Text style={styles.confirmCopy}>
-                You’ll leave {group.name.trim() || 'this group'}. Outstanding
-                balances stay until settled.
-              </Text>
-              <View style={styles.confirmActions}>
-                <Pressable
-                  style={styles.cancel}
-                  onPress={() => setConfirming(false)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Cancel"
-                  disabled={leaving}
-                >
-                  <Text style={styles.cancelText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  testID="leave-confirm-ok"
-                  style={styles.leaveOk}
-                  onPress={() => void onLeave()}
-                  accessibilityRole="button"
-                  accessibilityLabel="Leave group"
-                  disabled={leaving}
-                >
-                  <Text style={styles.leaveOkText}>Leave group</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <Pressable
-              testID="leave"
-              style={styles.leave}
-              onPress={() => {
-                setOfferLeave(true);
-                setConfirming(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Leave group"
-            >
-              <Text style={styles.leaveText}>Leave group</Text>
-            </Pressable>
-          )}
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
@@ -278,6 +272,41 @@ const styles = StyleSheet.create({
     padding: 14,
     paddingBottom: 48,
     backgroundColor: colors.bg,
+  },
+  inviteBlock: {
+    marginBottom: 16,
+    gap: 10,
+  },
+  invite: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.youRow,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  inviteText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  joinBlock: {
+    gap: 6,
+  },
+  joinHint: {
+    fontSize: 14,
+    color: colors.muted,
+    lineHeight: 20,
+  },
+  mono: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    color: colors.ink,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   bucket: {
     marginBottom: 16,
@@ -365,60 +394,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: colors.danger,
     fontSize: 13,
-  },
-  danger: {
-    marginTop: 24,
-    paddingTop: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.line,
-  },
-  leave: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-    padding: 14,
-  },
-  leaveText: {
-    color: colors.danger,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.ink,
-    marginBottom: 8,
-  },
-  confirmCopy: {
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-    marginBottom: 14,
-  },
-  confirmActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  cancel: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 14,
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  leaveOk: {
-    flex: 1,
-    backgroundColor: colors.danger,
-    padding: 14,
-    alignItems: 'center',
-  },
-  leaveOkText: {
-    color: colors.accentInk,
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

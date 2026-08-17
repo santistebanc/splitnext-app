@@ -39,13 +39,10 @@ You (Ana)
 +6.67 EUR
 Bo
 −3.33 EUR
-Invite
 Cy
 −3.34 EUR
-Invite
+Settings
 All expenses →
-Add member
-Bump name (merge + wake)
 + Expense
 """
 

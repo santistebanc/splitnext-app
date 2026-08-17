@@ -21,19 +21,19 @@
  *
  * Needs the web target already serving (`npm run web`).
  */
-import { chromium } from 'playwright';
 import { execFile } from 'node:child_process';
 import { mkdir, readdir, rename, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+import { chromium } from 'playwright';
 
 const run = promisify(execFile);
 
-import { parseCaptureArgv, contextOptions } from './capture-opts.mjs';
-import { installPointerOverlay } from './capture-overlay.mjs';
 import { VIEWPORT, balanceRowOf, balancesOf, makeDriver, owesForOf, paidForOf, settleOf, settleRowOf } from './capture-driver.mjs';
+import { contextOptions, parseCaptureArgv } from './capture-opts.mjs';
+import { installPointerOverlay } from './capture-overlay.mjs';
 import { isDeployedWorkerUrl } from './local-origin.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -128,9 +128,28 @@ const FLOWS = [
     id: 'F-create',
     from: 'empty',
     at: '/',
-    async run(d) {
+    async run(d, page) {
       await d.tap('Create group');
+      await d.type('Group name', 'Trip');
+      await d.type('Your name', 'Ana');
+      await d.press(page.getByTestId('create-submit'));
       await d.beat(2600);
+      if (/\/settings/.test(page.url())) {
+        problems.push('[F-create] landed on Settings');
+      }
+      if (!/\/group\//.test(page.url())) {
+        problems.push('[F-create] did not land on the hub');
+      }
+      const body = await page.innerText('body');
+      if (!/\bAna\b/.test(body)) {
+        problems.push('[F-create] hub did not show the creator name');
+      }
+      if (!/Add member/.test(body)) {
+        problems.push('[F-create] hub did not offer Add member');
+      }
+      if (/0\.00/.test(body)) {
+        problems.push('[F-create] hub showed 0.00');
+      }
     },
   },
   {
@@ -138,7 +157,7 @@ const FLOWS = [
     from: 'spent',
     at: '/',
     async run(d, page) {
-      await d.press(page.locator('text=/^[0-9a-f]{8}-/').first());
+      await d.tap('Trip');
       await d.beat(2600);
     },
   },
@@ -146,17 +165,9 @@ const FLOWS = [
     id: 'F-add-member',
     from: 'group',
     async run(d) {
-      await d.type('Member name', 'Ana');
+      await d.type('Member name', 'Bo');
       await d.tap('Add member');
       await d.beat(1600);
-    },
-  },
-  {
-    id: 'F-bind',
-    from: 'roster',
-    async run(d) {
-      await d.tap('This is me');
-      await d.beat(1800);
     },
   },
   {
@@ -281,8 +292,8 @@ const FLOWS = [
     id: 'F-leave',
     from: 'spent',
     async run(d, page) {
-      await d.tap('You (Ana)');
-      await d.beat(1000);
+      await d.tapSettings();
+      await d.beat(800);
       await d.press(page.getByTestId('leave'));
       await d.beat(800);
       await d.press(page.getByTestId('leave-confirm-ok'));
@@ -291,7 +302,7 @@ const FLOWS = [
       if (!/Create group/.test(body)) {
         problems.push('[F-leave] did not land on the lobby');
       }
-      if (/[0-9a-f]{8}-[0-9a-f]{4}-/.test(body)) {
+      if (/\bTrip\b/.test(body)) {
         problems.push('[F-leave] group still listed on the lobby');
       }
     },
@@ -299,9 +310,18 @@ const FLOWS = [
   {
     id: 'F-bump',
     from: 'bound',
-    async run(d) {
-      await d.tap('Bump name (merge + wake)');
+    async run(d, page) {
+      await d.tapSettings();
+      const field = page.getByPlaceholder('Group name');
+      await d.press(field);
+      await field.fill('');
+      await field.pressSequentially('Cabin', { delay: 45 });
+      await d.beat(400);
+      await d.tap('Done');
       await d.beat(2400);
+      if (/\/settings/.test(page.url())) {
+        problems.push('[F-bump] still on Settings after Done');
+      }
     },
   },
 ];
@@ -315,6 +335,7 @@ const UNRECORDED = {
     'needs a second device to redeem; mint is demoed by hand, not a one-context clip',
   'F-join':
     'needs a second browser profile to redeem while the first stays on the hub',
+  'F-bind': 'no surface of its own; bind is a step of F-create and F-join',
   'F-wake-reconnect':
     'needs the wake socket to drop while the hub stays open; the client retries, but a clip cannot force the drop',
 };
@@ -325,11 +346,19 @@ const UNRECORDED = {
 // the store and the capability tokens live on web.
 //
 // Every flow gets its **own group**, seeded from scratch. Sharing one would
-// couple the clips to the order they were recorded in: the group's first
-// expense closes the binding for good, so a shared group would mean F-bind
-// had to run before F-add-expense or quietly record a screen with no button
-// on it. Seeding costs ~10s per flow and buys independence.
+// couple the clips to the order they were recorded in. Seeding costs ~10s
+// per flow and buys independence. Create already names the group and binds
+// this device; later stages add friends, then an expense.
 const STAGES = ['empty', 'group', 'roster', 'bound', 'spent'];
+
+async function seedCreate(page) {
+  await page.getByText('Create group', { exact: true }).first().click();
+  await page.getByPlaceholder('Group name').waitFor({ timeout: 120000 });
+  await page.getByPlaceholder('Group name').fill('Trip');
+  await page.getByPlaceholder('Your name').fill('Ana');
+  await page.getByTestId('create-submit').click();
+  await page.waitForTimeout(3000);
+}
 
 async function seed(browser, stage) {
   const context = await browser.newContext({ viewport: VIEWPORT });
@@ -341,20 +370,15 @@ async function seed(browser, stage) {
 
   let hubUrl = BASE;
   if (upTo >= STAGES.indexOf('group')) {
-    await page.getByText('Create group', { exact: true }).first().click();
-    await page.waitForTimeout(3000);
+    await seedCreate(page);
     hubUrl = page.url();
   }
   if (upTo >= STAGES.indexOf('roster')) {
-    for (const name of ['Ana', 'Bo', 'Cy']) {
+    for (const name of ['Bo', 'Cy']) {
       await page.getByPlaceholder('Member name').fill(name);
       await page.getByText('Add member', { exact: true }).first().click();
       await page.waitForTimeout(1500);
     }
-  }
-  if (upTo >= STAGES.indexOf('bound')) {
-    await page.getByText('This is me', { exact: true }).first().click();
-    await page.waitForTimeout(1800);
   }
   if (upTo >= STAGES.indexOf('spent')) {
     await page.getByRole('button', { name: 'Add expense' }).click();
@@ -437,6 +461,22 @@ async function stills(browser, storageState, hubUrl, number) {
   await page.waitForTimeout(2000);
   await page.screenshot({ path: join(SHOTS, `${number}-hub.png`) });
   console.log('still', `${number}-hub.png`);
+  if (number === '0027') {
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: join(SHOTS, `${number}-settings.png`) });
+    console.log('still', `${number}-settings.png`);
+    await context.close();
+    return;
+  }
+  if (number === '0026') {
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: join(SHOTS, `${number}-settings.png`) });
+    console.log('still', `${number}-settings.png`);
+    await context.close();
+    return;
+  }
   if (number === '0025') {
     await page.getByText('You (Ana)', { exact: true }).first().click();
     await page.waitForTimeout(1500);
@@ -471,7 +511,8 @@ for (const flow of FLOWS) {
 }
 
 if (SLICE && !ASSERT_ONLY) {
-  const { storageState, hubUrl } = await seed(browser, 'spent');
+  const stage = SLICE === '0027' ? 'group' : 'spent';
+  const { storageState, hubUrl } = await seed(browser, stage);
   await stills(browser, storageState, hubUrl, SLICE);
 }
 

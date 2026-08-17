@@ -1,6 +1,12 @@
 import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
-import { bindingIsOpen } from '@/src/domain/assumedMember';
+import { bindOnce } from '@/src/domain/bind';
+import {
+  createGroupDraft,
+  patchGroup,
+  type CreateGroupDraftInput,
+  type GroupPatch,
+} from '@/src/domain/group';
 import { participantsForSplit, splitEqually } from '@/src/domain/split';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
@@ -28,37 +34,57 @@ export { flushQueue } from '@/src/sync/outbound';
 export { applyRemoteFetch } from '@/src/sync/inbound';
 export { startWakeSubscription } from '@/src/sync/wake';
 
-export async function createGroup(): Promise<string> {
+export async function createGroup(
+  input: CreateGroupDraftInput,
+): Promise<string> {
   const deviceUserId = await getOrCreateDeviceUserId();
   const groupId = Crypto.randomUUID();
+  const memberId = Crypto.randomUUID();
+  const bindId = Crypto.randomUUID();
   const updatedAt = new Date().toISOString();
-  const local: GroupEntity = {
-    id: groupId,
-    version: 1,
-    updated_at: updatedAt,
-    deleted_at: null,
-    name: '',
-    currency_label: 'EUR',
-    is_closed: false,
-  };
+  const draft = createGroupDraft(
+    input,
+    { groupId, memberId, bindId, deviceUserId },
+    updatedAt,
+  );
+  if (!draft) {
+    throw new Error('create_invalid');
+  }
 
   const store$ = getGroupStore(groupId);
-  initLocalGroup(store$, local);
+  initLocalGroup(store$, draft.group);
+  store$.members.set({ [draft.member.id]: draft.member });
+  store$.binds.set({ [draft.bind.id]: draft.bind });
   store$.syncStatus.set('creating');
 
   try {
     const { access_token, group } = await createGroupRemote({
       group_id: groupId,
       device_user_id: deviceUserId,
-      name: local.name,
-      currency_label: local.currency_label,
-      updated_at: local.updated_at,
+      name: draft.group.name,
+      currency_label: draft.group.currency_label,
+      updated_at: draft.group.updated_at,
     });
     await saveAccessToken(groupId, access_token);
     await addLobbyGroupId(groupId);
     store$.group.set(group);
+    store$.queue.set([
+      {
+        entity_type: 'members',
+        id: draft.member.id,
+        version: draft.member.version,
+        payload: draft.member,
+      },
+      {
+        entity_type: 'binds',
+        id: draft.bind.id,
+        version: draft.bind.version,
+        payload: draft.bind,
+      },
+    ]);
     store$.syncStatus.set('on_server');
     store$.lastError.set(null);
+    await flushQueue(groupId);
     // Create must not wait on the live socket — a hung WebSocket
     // constructor would leave the lobby spinner running forever.
     // Wake failure is recorded, not thrown (slice 0004).
@@ -85,18 +111,13 @@ export async function createGroup(): Promise<string> {
   }
 }
 
-export async function bumpGroupName(
+export async function updateGroup(
   groupId: string,
-  name: string,
+  patch: GroupPatch,
 ): Promise<void> {
   const store$ = getGroupStore(groupId);
   const current = store$.group.get();
-  const next: GroupEntity = {
-    ...current,
-    name,
-    version: current.version + 1,
-    updated_at: new Date().toISOString(),
-  };
+  const next = patchGroup(current, patch, new Date().toISOString());
   store$.group.set(next);
   store$.queue.set([
     ...(store$.queue.get() ?? []),
@@ -210,10 +231,12 @@ export async function bindMe(
   const deviceUserId = await getOrCreateDeviceUserId();
   const store$ = getGroupStore(groupId);
   const binds = store$.binds.get() ?? {};
-  if (!bindingIsOpen(store$.expenses.get() ?? {})) {
-    store$.lastError.set(syncError('binding_closed'));
+  const decision = bindOnce(binds, deviceUserId, memberId);
+  if (decision === 'locked') {
+    store$.lastError.set(syncError('binding_locked'));
     return;
   }
+  if (decision === 'noop') return;
 
   const member = (store$.members.get() ?? {})[memberId];
   if (!member || member.deleted_at != null) {
@@ -221,20 +244,12 @@ export async function bindMe(
     return;
   }
 
-  // One bind per device per group: changing your mind moves the existing bind
-  // to the new member rather than leaving a second live one behind, which
-  // would make "which member am I?" depend on iteration order.
-  const existing = Object.values(binds).find(
-    (b) => b.device_user_id === deviceUserId && b.deleted_at == null,
-  );
-  if (existing?.member_id === memberId) return;
-
   const bind: BindEntity = {
-    id: existing?.id ?? Crypto.randomUUID(),
+    id: Crypto.randomUUID(),
     group_id: groupId,
     device_user_id: deviceUserId,
     member_id: memberId,
-    version: existing ? existing.version + 1 : 1,
+    version: 1,
     updated_at: new Date().toISOString(),
     deleted_at: null,
   };

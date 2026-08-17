@@ -42,6 +42,10 @@ export function makeDriver(page) {
   const tapNewExpense = () =>
     press(page.getByRole('button', { name: 'Add expense' }).first());
 
+  /** Hub settings — icon button, accessible name only. */
+  const tapSettings = () =>
+    press(page.getByRole('button', { name: 'Settings' }).first());
+
   const type = async (placeholder, text) => {
     const field = page.getByPlaceholder(placeholder);
     await press(field);
@@ -54,7 +58,7 @@ export function makeDriver(page) {
   const enter = () =>
     page.mouse.move(VIEWPORT.width / 2, VIEWPORT.height - 120);
 
-  return { beat, press, tap, tapNewExpense, type, enter };
+  return { beat, press, tap, tapNewExpense, tapSettings, type, enter };
 }
 
 /** The balances as signed money lines — the thing a reload must not change. */

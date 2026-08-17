@@ -1,11 +1,15 @@
+import {
+  lobbyGroupTitle,
+  lobbyMemberSummary,
+} from '@/src/domain/lobby';
 import { listLobbyGroupIds } from '@/src/secrets/tokens';
-import { createGroup } from '@/src/sync/groupSync';
+import { getGroupStore } from '@/src/store/groupStore';
 import { joinGroup } from '@/src/sync/invite';
 import { colors } from '@/src/ui/theme';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useValue } from '@legendapp/state/react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -13,34 +17,56 @@ import {
   View,
 } from 'react-native';
 
+function LobbyGroupRow({ groupId }: { groupId: string }) {
+  const router = useRouter();
+  const store$ = getGroupStore(groupId);
+  const group = useValue(store$.group);
+  const members = useValue(store$.members);
+  const title = lobbyGroupTitle(group.name);
+  const summary = lobbyMemberSummary(members ?? {});
+  const label = summary ? `${title}, ${summary}` : title;
+
+  return (
+    <Pressable
+      style={styles.row}
+      onPress={() => router.push(`/group/${groupId}`)}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Text style={styles.rowTitle} numberOfLines={1}>
+        {title}
+      </Text>
+      {summary ? (
+        <Text style={styles.rowMembers} numberOfLines={1}>
+          {summary}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
 export default function LobbyScreen() {
   const router = useRouter();
+  const joinRef = useRef<TextInput>(null);
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invitePaste, setInvitePaste] = useState('');
+  const [joinOpen, setJoinOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setGroupIds(await listLobbyGroupIds());
   }, []);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
-  const onCreate = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const id = await createGroup();
-      await refresh();
-      router.push(`/group/${id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'create_failed');
-    } finally {
-      setBusy(false);
-    }
-  };
+  useEffect(() => {
+    if (joinOpen) joinRef.current?.focus();
+  }, [joinOpen]);
 
   const onJoin = async () => {
     if (!invitePaste.trim() || busy) return;
@@ -49,6 +75,7 @@ export default function LobbyScreen() {
     try {
       const id = await joinGroup(invitePaste);
       await refresh();
+      setJoinOpen(false);
       router.push(`/group/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'join_failed');
@@ -60,56 +87,48 @@ export default function LobbyScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.brand}>SplitNext</Text>
-      <Text style={styles.sub}>Walking skeleton — create a group to prove sync.</Text>
 
       <Pressable
-        style={[styles.button, busy && styles.buttonDisabled]}
-        onPress={() => void onCreate()}
-        disabled={busy}
+        style={styles.button}
+        onPress={() => router.push('/create')}
         accessibilityRole="button"
       >
-        {busy ? (
-          <ActivityIndicator color={colors.accentInk} />
-        ) : (
-          <Text style={styles.buttonText}>Create group</Text>
-        )}
+        <Text style={styles.buttonText}>Create group</Text>
       </Pressable>
-
-      <TextInput
-        style={styles.input}
-        value={invitePaste}
-        onChangeText={setInvitePaste}
-        placeholder="Paste invite token or join link"
-        placeholderTextColor={colors.muted}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      <Pressable
-        style={[styles.secondaryButton, busy && styles.buttonDisabled]}
-        onPress={() => void onJoin()}
-        disabled={busy}
-        accessibilityRole="button"
-      >
-        <Text style={styles.secondaryButtonText}>Join group</Text>
-      </Pressable>
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Text style={styles.section}>On this device</Text>
       {groupIds.length === 0 ? (
         <Text style={styles.empty}>No groups yet.</Text>
       ) : (
-        groupIds.map((id) => (
-          <Pressable
-            key={id}
-            style={styles.row}
-            onPress={() => router.push(`/group/${id}`)}
-            accessibilityRole="button"
-          >
-            <Text style={styles.rowText}>{id}</Text>
-          </Pressable>
-        ))
+        groupIds.map((id) => <LobbyGroupRow key={id} groupId={id} />)
       )}
+
+      {joinOpen ? (
+        <TextInput
+          ref={joinRef}
+          style={styles.input}
+          value={invitePaste}
+          onChangeText={setInvitePaste}
+          placeholder="Paste invite token or join link"
+          placeholderTextColor={colors.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="go"
+          onSubmitEditing={() => void onJoin()}
+          onBlur={() => setJoinOpen(false)}
+          editable={!busy}
+        />
+      ) : (
+        <Pressable
+          onPress={() => setJoinOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Join with link"
+        >
+          <Text style={styles.joinLink}>Join with link</Text>
+        </Pressable>
+      )}
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 }
@@ -125,21 +144,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.ink,
   },
-  sub: {
-    fontSize: 16,
-    color: colors.ink,
-    opacity: 0.75,
-    marginBottom: 12,
-  },
   button: {
     backgroundColor: colors.accent,
     minHeight: 48,
     paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
   },
   buttonText: {
     color: colors.accentInk,
@@ -155,24 +165,18 @@ const styles = StyleSheet.create({
     color: colors.ink,
     backgroundColor: colors.surface,
   },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  secondaryButtonText: {
-    color: colors.accent,
-    fontSize: 16,
+  joinLink: {
+    marginTop: 8,
+    color: colors.muted,
+    fontSize: 14,
     fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   error: {
     color: colors.danger,
   },
   section: {
-    marginTop: 24,
+    marginTop: 12,
     fontSize: 14,
     fontWeight: '600',
     color: colors.ink,
@@ -189,10 +193,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     minHeight: 44,
     justifyContent: 'center',
+    gap: 4,
   },
-  rowText: {
-    fontFamily: 'monospace',
-    fontSize: 13,
+  rowTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.ink,
+  },
+  rowMembers: {
+    fontSize: 13,
+    color: colors.muted,
   },
 });
