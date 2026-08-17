@@ -1,4 +1,5 @@
 import { createGroup } from '@/src/sync/groupSync';
+import { CurrencySelect } from '@/src/ui/CurrencySelect';
 import { colors } from '@/src/ui/theme';
 import { useNavigation, useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -71,14 +72,7 @@ export default function CreateGroupScreen() {
       </View>
       <View style={styles.fieldGroup}>
         <Text style={styles.sec}>Currency</Text>
-        <TextInput
-          style={styles.field}
-          value={currency}
-          onChangeText={setCurrency}
-          placeholder="Currency"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="characters"
-        />
+        <CurrencySelect value={currency} onChange={setCurrency} />
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Pressable

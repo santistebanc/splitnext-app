@@ -7,6 +7,7 @@ import {
 import { getGroupStore } from '@/src/store/groupStore';
 import { addExpense, openGroup } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
+import { currencySymbol } from '@/src/domain/currency';
 import { formatCents, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -150,7 +151,7 @@ export default function NewExpenseScreen() {
         style={styles.input}
         value={amount}
         onChangeText={setAmount}
-        placeholder={`Amount (${group.currency_label})`}
+        placeholder={`Amount (${currencySymbol(group.currency_label)})`}
         placeholderTextColor={colors.muted}
         keyboardType="decimal-pad"
         inputMode="decimal"

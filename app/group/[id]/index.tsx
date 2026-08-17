@@ -2,44 +2,59 @@ import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import {
   assumedMemberIdFromBinds,
   bindingIsOpen,
-  memberIsClaimed,
 } from '@/src/domain/assumedMember';
 import { computeBalances } from '@/src/domain/balances';
 import { lobbyGroupTitle } from '@/src/domain/lobby';
 import { getGroupStore } from '@/src/store/groupStore';
 import { addMember, openGroup } from '@/src/sync/groupSync';
-import { mintInvite } from '@/src/sync/invite';
-import { inviteShareText } from '@/src/sync/inviteShareText';
 import { coerceSyncError } from '@/src/sync/syncErrors';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
+import { SymbolView } from 'expo-symbols';
 import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-async function copyText(text: string): Promise<void> {
-  try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-    }
-  } catch {
-    // The visible join link is the fallback.
-  }
-}
+const TYPE_MAX = 48;
+const TYPE_MIN = 14;
+const ADD_ROW_H = 56;
+const TITLE_FALLBACK_H = 58;
+const ROW_PAD_X = 32;
+const COL_GAP = 16;
+/** Leave room for a short name; longer names ellipsize. Amounts never clip. */
+const NAME_RESERVE = 88;
+/** `+999999.00` — six-digit whole with cents; type is sized so this never clips. */
+const AMOUNT_FIT_CENTS = 99_999_900;
+const AMT_EM = 0.6;
+const TYPE_LINE = 1.25;
 
-/** Fewer members → larger rows, matching the hub-chrome prototype. */
-function balScale(count: number): number {
-  if (count <= 2) return 1.7;
-  if (count <= 3) return 1.55;
-  if (count <= 4) return 1.4;
-  if (count <= 5) return 1.3;
-  if (count <= 6) return 1.22;
-  if (count <= 7) return 1.15;
-  if (count <= 8) return 1.1;
-  if (count <= 10) return 1.05;
-  if (count <= 12) return 1;
-  return 0.95;
+/** Few people → larger type, many → smaller, no scroll. Width-capped by the
+ *  6-digit amount staying fully visible; names ellipsize if they must. */
+function typeSizeFor(
+  count: number,
+  areaH: number,
+  areaW: number,
+  currency: string,
+  namesOnly: boolean,
+  titleH: number,
+): number {
+  const fromHeight = (() => {
+    if (count <= 0 || areaH <= 0) return TYPE_MAX;
+    const usable = Math.max(80, areaH - ADD_ROW_H - 2 * titleH);
+    return (usable / count - 8) / TYPE_LINE;
+  })();
+  const amt = formatMoney(AMOUNT_FIT_CENTS, currency, true);
+  const inner = Math.max(
+    1,
+    (areaW > 0 ? areaW : 420) - ROW_PAD_X - COL_GAP,
+  );
+  const fromWidth = namesOnly
+    ? TYPE_MAX
+    : (inner - NAME_RESERVE) / (AMT_EM * amt.length);
+  return Math.round(
+    Math.min(TYPE_MAX, Math.max(TYPE_MIN, Math.min(fromHeight, fromWidth))),
+  );
 }
 
 export default function GroupHubScreen() {
@@ -58,8 +73,10 @@ export default function GroupHubScreen() {
   const addRef = useRef<TextInput>(null);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
-  const [joinLink, setJoinLink] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [areaH, setAreaH] = useState(0);
+  const [areaW, setAreaW] = useState(0);
+  const [titleH, setTitleH] = useState(TITLE_FALLBACK_H);
 
   useEffect(() => {
     if (!groupId) return;
@@ -71,19 +88,34 @@ export default function GroupHubScreen() {
   useEffect(() => {
     navigation.setOptions({
       headerShown: true,
-      title,
+      title: '',
+      headerTitle: () => null,
       headerLeft: () => (
         <Pressable
           onPress={() => router.navigate('/')}
           accessibilityRole="button"
-          accessibilityLabel="Back"
-          style={styles.headerBack}
+          accessibilityLabel="Home"
+          style={styles.headerHome}
         >
-          <Text style={styles.headerBackText}>←</Text>
+          <SymbolView
+            name={{ ios: 'house', android: 'home', web: 'home' }}
+            size={22}
+            tintColor={colors.ink}
+          />
+        </Pressable>
+      ),
+      headerRight: () => (
+        <Pressable
+          onPress={() => router.push(`/group/${groupId}/settings` as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          style={styles.headerSettings}
+        >
+          <Text style={styles.headerSettingsText}>⚙</Text>
         </Pressable>
       ),
     });
-  }, [navigation, router, title]);
+  }, [navigation, router, groupId]);
 
   useEffect(() => {
     if (addOpen) addRef.current?.focus();
@@ -102,7 +134,16 @@ export default function GroupHubScreen() {
     [members, expenses],
   );
   const namesOnly = bindingIsOpen(expenses ?? {});
-  const scale = balScale(balances.length);
+  const currency = group.currency_label || 'EUR';
+  const typeSize = typeSizeFor(
+    balances.length,
+    areaH,
+    areaW,
+    currency,
+    namesOnly,
+    titleH,
+  );
+  const typeLine = Math.round(typeSize * TYPE_LINE);
 
   const onAdd = async () => {
     if (!newName.trim() || busy) return;
@@ -116,193 +157,161 @@ export default function GroupHubScreen() {
     }
   };
 
-  const onInvite = async (memberId: string) => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const token = await mintInvite(groupId, memberId);
-      if (!token) {
-        setJoinLink(null);
-        return;
-      }
-      const link = inviteShareText(token);
-      setJoinLink(link);
-      await copyText(link);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <View style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        testID="balances"
-      >
+      <View style={styles.body} testID="balances">
         {lastError ? (
           <Text style={styles.error}>
             {lastError.code}: {lastError.message}
           </Text>
         ) : null}
 
-        {namesOnly && joinLink ? (
-          <View style={styles.joinBlock}>
-            <Text style={styles.joinHint}>
-              Join link copied — paste it on the other device, or open it there.
-            </Text>
-            <Text selectable style={styles.mono} accessibilityLabel="Join link">
-              {joinLink}
-            </Text>
-          </View>
-        ) : null}
-
-        {balances.length === 0 ? (
-          <Text style={styles.hint}>No members yet.</Text>
-        ) : namesOnly ? (
-          balances.map((b) => {
-            const isYou = b.member_id === assumedMemberId;
-            const claimed = memberIsClaimed(binds ?? {}, b.member_id);
-            const label = memberLabel(b.display_name, isYou);
-            return (
-              <View
-                key={b.member_id}
-                style={[styles.balRow, isYou ? styles.balRowYou : null]}
-              >
-                <Text
-                  style={[
-                    styles.rosterName,
-                    isYou ? styles.balNameYou : null,
-                    { fontSize: (isYou ? 17 : 15) * scale },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {label}
-                </Text>
-                {!claimed ? (
-                  <Pressable
-                    style={[styles.chip, busy ? styles.disabled : null]}
-                    onPress={() => void onInvite(b.member_id)}
-                    accessibilityRole="button"
-                    disabled={busy}
-                  >
-                    <Text style={styles.chipText}>Invite</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            );
-          })
-        ) : (
-          balances.map((b) => {
-            const isYou = b.member_id === assumedMemberId;
-            const label = memberLabel(b.display_name, isYou);
-            const amt = formatMoney(b.net_cents, group.currency_label, true);
-            const amtStyle =
-              b.net_cents > 0
-                ? styles.amtPos
-                : b.net_cents < 0
-                  ? styles.amtNeg
-                  : styles.amt;
-            return (
-              <Pressable
-                key={b.member_id}
-                testID="balance-row"
-                style={[styles.balRow, isYou ? styles.balRowYou : null]}
-                onPress={() =>
-                  router.push(`/group/${groupId}/member/${b.member_id}` as Href)
-                }
-                accessibilityRole="button"
-                accessibilityLabel={label}
-              >
-                <Text
-                  style={[
-                    styles.balName,
-                    isYou ? styles.balNameYou : null,
-                    { fontSize: (isYou ? 17 : 15) * scale },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {label}
-                </Text>
-                <Text
-                  style={[
-                    amtStyle,
-                    isYou ? styles.amtYou : null,
-                    { fontSize: (isYou ? 18 : 16) * scale },
-                  ]}
-                >
-                  {amt}
-                </Text>
-              </Pressable>
-            );
-          })
-        )}
-
-        {namesOnly ? (
-          <View style={styles.addBlock}>
-            <TextInput
-              style={styles.addField}
-              value={newName}
-              onChangeText={setNewName}
-              placeholder="Member name"
-              placeholderTextColor={colors.muted}
-              autoCapitalize="words"
-            />
-            <Pressable
-              style={[styles.add, busy ? styles.disabled : null]}
-              onPress={() => void onAdd()}
-              accessibilityRole="button"
-              disabled={busy}
-            >
-              <Text style={styles.addText}>Add member</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {!namesOnly ? (
-          <View style={styles.footer}>
-            {addOpen ? (
-              <TextInput
-                ref={addRef}
-                style={styles.addQuietField}
-                value={newName}
-                onChangeText={setNewName}
-                placeholder="Member name"
-                placeholderTextColor={colors.muted}
-                autoCapitalize="words"
-                returnKeyType="done"
-                onSubmitEditing={() => void onAdd()}
-                onBlur={() => setAddOpen(false)}
-                editable={!busy}
-              />
-            ) : (
-              <Pressable
-                onPress={() => setAddOpen(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Add member"
-              >
-                <Text style={styles.addQuiet}>Add member</Text>
-              </Pressable>
-            )}
-            <Pressable
-              onPress={() => router.push(`/group/${groupId}/expenses` as Href)}
-              accessibilityRole="button"
-            >
-              <Text style={styles.balLink}>All expenses →</Text>
-            </Pressable>
-          </View>
-        ) : null}
-      </ScrollView>
-
-      <View style={styles.fabBar}>
-        <Pressable
-          style={styles.fabIcon}
-          onPress={() => router.push(`/group/${groupId}/settings` as Href)}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
+        <View
+          style={styles.centered}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            setAreaW(width);
+            setAreaH(height);
+          }}
         >
-          <Text style={styles.fabIconText}>⚙</Text>
-        </Pressable>
-        {assumedMemberId ? (
+          <View style={styles.titleArea}>
+            <Text
+              testID="group-title"
+              style={styles.groupTitle}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+              accessibilityRole="header"
+              onLayout={(e) => setTitleH(e.nativeEvent.layout.height)}
+            >
+              {title}
+            </Text>
+          </View>
+          {balances.length === 0 ? (
+            <Text style={styles.hint}>No members yet.</Text>
+          ) : (
+            <>
+            <View style={styles.list}>
+              {namesOnly
+                ? balances.map((b) => {
+                    const isYou = b.member_id === assumedMemberId;
+                    const label = memberLabel(b.display_name, isYou);
+                    return (
+                      <Pressable
+                        key={b.member_id}
+                        style={[styles.balRow, isYou ? styles.balRowYou : null]}
+                        onPress={() =>
+                          router.push(
+                            `/group/${groupId}/member/${b.member_id}` as Href,
+                          )
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={label}
+                      >
+                        <Text
+                          style={[
+                            styles.rosterName,
+                            isYou ? styles.balNameYou : null,
+                            { fontSize: typeSize, lineHeight: typeLine },
+                          ]}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })
+                : balances.map((b) => {
+                    const isYou = b.member_id === assumedMemberId;
+                    const label = memberLabel(b.display_name, isYou);
+                    const amt = formatMoney(b.net_cents, currency, true);
+                    const amtStyle =
+                      b.net_cents > 0
+                        ? styles.amtPos
+                        : b.net_cents < 0
+                          ? styles.amtNeg
+                          : styles.amt;
+                    return (
+                      <Pressable
+                        key={b.member_id}
+                        testID="balance-row"
+                        style={[styles.balRow, isYou ? styles.balRowYou : null]}
+                        onPress={() =>
+                          router.push(
+                            `/group/${groupId}/member/${b.member_id}` as Href,
+                          )
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={label}
+                      >
+                        <Text
+                          style={[
+                            styles.balName,
+                            isYou ? styles.balNameYou : null,
+                            { fontSize: typeSize, lineHeight: typeLine },
+                          ]}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {label}
+                        </Text>
+                        <Text
+                          style={[
+                            amtStyle,
+                            isYou ? styles.amtYou : null,
+                            {
+                              fontSize: typeSize,
+                              lineHeight: typeLine,
+                            },
+                          ]}
+                        >
+                          {amt}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+            </View>
+
+            <View style={styles.addRow}>
+              {addOpen ? (
+                <TextInput
+                  ref={addRef}
+                  testID="add-member-field"
+                  style={styles.addField}
+                  value={newName}
+                  onChangeText={setNewName}
+                  placeholder="Member name"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="words"
+                  returnKeyType="done"
+                  onSubmitEditing={() => void onAdd()}
+                  onBlur={() => setAddOpen(false)}
+                  editable={!busy}
+                />
+              ) : (
+                <Pressable
+                  testID="add-member"
+                  style={styles.addPlus}
+                  onPress={() => setAddOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add member"
+                >
+                  <Text style={styles.addPlusLabel}>add member</Text>
+                  <View style={styles.addPlusMark} pointerEvents="none">
+                    <View style={styles.addPlusBarH} />
+                    <View style={styles.addPlusBarV} />
+                  </View>
+                </Pressable>
+              )}
+            </View>
+            </>
+          )}
+          <View style={styles.titleSpacer} pointerEvents="none" />
+        </View>
+      </View>
+
+      {assumedMemberId ? (
+        <View style={[styles.fabBar, !namesOnly ? styles.fabBarRaised : null]}>
           <Pressable
             style={styles.fab}
             onPress={() => router.push(`/group/${groupId}/expense/new` as Href)}
@@ -311,8 +320,19 @@ export default function GroupHubScreen() {
           >
             <Text style={styles.fabText}>+ Expense</Text>
           </Pressable>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
+
+      {!namesOnly ? (
+        <Pressable
+          style={styles.expensesBar}
+          onPress={() => router.push(`/group/${groupId}/expenses` as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="View all expenses"
+        >
+          <Text style={styles.expensesBarText}>View all expenses</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -322,18 +342,47 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  container: {
-    paddingBottom: 96,
+  body: {
+    flex: 1,
+    paddingBottom: 80,
   },
-  headerBack: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minHeight: 44,
+  centered: {
+    flex: 1,
+  },
+  titleArea: {
+    flex: 1,
+    minHeight: 0,
     justifyContent: 'center',
   },
-  headerBackText: {
-    fontSize: 18,
+  titleSpacer: {
+    flex: 1,
+    minHeight: 0,
+  },
+  list: {},
+  groupTitle: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '700',
     color: colors.ink,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    width: '100%',
+  },
+  headerHome: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSettings: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSettingsText: {
+    fontSize: 18,
+    color: colors.muted,
   },
   error: {
     color: colors.danger,
@@ -342,89 +391,108 @@ const styles = StyleSheet.create({
   },
   hint: {
     paddingHorizontal: 14,
-    paddingTop: 12,
     fontSize: 14,
     color: colors.muted,
     lineHeight: 20,
+    textAlign: 'center',
   },
   balRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
   },
   balRowYou: {
     backgroundColor: colors.youRow,
   },
-  joinBlock: {
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    gap: 6,
-  },
-  joinHint: {
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-  },
-  mono: {
-    fontFamily: 'monospace',
-    fontSize: 13,
-    color: colors.ink,
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.youRow,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  chipText: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '600',
-  },
   rosterName: {
     flex: 1,
-    fontWeight: '600',
-    color: colors.ink,
-    textAlign: 'left',
-  },
-  balName: {
-    flex: 1,
+    minWidth: 0,
     fontWeight: '600',
     color: colors.ink,
     textAlign: 'right',
+  },
+  balName: {
+    flex: 1,
+    minWidth: 0,
+    fontWeight: '600',
+    color: colors.ink,
+    textAlign: 'right',
+    paddingRight: 16,
   },
   balNameYou: {
     fontWeight: '700',
   },
   amt: {
+    flexGrow: 0,
+    flexShrink: 0,
     fontFamily: 'monospace',
     fontWeight: '600',
     color: colors.ink,
+    textAlign: 'left',
   },
   amtPos: {
+    flexGrow: 0,
+    flexShrink: 0,
     fontFamily: 'monospace',
     fontWeight: '600',
     color: colors.accent,
+    textAlign: 'left',
   },
   amtNeg: {
+    flexGrow: 0,
+    flexShrink: 0,
     fontFamily: 'monospace',
     fontWeight: '600',
     color: colors.warn,
+    textAlign: 'left',
   },
   amtYou: {
     fontWeight: '700',
   },
-  addBlock: {
-    paddingHorizontal: 14,
-    paddingTop: 16,
-    gap: 8,
+  addRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 8,
+    paddingTop: 2,
+  },
+  addPlus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 48,
+    paddingHorizontal: 8,
+  },
+  addPlusMark: {
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateY: 1.5 }],
+  },
+  addPlusBarH: {
+    position: 'absolute',
+    width: 14,
+    height: 1.5,
+    borderRadius: 1,
+    backgroundColor: colors.muted,
+  },
+  addPlusBarV: {
+    position: 'absolute',
+    width: 1.5,
+    height: 14,
+    borderRadius: 1,
+    backgroundColor: colors.muted,
+  },
+  addPlusLabel: {
+    fontSize: 13,
+    lineHeight: 13,
+    fontWeight: '500',
+    color: colors.muted,
+    includeFontPadding: false,
   },
   addField: {
+    flex: 1,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.bg,
@@ -432,24 +500,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     color: colors.ink,
-  },
-  add: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignSelf: 'flex-end',
-  },
-  addText: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  disabled: {
-    opacity: 0.5,
   },
   fabBar: {
     position: 'absolute',
@@ -460,45 +510,22 @@ const styles = StyleSheet.create({
     gap: 8,
     pointerEvents: 'box-none',
   },
-  fabIcon: {
-    width: 48,
-    height: 48,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.accent,
+  fabBarRaised: {
+    bottom: 72,
+  },
+  expensesBar: {
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fabIconText: {
-    fontSize: 22,
-    color: colors.accent,
-    lineHeight: 26,
-  },
-  footer: {
     paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  addQuiet: {
-    color: colors.muted,
-    fontSize: 14,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  addQuietField: {
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
     backgroundColor: colors.bg,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: colors.ink,
   },
-  balLink: {
+  expensesBarText: {
     color: colors.accent,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    textDecorationLine: 'underline',
   },
   fab: {
     backgroundColor: colors.accent,

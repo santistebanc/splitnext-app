@@ -5,6 +5,7 @@ import { getGroupStore } from '@/src/store/groupStore';
 import { openGroup, updateGroup } from '@/src/sync/groupSync';
 import { leaveGroup } from '@/src/sync/leave';
 import { coerceSyncError } from '@/src/sync/syncErrors';
+import { CurrencySelect } from '@/src/ui/CurrencySelect';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
@@ -120,14 +121,7 @@ export default function GroupSettingsScreen() {
         </View>
         <View style={styles.fieldGroup}>
           <Text style={styles.sec}>Currency</Text>
-          <TextInput
-            style={styles.field}
-            value={currency}
-            onChangeText={setCurrency}
-            placeholder="Currency"
-            placeholderTextColor={colors.muted}
-            autoCapitalize="characters"
-          />
+          <CurrencySelect value={currency} onChange={setCurrency} />
         </View>
         {!groupName.trim() ? (
           <Text style={styles.hint}>Name the group to continue.</Text>

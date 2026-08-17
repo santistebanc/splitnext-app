@@ -229,7 +229,7 @@ describe('local Worker HTTP contract', () => {
       access_token: group.created.access_token,
       member_id: member.id,
     });
-    expect(minted.token.length).toBeGreaterThan(0);
+    expect(minted.token).toMatch(/^[A-Za-z0-9_-]{11}$/);
     expect(minted.member_id).toBe(member.id);
 
     const joiner = crypto.randomUUID();

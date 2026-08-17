@@ -17,7 +17,10 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.bg },
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'SplitNext' }} />
+        <Stack.Screen
+          name="index"
+          options={{ headerShown: false, title: 'SplitNext' }}
+        />
         <Stack.Screen name="create" options={{ title: 'Create group' }} />
         <Stack.Screen name="join" options={{ title: 'Join group' }} />
         <Stack.Screen name="group/[id]" options={{ headerShown: false }} />

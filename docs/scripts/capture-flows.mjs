@@ -141,10 +141,10 @@ const FLOWS = [
         problems.push('[F-create] did not land on the hub');
       }
       const body = await page.innerText('body');
-      if (!/\bAna\b/.test(body)) {
-        problems.push('[F-create] hub did not show the creator name');
+      if (!/\bYou\b/.test(body)) {
+        problems.push('[F-create] hub did not mark You');
       }
-      if (!/Add member/.test(body)) {
+      if ((await page.getByTestId('add-member').count()) === 0) {
         problems.push('[F-create] hub did not offer Add member');
       }
       if (/0\.00/.test(body)) {
@@ -164,10 +164,44 @@ const FLOWS = [
   {
     id: 'F-add-member',
     from: 'group',
-    async run(d) {
+    async run(d, page) {
+      await d.press(page.getByTestId('add-member'));
+      await d.beat(400);
       await d.type('Member name', 'Bo');
-      await d.tap('Add member');
+      await page.getByPlaceholder('Member name').press('Enter');
       await d.beat(1600);
+    },
+  },
+  {
+    id: 'F-rename',
+    from: 'group',
+    async run(d, page) {
+      await d.tap('You');
+      await d.beat(800);
+      await d.press(page.getByTestId('member-edit'));
+      await d.beat(400);
+      const field = page.getByTestId('member-name');
+      await field.fill('');
+      await field.pressSequentially('Ann', { delay: 45 });
+      await d.beat(400);
+      await field.press('Enter');
+      await d.beat(400);
+      if ((await page.getByTestId('member-name').count()) > 0) {
+        await field.blur();
+      }
+      await d.beat(1600);
+      const renamed = await page.getByTestId('member-name-label').innerText();
+      if (renamed.trim() !== 'Ann') {
+        problems.push(
+          `[F-rename] member screen did not show the new name (got ${JSON.stringify(renamed)})`,
+        );
+      }
+      await page.goBack({ waitUntil: 'networkidle', timeout: 120000 });
+      await d.beat(1200);
+      const body = await page.innerText('body');
+      if (!/\bYou\b/.test(body)) {
+        problems.push('[F-rename] hub did not still mark You');
+      }
     },
   },
   {
@@ -217,9 +251,8 @@ const FLOWS = [
       if (!/Taxi/.test(owes)) {
         problems.push(`[F-settle] no owe-for Taxi line (got ${JSON.stringify(owes)})`);
       }
-      const paid = await paidForOf(page).innerText();
-      if (!/None/.test(paid)) {
-        problems.push(`[F-settle] paid-for should be None for the debtor (got ${JSON.stringify(paid)})`);
+      if (await paidForOf(page).count()) {
+        problems.push('[F-settle] debtor should have no paid-for section');
       }
 
       const before = settleOf(await page.innerText('body'));
@@ -270,7 +303,7 @@ const FLOWS = [
 
       await page.goto(hubUrl, { waitUntil: 'networkidle', timeout: 120000 });
       await d.beat(800);
-      await d.tap('All expenses →');
+      await d.tap('View all expenses');
       await d.beat(1200);
       const listed = await page.innerText('body');
       if (!/Settlement/.test(listed)) {
@@ -375,8 +408,10 @@ async function seed(browser, stage) {
   }
   if (upTo >= STAGES.indexOf('roster')) {
     for (const name of ['Bo', 'Cy']) {
+      await page.getByTestId('add-member').click();
+      await page.getByPlaceholder('Member name').waitFor({ timeout: 120000 });
       await page.getByPlaceholder('Member name').fill(name);
-      await page.getByText('Add member', { exact: true }).first().click();
+      await page.getByPlaceholder('Member name').press('Enter');
       await page.waitForTimeout(1500);
     }
   }
@@ -461,6 +496,14 @@ async function stills(browser, storageState, hubUrl, number) {
   await page.waitForTimeout(2000);
   await page.screenshot({ path: join(SHOTS, `${number}-hub.png`) });
   console.log('still', `${number}-hub.png`);
+  if (number === '0028') {
+    await page.getByText('You', { exact: true }).first().click();
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: join(SHOTS, `${number}-member.png`) });
+    console.log('still', `${number}-member.png`);
+    await context.close();
+    return;
+  }
   if (number === '0027') {
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.waitForTimeout(1200);
@@ -478,7 +521,7 @@ async function stills(browser, storageState, hubUrl, number) {
     return;
   }
   if (number === '0025') {
-    await page.getByText('You (Ana)', { exact: true }).first().click();
+    await page.getByText('You', { exact: true }).first().click();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: join(SHOTS, `${number}-you.png`) });
     console.log('still', `${number}-you.png`);
@@ -511,7 +554,7 @@ for (const flow of FLOWS) {
 }
 
 if (SLICE && !ASSERT_ONLY) {
-  const stage = SLICE === '0027' ? 'group' : 'spent';
+  const stage = SLICE === '0028' || SLICE === '0027' ? 'group' : 'spent';
   const { storageState, hubUrl } = await seed(browser, stage);
   await stills(browser, storageState, hubUrl, SLICE);
 }

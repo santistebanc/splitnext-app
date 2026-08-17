@@ -19,8 +19,8 @@ export function inviteIsLive(invite: InviteView, now: Date): boolean {
 
 /**
  * Pull the invite secret out of whatever the person pasted: a raw token, a
- * `/join?token=` path, or a full URL. Empty / a join URL with no token is
- * not a secret.
+ * `/j/{token}` path, a `/join?token=` URL, or a full URL of either. Empty /
+ * a join URL with no token is not a secret.
  */
 export function parseInviteToken(input: string): string | null {
   const trimmed = input.trim();
@@ -40,7 +40,7 @@ export function joinPathForToken(token: string, pathname: string): string {
   const prefix = pathname.startsWith('/splitnext-app/app')
     ? '/splitnext-app/app'
     : '';
-  return `${prefix}/join?token=${encodeURIComponent(token)}`;
+  return `${prefix}/j/${encodeURIComponent(token)}`;
 }
 
 /** `undefined` means "not a URL"; `null` means "a join URL with no token". */
@@ -52,11 +52,25 @@ function tokenFromUrl(input: string): string | null | undefined {
     try {
       const url = new URL(candidate);
       if (url.protocol !== 'http:' && url.protocol !== 'https:') continue;
+      const fromPath = tokenFromJoinPath(url.pathname);
+      if (fromPath) return fromPath;
       const token = url.searchParams.get('token');
-      return token && token.length > 0 ? token : null;
+      if (token && token.length > 0) return token;
+      return null;
     } catch {
       // try the next candidate
     }
   }
   return undefined;
+}
+
+function tokenFromJoinPath(pathname: string): string | null {
+  const match = pathname.match(/\/j\/([^/]+)\/?$/);
+  if (!match) return null;
+  try {
+    const token = decodeURIComponent(match[1]);
+    return token.length > 0 ? token : null;
+  } catch {
+    return null;
+  }
 }

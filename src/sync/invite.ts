@@ -44,7 +44,7 @@ export async function mintInvite(
 }
 
 /**
- * Redeem an invite (raw token or `/join?token=` URL). Returns the group id.
+ * Redeem an invite (raw token, `/j/{token}` URL, or `/join?token=`). Returns the group id.
  * Throws `invite_invalid` or the server error string on failure.
  */
 export async function joinGroup(input: string): Promise<string> {
