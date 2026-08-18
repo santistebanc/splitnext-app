@@ -11,10 +11,9 @@ type Props = {
 };
 
 /**
- * RN `Modal` portals to `document.body` with `position: fixed`, which paints
- * over the desktop around the phone frame. This portals into `#overlay-root`
- * (sibling of `#root` inside `#phone-frame`) so the overlay is clipped by the
- * frame, sits above the React tree, and scrolls with it.
+ * RN `Modal` portals to `document.body` with `position: fixed`. This portals
+ * into `#overlay-root` (sibling of `#root`) so the overlay sits above the
+ * React tree and is clipped by the iframe / viewport.
  */
 export function InFrameOverlay({ visible, onRequestClose, children }: Props) {
   useEffect(() => {

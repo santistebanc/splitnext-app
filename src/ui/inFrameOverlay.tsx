@@ -7,7 +7,7 @@ type Props = {
   children: ReactNode;
 };
 
-/** Native: a system modal. Web portals into `#overlay-root` inside the phone frame. */
+/** Native: a system modal. Web portals into `#overlay-root`. */
 export function InFrameOverlay({ visible, onRequestClose, children }: Props) {
   return (
     <Modal

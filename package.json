@@ -39,6 +39,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "landing": "python3 docs/scripts/serve_landing.py",
     "test": "vitest run",
     "check": "npm test && npm run typecheck && npm run test:board && npm run audit",
     "test:board": "python3 -m unittest discover -s docs/scripts -p '*_test.py' -t docs/scripts",

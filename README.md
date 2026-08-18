@@ -4,9 +4,9 @@ A local-first app for splitting shared costs among a small group of friends — 
 
 No accounts: a per-device capability token proves access to a group, members are name-slots rather than logins, and everything works offline and merges when it reconnects.
 
-**Try it:** https://santistebanc.github.io/splitnext-app/app/ — the web build, deployed on every merge to `main`. Everything is local to your browser; groups you make are yours.
+**Try it:** https://santistebanc.github.io/splitnext-app/ — landing, then **Use on web** for the framed live app. Direct app: https://santistebanc.github.io/splitnext-app/app/
 
-**Live board:** https://santistebanc.github.io/splitnext-app/ — the generated map of what exists today: every behaviour piece, every flow with a recorded clip, the slice in progress, and what is parked. Path chips link straight to the code.
+The slicer board is a local dev tool (`npm run board:serve`), not the public site.
 
 ## Stack
 
@@ -18,8 +18,10 @@ Expo React Native 57 + Expo Router · Legend State v3 · expo-sqlite (localStora
 npm install
 cp .env.example .env      # already holds the Worker URL
 npm start                 # phone, via Expo Go
-npm run web               # the whole app in a browser
+npm run landing           # landing + phone-framed web app (http://127.0.0.1:8788/try/)
 ```
+
+`npm run web` is full-bleed Expo web for `npm run capture` / CI, not the manual browser path.
 
 ```bash
 npm test                  # seam tests (vitest)

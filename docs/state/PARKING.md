@@ -38,7 +38,8 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 ## Breadth
 
 - **Last opened group on launch** — delivered in [slice 0037](slices/0037-last-opened-group.md).
-- **Invite landing** — `/j/{token}` on the web: a landing that can send a phone to the app/store and still lets desktop continue to redeem. Not a marketing site. — area: invites — raised: steering after 0029
+- **Invite landing** — `/j/{token}` on the web: a landing that can send a phone to the app/store and still lets desktop continue to redeem. Reuse `landing/` chrome. — area: invites — raised: steering after 0029
+- **Store listings** — Play / App Store buttons on the landing when a listing exists. Do not link the v1 listing. — area: distribution — raised: slice 0039
 - **Legal** — public privacy + terms that match actual behaviour (no accounts, capability tokens, what is stored). Deletion-on-request without a join code is part of this, not v1's join-code verified wipe. — area: legal — raised: steering after 0029
 - **Pending badge** — an expense (or row) that has not been acknowledged by the server is visibly pending. — area: sync — raised: steering after 0029
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
@@ -90,3 +91,5 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Activity event kinds** — edit/delete/kick/rename — delivered in [slice 0036](slices/0036-activity-event-kinds.md).
 
 - **Push notifications** — delivered in [slice 0038](slices/0038-push-notifications.md).
+
+- **Public landing + framed web** — delivered in [slice 0039](slices/0039-landing-page.md).

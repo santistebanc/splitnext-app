@@ -8,7 +8,7 @@ The generator already implements the design. **The reasoning behind it lives in 
 
 ## Contract
 
-- **Generated, never edited.** `npm run board` regenerates the published map; `npm run board -- --slice-page` regenerates the per-PR slice page. `npm run board:serve` regenerates both and serves. Both HTML files are **gitignored**.
+- **Generated, never edited.** `npm run board` regenerates the local map; `npm run board -- --slice-page` regenerates the per-PR slice page. `npm run board:serve` regenerates both and serves. Both HTML files are **gitignored**. The board is a local dev tool — it is not published as the GitHub Pages homepage (D-093).
 - **Regenerate and open** after behaviour lands, at the demo gate, and at close. Skipping the open is a process bug.
 - **Serve it, never `file://`** — `npm run board:serve` → `http://127.0.0.1:8777/slicer.html`. The helper is what makes a path chip open the file in the *running* editor (`cursor -r -g`), including inside the IDE's own browser. `/open` launches an editor, so it answers only requests carrying the one-run token the server injects into the page it serves, and it binds to localhost unless you pass `--lan`.
 - **Nothing leaves the machine.** Inline CSS and one inline script for search/filter. No CDN, no external fonts, no fetches. Captures are the one exception and ride as **relative sibling paths** (`state/shots/…`), never data URIs — inlining them would add hundreds of KB per slice to a file that is regenerated constantly.
@@ -27,4 +27,4 @@ The generator already implements the design. **The reasoning behind it lives in 
 | 03 | Flows | `FLOWS.md` | How it runs end to end, with each flow's clip |
 | 04 | Steering | `NEXT.md`, `PARKING.md`, `slices/` | What is next and what is parked |
 
-**One question per page** — never stack them. The published board describes the system as it stands. **The current slice is not on it** — that is a separate slicer page generated per PR (`--slice-page`), in flight from `NEXT.md` + the branch diff, or closed from the archive the branch added (D-055). Locally: `npm run board -- --slice-page` and open `/slice.html`. `npm run delta` is the same attribution as text.
+**One question per page** — never stack them. The local board describes the system as it stands. **The current slice is not on it** — that is a separate slicer page generated per PR (`--slice-page`), in flight from `NEXT.md` + the branch diff, or closed from the archive the branch added (D-055). Locally: `npm run board -- --slice-page` and open `/slice.html`. `npm run delta` is the same attribution as text.
