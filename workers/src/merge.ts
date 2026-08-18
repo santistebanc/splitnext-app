@@ -23,6 +23,13 @@ export type GroupStore = {
   upsert(entityType: string, row: Record<string, unknown>): void;
 };
 
+const EXPENSE_ACTIVITY_KINDS = new Set([
+  'expense_added',
+  'expense_edited',
+  'expense_deleted',
+]);
+const MEMBER_ACTIVITY_KINDS = new Set(['member_kicked', 'member_renamed']);
+
 export function mergeOne(
   store: GroupStore,
   groupId: string,
@@ -87,17 +94,29 @@ export function mergeOne(
 
   if (item.entity_type === 'activities') {
     const row = activityRow(item, groupId);
-    if (row.kind !== 'expense_added') {
+    if (
+      !EXPENSE_ACTIVITY_KINDS.has(row.kind) &&
+      !MEMBER_ACTIVITY_KINDS.has(row.kind)
+    ) {
       return { ...base, status: 'error', reason: 'invalid_activity' };
     }
-    if (!row.actor_member_id || !row.expense_id) {
+    if (!row.actor_member_id) {
       return { ...base, status: 'error', reason: 'invalid_activity' };
     }
     if (!store.getMember(row.actor_member_id)) {
       return { ...base, status: 'rejected', reason: 'actor_not_in_group' };
     }
-    if (!store.getExpense(row.expense_id)) {
-      return { ...base, status: 'rejected', reason: 'expense_not_in_group' };
+    if (EXPENSE_ACTIVITY_KINDS.has(row.kind)) {
+      if (!row.expense_id) {
+        return { ...base, status: 'error', reason: 'invalid_activity' };
+      }
+      if (!store.getExpense(row.expense_id)) {
+        return { ...base, status: 'rejected', reason: 'expense_not_in_group' };
+      }
+    } else if (!row.member_id) {
+      return { ...base, status: 'error', reason: 'invalid_activity' };
+    } else if (!store.getMember(row.member_id)) {
+      return { ...base, status: 'rejected', reason: 'member_not_in_group' };
     }
     store.upsert('activities', row);
     return { ...base, status: 'accepted' };

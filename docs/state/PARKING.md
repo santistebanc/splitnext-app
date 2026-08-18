@@ -4,7 +4,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 ## Foundation-risk
 
-- **Activity spine** — `expense_added`, hub recent section, Activity page, relative timestamps, hub toast — delivered through [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md). Still parked: other event kinds (edit/delete/kick/rename/join/leave/group rename), push, undo / `undo_snapshot`. — area: activity — raised: bootstrap · restated: steering after 0029
+- **Activity spine** — `expense_added` through rename/kick/edit/delete, hub recent section, Activity page, relative timestamps, hub toast — delivered through [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md). Still parked: join/leave/group-rename events, push, undo / `undo_snapshot`. — area: activity — raised: bootstrap · restated: steering after 0029
 - **Mixed / uneven splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
 
 - **Soft-delete an expense** — delivered in [slice 0031](slices/0031-expense-delete.md).
@@ -86,3 +86,5 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Activity spine** — delivered in [slice 0034](slices/0034-activity-spine.md).
 
 - **Activity toast + relative time** — delivered in [slice 0035](slices/0035-activity-toast.md).
+
+- **Activity event kinds** — edit/delete/kick/rename — delivered in [slice 0036](slices/0036-activity-event-kinds.md).

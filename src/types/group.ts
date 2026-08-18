@@ -65,9 +65,15 @@ export type ExpenseEntity = {
 export type ActivityEntity = {
   id: string;
   group_id: string;
-  kind: 'expense_added';
+  kind:
+    | 'expense_added'
+    | 'expense_edited'
+    | 'expense_deleted'
+    | 'member_kicked'
+    | 'member_renamed';
   actor_member_id: string;
   expense_id: string;
+  member_id: string;
   version: number;
   updated_at: string;
   deleted_at: string | null;

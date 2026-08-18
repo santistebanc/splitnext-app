@@ -1,7 +1,13 @@
 import * as Crypto from 'expo-crypto';
 import { createGroupRemote } from '@/src/api/edge';
 import { bindOnce } from '@/src/domain/bind';
-import { activityForExpenseAdded } from '@/src/domain/activity';
+import {
+  activityForExpenseAdded,
+  activityForExpenseDeleted,
+  activityForExpenseEdited,
+  activityForMemberKicked,
+  activityForMemberRenamed,
+} from '@/src/domain/activity';
 import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
 import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPatch } from '@/src/domain/group';
 import { buildExpenseAllocations, patchExpense, tombstoneExpense, type SplitAmongEntry } from '@/src/domain/expense';
@@ -22,6 +28,7 @@ import { flushQueue, flushQueueInner } from '@/src/sync/outbound';
 import { syncError } from '@/src/sync/syncErrors';
 import { startWakeSubscription } from '@/src/sync/wake';
 import type {
+  ActivityEntity,
   BindEntity,
   ExpenseEntity,
   GroupEntity,
@@ -32,6 +39,33 @@ import type {
 export { flushQueue } from '@/src/sync/outbound';
 export { applyRemoteFetch } from '@/src/sync/inbound';
 export { startWakeSubscription } from '@/src/sync/wake';
+
+type GroupStoreHandle = ReturnType<typeof getGroupStore>;
+
+async function queueActivityForActor(
+  store$: GroupStoreHandle,
+  build: (actorMemberId: string, at: string) => ActivityEntity | null,
+  at: string,
+): Promise<OutboundItem[]> {
+  const binds = store$.binds.get() ?? {};
+  const deviceUserId = await getOrCreateDeviceUserId();
+  const actorMemberId = assumedMemberIdFromBinds(binds, deviceUserId);
+  if (!actorMemberId) return [];
+  const activity = build(actorMemberId, at);
+  if (!activity) return [];
+  store$.activities.set({
+    ...(store$.activities.get() ?? {}),
+    [activity.id]: activity,
+  });
+  return [
+    {
+      entity_type: 'activities',
+      id: activity.id,
+      version: activity.version,
+      payload: activity,
+    },
+  ];
+}
 
 export async function createGroup(
   input: CreateGroupDraftInput,
@@ -169,15 +203,29 @@ export async function updateMember(
   const next = patchMember(current, displayName, new Date().toISOString());
   if (!next) return;
   store$.members.set({ ...(store$.members.get() ?? {}), [memberId]: next });
-  store$.queue.set([
-    ...(store$.queue.get() ?? []),
+  const queueItems: OutboundItem[] = [
     {
       entity_type: 'members',
       id: memberId,
       version: next.version,
       payload: next,
     },
-  ]);
+  ];
+  queueItems.push(
+    ...(await queueActivityForActor(
+      store$,
+      (actorMemberId, at) =>
+        activityForMemberRenamed({
+          id: Crypto.randomUUID(),
+          groupId,
+          actorMemberId,
+          member: next,
+          at,
+        }),
+      next.updated_at,
+    )),
+  );
+  store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
   await flushQueue(groupId);
 }
 
@@ -260,30 +308,20 @@ export async function addExpense(
     },
   ];
 
-  const binds = store$.binds.get() ?? {};
-  const deviceUserId = await getOrCreateDeviceUserId();
-  const actorMemberId = assumedMemberIdFromBinds(binds, deviceUserId);
-  const activity = actorMemberId
-    ? activityForExpenseAdded({
-        id: Crypto.randomUUID(),
-        groupId,
-        actorMemberId,
-        expense,
-        at: expense.updated_at,
-      })
-    : null;
-  if (activity) {
-    store$.activities.set({
-      ...(store$.activities.get() ?? {}),
-      [activity.id]: activity,
-    });
-    queueItems.push({
-      entity_type: 'activities',
-      id: activity.id,
-      version: activity.version,
-      payload: activity,
-    });
-  }
+  queueItems.push(
+    ...(await queueActivityForActor(
+      store$,
+      (actorMemberId, at) =>
+        activityForExpenseAdded({
+          id: Crypto.randomUUID(),
+          groupId,
+          actorMemberId,
+          expense,
+          at,
+        }),
+      expense.updated_at,
+    )),
+  );
 
   store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
   await flushQueue(groupId);
@@ -325,15 +363,29 @@ export async function updateExpense(
   if (!next) return;
 
   store$.expenses.set({ ...(store$.expenses.get() ?? {}), [expenseId]: next });
-  store$.queue.set([
-    ...(store$.queue.get() ?? []),
+  const queueItems: OutboundItem[] = [
     {
       entity_type: 'expenses',
       id: expenseId,
       version: next.version,
       payload: next,
     },
-  ]);
+  ];
+  queueItems.push(
+    ...(await queueActivityForActor(
+      store$,
+      (actorMemberId, at) =>
+        activityForExpenseEdited({
+          id: Crypto.randomUUID(),
+          groupId,
+          actorMemberId,
+          expense: next,
+          at,
+        }),
+      next.updated_at,
+    )),
+  );
+  store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
   await flushQueue(groupId);
 }
 
@@ -349,15 +401,29 @@ export async function deleteExpense(
   if (!next) return;
 
   store$.expenses.set({ ...(store$.expenses.get() ?? {}), [expenseId]: next });
-  store$.queue.set([
-    ...(store$.queue.get() ?? []),
+  const queueItems: OutboundItem[] = [
     {
       entity_type: 'expenses',
       id: expenseId,
       version: next.version,
       payload: next,
     },
-  ]);
+  ];
+  queueItems.push(
+    ...(await queueActivityForActor(
+      store$,
+      (actorMemberId, at) =>
+        activityForExpenseDeleted({
+          id: Crypto.randomUUID(),
+          groupId,
+          actorMemberId,
+          expense: current,
+          at,
+        }),
+      next.updated_at,
+    )),
+  );
+  store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
   await flushQueue(groupId);
 }
 
@@ -373,15 +439,29 @@ export async function deleteMember(
   if (!next) return;
 
   store$.members.set({ ...(store$.members.get() ?? {}), [memberId]: next });
-  store$.queue.set([
-    ...(store$.queue.get() ?? []),
+  const queueItems: OutboundItem[] = [
     {
       entity_type: 'members',
       id: memberId,
       version: next.version,
       payload: next,
     },
-  ]);
+  ];
+  queueItems.push(
+    ...(await queueActivityForActor(
+      store$,
+      (actorMemberId, at) =>
+        activityForMemberKicked({
+          id: Crypto.randomUUID(),
+          groupId,
+          actorMemberId,
+          member: current,
+          at,
+        }),
+      next.updated_at,
+    )),
+  );
+  store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
   await flushQueue(groupId);
 }
 

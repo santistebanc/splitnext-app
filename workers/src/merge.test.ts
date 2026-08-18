@@ -134,10 +134,67 @@ describe('mergeOne', () => {
         kind: 'expense_added',
         actor_member_id: 'm1',
         expense_id: 'e1',
+        member_id: '',
       },
     });
     expect(result.status).toBe('accepted');
     expect(store.rows.activities.a1.kind).toBe('expense_added');
+  });
+
+  it('accepts expense_edited when the expense exists', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    store.upsert('expenses', { id: 'e1', payer_member_id: 'm1', amount_cents: 100 });
+    const result = mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a2',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'expense_edited',
+        actor_member_id: 'm1',
+        expense_id: 'e1',
+        member_id: '',
+      },
+    });
+    expect(result.status).toBe('accepted');
+  });
+
+  it('accepts member_renamed when the member exists', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    store.upsert('members', { id: 'm2' });
+    const result = mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a3',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'member_renamed',
+        actor_member_id: 'm1',
+        expense_id: '',
+        member_id: 'm2',
+      },
+    });
+    expect(result.status).toBe('accepted');
+  });
+
+  it('rejects member_kicked when the member is missing', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    const result = mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a4',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'member_kicked',
+        actor_member_id: 'm1',
+        expense_id: '',
+        member_id: 'm-missing',
+      },
+    });
+    expect(result.reason).toBe('member_not_in_group');
   });
 
   it('rejects an activity when the expense is missing', () => {

@@ -273,6 +273,7 @@ describe('local Worker activity contract', () => {
       kind: 'expense_added' as const,
       actor_member_id: member.id,
       expense_id: expenseId,
+      member_id: '',
       version: 1,
       updated_at: nowIso(),
       deleted_at: null,

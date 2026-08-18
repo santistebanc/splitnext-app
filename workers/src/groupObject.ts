@@ -56,6 +56,7 @@ export type ActivityRecord = {
   kind: string;
   actor_member_id: string;
   expense_id: string;
+  member_id: string;
   version: number;
   updated_at: string;
   deleted_at: string | null;
@@ -111,10 +112,19 @@ export class GroupObject extends DurableObject {
         kind TEXT NOT NULL,
         actor_member_id TEXT NOT NULL,
         expense_id TEXT NOT NULL,
+        member_id TEXT NOT NULL DEFAULT '',
         version INTEGER NOT NULL,
         updated_at TEXT NOT NULL,
         deleted_at TEXT
       )`);
+    const activityColumns = this.sql
+      .exec<{ name: string }>('PRAGMA table_info(activities)')
+      .toArray();
+    if (!activityColumns.some((column) => column.name === 'member_id')) {
+      this.sql.exec(
+        `ALTER TABLE activities ADD COLUMN member_id TEXT NOT NULL DEFAULT ''`,
+      );
+    }
     this.sql.exec(
       `CREATE UNIQUE INDEX IF NOT EXISTS binds_one_active_per_device
         ON binds (device_user_id) WHERE deleted_at IS NULL`,
@@ -426,12 +436,13 @@ function upsertRow(
   }
   if (entityType === 'activities') {
     sql.exec(
-      `INSERT INTO activities (id, group_id, kind, actor_member_id, expense_id, version, updated_at, deleted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO activities (id, group_id, kind, actor_member_id, expense_id, member_id, version, updated_at, deleted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          kind = excluded.kind,
          actor_member_id = excluded.actor_member_id,
          expense_id = excluded.expense_id,
+         member_id = excluded.member_id,
          version = excluded.version,
          updated_at = excluded.updated_at,
          deleted_at = excluded.deleted_at`,
@@ -440,6 +451,7 @@ function upsertRow(
       row.kind,
       row.actor_member_id,
       row.expense_id,
+      row.member_id,
       row.version,
       row.updated_at,
       row.deleted_at,
@@ -531,6 +543,7 @@ function activityEntity(row: ActivityRecord) {
     kind: row.kind,
     actor_member_id: row.actor_member_id,
     expense_id: row.expense_id,
+    member_id: row.member_id ?? '',
     version: row.version,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,
