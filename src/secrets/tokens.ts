@@ -17,6 +17,21 @@ export async function getAccessToken(groupId: string): Promise<string | null> {
 }
 
 const LOBBY_KEY = 'lobby_group_ids';
+const LAST_OPENED_KEY = 'last_opened_group_id';
+
+export async function getLastOpenedGroupId(): Promise<string | null> {
+  const raw = await getSecret(LAST_OPENED_KEY);
+  return raw && raw.length > 0 ? raw : null;
+}
+
+export async function saveLastOpenedGroupId(groupId: string): Promise<void> {
+  if (!groupId) return;
+  await setSecret(LAST_OPENED_KEY, groupId);
+}
+
+export async function clearLastOpenedGroupId(): Promise<void> {
+  await deleteSecret(LAST_OPENED_KEY);
+}
 
 export async function listLobbyGroupIds(): Promise<string[]> {
   const raw = await getSecret(LOBBY_KEY);
@@ -40,6 +55,8 @@ export async function addLobbyGroupId(groupId: string): Promise<void> {
 export async function removeLobbyGroupId(groupId: string): Promise<void> {
   const ids = await listLobbyGroupIds();
   await setSecret(LOBBY_KEY, JSON.stringify(ids.filter((id) => id !== groupId)));
+  const last = await getLastOpenedGroupId();
+  if (last === groupId) await clearLastOpenedGroupId();
 }
 
 export async function deleteAccessToken(groupId: string): Promise<void> {

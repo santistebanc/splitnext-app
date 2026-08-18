@@ -2,7 +2,15 @@ import {
   lobbyGroupTitle,
   lobbyMemberSummary,
 } from '@/src/domain/lobby';
-import { listLobbyGroupIds } from '@/src/secrets/tokens';
+import { lastOpenedHubId } from '@/src/domain/lastOpened';
+import {
+  markAutoOpenedLastGroup,
+  shouldAutoOpenLastGroup,
+} from '@/src/domain/lastOpenedSession';
+import {
+  getLastOpenedGroupId,
+  listLobbyGroupIds,
+} from '@/src/secrets/tokens';
 import { getGroupStore } from '@/src/store/groupStore';
 import { joinGroup } from '@/src/sync/invite';
 import { colors } from '@/src/ui/theme';
@@ -64,6 +72,17 @@ export default function LobbyScreen() {
       void refresh();
     }, [refresh]),
   );
+
+  useEffect(() => {
+    if (groupIds.length === 0 || !shouldAutoOpenLastGroup()) return;
+    void (async () => {
+      const lastOpenedId = await getLastOpenedGroupId();
+      const targetId = lastOpenedHubId(lastOpenedId, groupIds);
+      if (!targetId) return;
+      markAutoOpenedLastGroup();
+      router.replace(`/group/${targetId}`);
+    })();
+  }, [groupIds, router]);
 
   useEffect(() => {
     if (joinOpen) joinRef.current?.focus();

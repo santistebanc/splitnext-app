@@ -37,7 +37,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 ## Breadth
 
-- **Last opened group on launch** — if this device has a last group still on the lobby, open that hub instead of landing on the list. Keep the lobby as it is (names, no nets). — area: ux — raised: steering after 0029
+- **Last opened group on launch** — delivered in [slice 0037](slices/0037-last-opened-group.md).
 - **Invite landing** — `/j/{token}` on the web: a landing that can send a phone to the app/store and still lets desktop continue to redeem. Not a marketing site. — area: invites — raised: steering after 0029
 - **Legal** — public privacy + terms that match actual behaviour (no accounts, capability tokens, what is stored). Deletion-on-request without a join code is part of this, not v1's join-code verified wipe. — area: legal — raised: steering after 0029
 - **Pending badge** — an expense (or row) that has not been acknowledged by the server is visibly pending. — area: sync — raised: steering after 0029

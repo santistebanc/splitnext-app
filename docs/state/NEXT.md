@@ -1,45 +1,46 @@
-# Slice 0037 — last opened group on launch
+# Slice 0038 — push notifications
 
-**Tier** — core value
+**Tier** — foundation-risk
 
 ## Now → After
 
 | Aspect | Before | After |
 | --- | --- | --- |
-| Cold start | Lobby list always | If a last-opened group id is stored and still on the lobby, navigate straight to that hub |
-| Lobby | Unchanged | Still reachable via home; list unchanged |
+| Awareness off-hub | Nothing | Expo push when sync would toast (foreign activity) |
+| Device tokens | None | Register with Worker; stored per device + group |
+| Worker | Activity merge only | Push non-actors on accepted activities |
 
 ## Plan
 
-1. **Persist** — remember `lastOpenedGroupId` when a hub mounts (or when navigating to `/group/[id]`).
-2. **Lobby** — on first paint, if stored id is in `listLobbyGroupIds`, `router.replace` to that hub once.
-3. **Edge** — left/removed group clears or ignores stale id; no token → stay on lobby.
+1. **Client** — register Expo push token on hub open; send to Worker with group + device id.
+2. **Worker** — D1 `device_push_tokens` table; register/revoke routes; on activity merge accept, fan out to other devices in group (exclude actor's device).
+3. **Payload** — title/body from `formatActivityLine` shape; tap opens group hub.
+4. **Web** — skip registration (no push on web target).
 
 ## Acceptance
 
-- Open group A → kill app → relaunch → lands on group A hub (not lobby).
-- Leave group or remove from lobby → relaunch → lobby.
-- `npm run check` green.
+- Device A on hub; device B adds expense → A gets push when backgrounded.
+- Actor does not get push for own activity.
+- `npm run check` green; Worker routes in verify_deploy.
 
 ## Seams under test
 
-- Pure resolver: stored id + lobby ids → destination — vitest
-- Lobby redirect once — component test or capture step if trivial
+- Push recipient selection (exclude actor device) — vitest
+- Token register route — edge.test / worker test
 
 ## Out of scope
 
-- Push, undo, invite landing, legal
-- Deep links / invite URLs
-- Changing lobby list UI
+- Undo, per-group mute, invite landing, legal
+- Push for non-activity events
 
 ## Edge paths
 
 | Surface | State | What happens |
 | --- | --- | --- |
-| Last id not in lobby | stale after leave | Stay on lobby; optionally clear stored id. |
-| Empty lobby | no groups | Lobby as today. |
-| Multiple tabs / web refresh | — | Same rule: one redirect on lobby mount. |
+| No Expo token | simulator / denied | Register skipped; app works. |
+| Web target | browser | No push registration. |
+| Leave group | token revoked | Worker drops tokens for that group+device. |
 
 ## Parked this session
 
-- Push notifications, undo, invite landing, legal, pending badge
+- Undo, invite landing, legal, pending badge, per-group mute
