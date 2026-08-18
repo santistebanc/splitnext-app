@@ -70,7 +70,7 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-inviteIsLive | `inviteIsLive` | Pure | `src/domain/invite.ts` | Answers whether an invite can still be redeemed — not spent, not past `expires_at`, and the named member still live. |
 | L-parseInviteToken | `parseInviteToken` | Pure | `src/domain/invite.ts` | Pulls the invite secret out of a raw token, a `/j/{token}` path, or a `/join?token=` URL so lobby paste and the join routes share one parser. |
 | L-createGroup | `createGroup` | Job | `src/sync/groupSync.ts` | Creates a group from a name, currency, and creator name: writes the group, that member, and this device's bind locally first, registers the group on the server, stores the returned access token, adds it to the lobby, flushes the member and bind, and starts a wake subscription without waiting for the socket to open. |
-| L-openGroup | `openGroup` | Job | `src/sync/groupSync.ts` | Opens a group for viewing — remembers it as last opened, subscribes for wakes, then runs a full sync. The wake socket being down does not block opening. |
+| L-openGroup | `openGroup` | Job | `src/sync/groupSync.ts` | Opens a group for viewing — remembers it as last opened, registers for push (native), subscribes for wakes, then runs a full sync. The wake socket being down does not block opening. |
 | L-syncGroup | `syncGroup` | Job | `src/sync/groupSync.ts` | One full round trip for a group: push everything pending, pull the group back, then pull its roster. Runs alone per group so nothing races. |
 | L-syncAllLobby | `syncAllLobbyGroups` | Job | `src/sync/groupSync.ts` | Syncs every group this device knows at once, isolating failures so one bad group cannot block the rest. |
 | L-patchGroup | `patchGroup` | Pure | `src/domain/group.ts` | Next version of a group with a new name and/or currency; omitted fields stay, and an empty currency label keeps the current one. |
@@ -96,11 +96,11 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-activityForExpenseDeleted | `activityForExpenseDeleted` | Pure | `src/domain/activity.ts` | Builds a version-1 `expense_deleted` activity, or null when ids are missing. |
 | L-activityForMemberKicked | `activityForMemberKicked` | Pure | `src/domain/activity.ts` | Builds a version-1 `member_kicked` activity, or null when ids are missing. |
 | L-activityForMemberRenamed | `activityForMemberRenamed` | Pure | `src/domain/activity.ts` | Builds a version-1 `member_renamed` activity, or null when ids are missing. |
-| L-formatActivityLine | `formatActivityLine` / `sortActivities` | Pure | `src/domain/activity.ts` | Turns an activity plus members and expenses into one readable line per kind; sorts live events newest first. Tombstoned targets still format for delete/kick lines. |
+| L-formatActivityLine | `formatActivityLine` / `sortActivities` / `formatActivityLinePlain` | Pure | `src/domain/activity.ts` | Turns an activity plus members and expenses into one readable line per kind; plain text for push. Sorts live events newest first. Tombstoned targets still format for delete/kick lines. |
 | L-activitiesFromOthers | `activitiesFromOthers` | Pure | `src/domain/activity.ts` | New live activities since a snapshot, excluding this device's actor — used for the hub toast. |
 | L-relativeTime | `relativeTimeLabel` | Pure | `src/domain/relativeTime.ts` | Formats an activity timestamp as a relative label (`just now`, `5m ago`, …). |
 | L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person the first time. Same member again is a no-op; any other member records `binding_locked`. A missing member records `member_missing`. Create and join are the callers that succeed. |
-| L-leaveGroup | `leaveGroup` | Job | `src/sync/leave.ts` | Leaves a group: tombstones this device's bind and flushes it while the token still works, revokes the token, drops it locally, and takes the group off the lobby. |
+| L-leaveGroup | `leaveGroup` | Job | `src/sync/leave.ts` | Leaves a group: tombstones this device's bind and flushes it while the token still works, revokes push registration, revokes the token, drops it locally, and takes the group off the lobby. |
 | L-mintInvite | `mintInvite` | Job | `src/sync/invite.ts` | Asks the server for a one-use invite bound to one member and returns the plaintext secret to copy. |
 | L-inviteShare | `inviteShareText` | Pure | `src/sync/inviteShareText.ts` | Turns that secret into what you copy: the raw token on native, a `/j/{token}` URL on web. |
 | L-joinGroup | `joinGroup` | Job | `src/sync/invite.ts` | Redeems an invite: stores the new access token, writes the returned bind locally, and adds the group to the lobby. The hub then opens and subscribes — join itself is a spinner that unmounts. |
@@ -124,6 +124,12 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-persistPlugin | `persistPlugin` | State | `src/store/persistPlugin.ts` | Where a store survives a restart: SQLite on a device, `localStorage` on web, so the browser target needs no wasm. |
 | L-accessToken | `getAccessToken` / `saveAccessToken` / `deleteAccessToken` | State | `src/secrets/tokens.ts` | Keeps each group's capability token in the secret store — holding it is what proves access to that group; deleting it is how leave drops the secret. |
 | L-lobbyIds | `listLobbyGroupIds` / `addLobbyGroupId` / `removeLobbyGroupId` / `getLastOpenedGroupId` / `saveLastOpenedGroupId` / `clearLastOpenedGroupId` | State | `src/secrets/tokens.ts` | The device's list of known group ids, which is what the lobby and the catch-up sync iterate over, plus the last hub opened on this device. Removing a group clears a matching last-opened id. Temporary home. |
+| L-registerPushToken | `registerPushTokenForGroup` | Job | `src/push/registerPushToken.ts` | Registers this device's Expo push token with the Worker for a group (native only; web no-op). |
+| L-revokePushToken | `revokePushTokenForGroup` | Job | `src/push/revokePushToken.ts` | Revokes this device's push token for a group on leave (native; web no-op). |
+| L-usePushNotificationOpen | `usePushNotificationOpen` | Job | `src/push/usePushNotificationOpen.ts` | Opens the group hub when the user taps a push notification. |
+| L-pushRecipients | `pushRecipientTokens` | Pure | `workers/src/pushRecipients.ts` | Picks Expo tokens for devices that should receive a push — excludes actor device and devices bound to the actor member. |
+| L-activityPushMessage | `activityPushMessage` | Pure | `workers/src/pushMessage.ts` | Builds push title/body from an activity and roster snapshot. |
+| L-expoPush | `sendExpoPush` | Network | `workers/src/expoPush.ts` | Sends messages to Expo Push API; no-op when access token unset. |
 
 ## Edge
 

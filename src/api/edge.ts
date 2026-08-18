@@ -190,3 +190,34 @@ export async function leaveGroupRemote(input: {
     },
   );
 }
+
+export async function registerPushTokenRemote(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+  expo_push_token: string;
+}): Promise<{ ok: true }> {
+  return callFunction(
+    'register-push-token',
+    { group_id: input.group_id, expo_push_token: input.expo_push_token },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}
+
+export async function revokePushTokenRemote(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+}): Promise<{ ok: true }> {
+  return callFunction(
+    'revoke-push-token',
+    { group_id: input.group_id },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}

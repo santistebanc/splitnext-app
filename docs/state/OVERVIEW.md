@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0037
+Last updated: slice 0038
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: push/undo on activity, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: undo on activity, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -28,6 +28,7 @@ Last updated: slice 0037
 - Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + directly under the list; **Recent activity** (last three, with relative times) pinned above the expense CTAs once anything is recorded; a top toast when someone else mutates the group while this hub is open; **View all events** opens the activity page; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Relaunch into the last-opened group hub when that group is still on the lobby (Home still returns to the list) — [slice 0037](slices/0037-last-opened-group.md)
+- Receive Expo push when another member's activity merges while this device is backgrounded (native); tap opens the group hub — [slice 0038](slices/0038-push-notifications.md)
 - Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
 - Add name-slot members, bind this device to one (assumed member), show You on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
 - Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version` — [slice 0004](slices/0004-sync-quality-harden.md)

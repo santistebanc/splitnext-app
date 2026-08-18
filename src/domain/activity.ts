@@ -165,6 +165,23 @@ export function formatActivityLine(
   return null;
 }
 
+/** Plain-text sentence for push / toast-style surfaces. */
+export function formatActivityLinePlain(line: ActivityLine): string {
+  if (line.kind === 'expense_edited') {
+    return `${line.who} edited ${line.description}${line.amount ? ` ${line.amount}` : ''}`;
+  }
+  if (line.kind === 'expense_deleted') {
+    return `${line.who} deleted ${line.description}${line.amount ? ` ${line.amount}` : ''}`;
+  }
+  if (line.kind === 'member_kicked') {
+    return `${line.who} removed ${line.description}`;
+  }
+  if (line.kind === 'member_renamed') {
+    return `${line.who} renamed ${line.description}`;
+  }
+  return `${line.who} added ${line.description}${line.amount ? ` ${line.amount}` : ''}`;
+}
+
 /** Live activities, newest first. */
 export function sortActivities(
   activities: Record<string, ActivityEntity>,

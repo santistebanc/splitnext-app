@@ -15,7 +15,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
-- **Push notifications** — Expo push keyed off activity (non-actors); per-group mute. Was a non-goal; D-084 puts it in destination. Activity spine exists (0034); device-token Worker routes still needed. — area: awareness — raised: steering after 0029
+- **Push notifications** — Expo push on foreign activity, device-token Worker routes — delivered in [slice 0038](slices/0038-push-notifications.md). Still parked: per-group mute. — area: awareness — raised: steering after 0029
 
 ## Core value
 
@@ -88,3 +88,5 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Activity toast + relative time** — delivered in [slice 0035](slices/0035-activity-toast.md).
 
 - **Activity event kinds** — edit/delete/kick/rename — delivered in [slice 0036](slices/0036-activity-event-kinds.md).
+
+- **Push notifications** — delivered in [slice 0038](slices/0038-push-notifications.md).

@@ -4,6 +4,7 @@ import { healthPayload, isHealthRequest } from './health';
 import { GroupObject } from './groupObject';
 import {
   claimInvite,
+  deletePushToken,
   hasLiveTokenForDevice,
   insertAccessToken,
   insertInvite,
@@ -11,9 +12,11 @@ import {
   lookupInvite,
   resolveAccessToken,
   revokeAccessToken,
+  upsertPushToken,
 } from './indexDb';
 import { accessIdentifies, inviteRedeemBlock } from './access';
 import type { MergeItem } from './entities';
+import { notifyActivityPush, revokePushForDevice } from './pushNotify';
 
 export { GroupObject };
 
@@ -21,6 +24,7 @@ export interface Env {
   GROUP: DurableObjectNamespace<GroupObject>;
   INDEX: D1Database;
   DEPLOY_SHA: string;
+  EXPO_ACCESS_TOKEN?: string;
 }
 
 const ROUTES = [
@@ -31,12 +35,18 @@ const ROUTES = [
   'mint-invite',
   'join-group',
   'leave-group',
+  'register-push-token',
+  'revoke-push-token',
 ] as const;
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     if (request.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });
     }
@@ -58,12 +68,19 @@ export default {
 
     try {
       if (route === 'create-group') return await handleCreateGroup(request, env);
-      if (route === 'merge') return await handleMerge(request, env);
+      if (route === 'merge') return await handleMerge(request, env, ctx);
       if (route === 'fetch-entity') return await handleFetch(request, env);
       if (route === 'list-roster') return await handleRoster(request, env);
       if (route === 'mint-invite') return await handleMintInvite(request, env);
       if (route === 'leave-group') return await handleLeave(request, env);
-      return await handleJoin(request, env);
+      if (route === 'register-push-token') {
+        return await handleRegisterPushToken(request, env);
+      }
+      if (route === 'revoke-push-token') {
+        return await handleRevokePushToken(request, env);
+      }
+      if (route === 'join-group') return await handleJoin(request, env);
+      return jsonResponse({ error: 'method_not_allowed' }, 405);
     } catch (err) {
       console.error(route, err);
       return jsonResponse({ error: 'internal' }, 500);
@@ -144,7 +161,11 @@ async function requireAccess(
   return null;
 }
 
-async function handleMerge(request: Request, env: Env): Promise<Response> {
+async function handleMerge(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
   const body = (await request.json()) as {
     group_id?: string;
     items?: MergeItem[];
@@ -156,7 +177,62 @@ async function handleMerge(request: Request, env: Env): Promise<Response> {
   }
   const denied = await requireAccess(request, env, groupId);
   if (denied) return denied;
-  return jsonResponse(await groupStub(env, groupId).merge(groupId, items));
+  const deviceUserId = request.headers.get('x-device-user-id') ?? '';
+  const { results } = await groupStub(env, groupId).merge(groupId, items);
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!;
+    const result = results[i];
+    if (
+      result?.status === 'accepted' &&
+      item.entity_type === 'activities' &&
+      deviceUserId
+    ) {
+      ctx.waitUntil(notifyActivityPush(env, groupId, item, deviceUserId));
+    }
+  }
+  return jsonResponse({ results });
+}
+
+async function handleRegisterPushToken(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const body = (await request.json()) as {
+    group_id?: string;
+    expo_push_token?: string;
+  };
+  const groupId = body.group_id;
+  const expoPushToken = body.expo_push_token;
+  if (!groupId || !expoPushToken) {
+    return jsonResponse({ error: 'invalid_body' }, 400);
+  }
+  const denied = await requireAccess(request, env, groupId);
+  if (denied) return denied;
+  const deviceUserId = request.headers.get('x-device-user-id');
+  if (!deviceUserId) return jsonResponse({ error: 'unauthorized' }, 401);
+  await upsertPushToken(
+    env.INDEX,
+    groupId,
+    deviceUserId,
+    expoPushToken,
+    new Date().toISOString(),
+  );
+  return jsonResponse({ ok: true });
+}
+
+async function handleRevokePushToken(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const body = (await request.json()) as { group_id?: string };
+  const groupId = body.group_id;
+  if (!groupId) return jsonResponse({ error: 'invalid_body' }, 400);
+  const denied = await requireAccess(request, env, groupId);
+  if (denied) return denied;
+  const deviceUserId = request.headers.get('x-device-user-id');
+  if (!deviceUserId) return jsonResponse({ error: 'unauthorized' }, 401);
+  await deletePushToken(env.INDEX, groupId, deviceUserId);
+  return jsonResponse({ ok: true });
 }
 
 async function handleFetch(request: Request, env: Env): Promise<Response> {
@@ -301,6 +377,7 @@ async function handleLeave(request: Request, env: Env): Promise<Response> {
   if (row.revoked_at == null) {
     await revokeAccessToken(env.INDEX, accessToken, new Date().toISOString());
   }
+  await revokePushForDevice(env.INDEX, groupId, deviceUserId);
   return jsonResponse({ ok: true });
 }
 
