@@ -35,7 +35,7 @@ Screens and routes the person touches.
 | L-expenseNew | New expense | Screen | `app/group/[id]/expense/new.tsx` | Records a cost or edits one: who paid (drawer, same shape as currency), how much (large amount field, focused on create), who shares (equal 1-share by default, or share units and fixed cents), and what for last. Edit adds header **Delete** with a confirm drawer. Edit (`app/group/[id]/expense/[expenseId].tsx`) loads the stored intent. |
 | L-join | Join screen | Screen | `app/join.tsx` | Redeems a `/j/{token}` invite (or a legacy `/join?token=`), stores the new access token, and opens the hub already bound to the named member. The `/j/[token]` route (`app/j/[token].tsx`) re-exports this screen. |
 | L-landing | Public landing | Screen | `landing/index.html` | Public GitHub Pages home: showcase copy, a hub preview, and **Use on web**. Not the slicer board. |
-| L-tryWeb | Use on web | Screen | `landing/try/index.html` | Desktop phone frame with a live iframe of `/app`; a narrow window redirects to full-bleed `/app`. |
+| L-tryWeb | Use on web | Screen | `landing/try/index.html` | Desktop phone frame with a live iframe of `/app` (or Metro, when `npm run landing` injects `SPLITNEXT_APP`); a narrow window redirects to full-bleed `/app`. |
 | L-rootLayout | Root layout | Screen | `app/_layout.tsx` | The app shell; it starts the background catch-up sync so groups refresh on launch and on return to the app. |
 | L-confirmDrawer | `ConfirmDrawer` | Screen | `src/ui/ConfirmDrawer.tsx` | A bottom confirm sheet for destructive actions: title, message, Cancel, and confirm; backdrop tap cancels. Used for Leave group and Delete expense. |
 | L-activityLineText | `ActivityLineText` | Screen | `src/ui/ActivityLineText.tsx` | Renders one activity line with per-kind verbs (`added`, `edited`, `deleted`, `removed`, `renamed`); the expense or member name is semibold ink. |
@@ -165,4 +165,5 @@ The Cloudflare Worker and the group Durable Object.
 | L-deployTarget | `target_for` | Pure | `docs/scripts/deploy_target.py` | Answers whether a GitHub event and ref may deploy to Worker `splitnext`, and refuses a wipe — `push` to `main` or `slice/**` is yes, everything else is no. |
 | L-prPhone | `phone_section` | Pure | `docs/scripts/pr_phone.py` | The PR comment's scan code: a QR of the published web app, so a phone camera opens it without a Metro bundler. |
 | L-assemblePages | `assemble` | Pure | `docs/scripts/assemble_pages.py` | Builds the public Pages tree: landing at `/`, Expo export at `/app`. Never copies the slicer board. |
+| L-serveLanding | `inject_app_origin` | Pure | `docs/scripts/serve_landing.py` | Local landing server: `/try` iframes Metro; production HTML still uses `../app/`. |
 | L-efShouldAccept | `shouldAccept` | Pure | `workers/src/entities.ts` | The server's name for the version rule, imported from the same module the client tests, so both sides agree on who wins. |

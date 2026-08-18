@@ -20,6 +20,9 @@ class AssemblePages(unittest.TestCase):
             self.assertFalse((out / "state").exists())
             self.assertTrue((out / "try" / "index.html").exists())
             self.assertTrue((out / ".nojekyll").exists())
+            try_html = (out / "try" / "index.html").read_text(encoding="utf-8")
+            self.assertIn("../app/", try_html)
+            self.assertNotIn('window.SPLITNEXT_APP="http://', try_html)
 
     def test_app_export_lands_under_app(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -48,8 +48,9 @@ Merging `main` republishes the public landing at `/` and the web app at `/app` o
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:board` | Python tests for the board generator — parsers, call graph, hunk attribution. |
 | `npm run audit` | Audits `docs/state/` against the code and git: dangling ids, moved paths, missing captures, stale flow clips, missing tags, thin archives. Findings fail; notes do not. |
-| `npm start` | Expo dev server (phone via Expo Go). |
-| `npm run web` | Runs the whole app in a browser — the target headless runs and captures use. |
+| `npm start` | Expo Go on a phone. |
+| `npm run landing` | Local landing + phone-framed web app (`http://127.0.0.1:8788/try/`). Starts Expo web if needed. |
+| `npm run web` | Full-bleed Expo web — capture and CI only. |
 | `npm run capture` | Drives the web target through every flow in `FLOWS.md`, writing clips to `docs/state/shots/flows/`. Needs `npm run web` already serving. Add flow ids to record only those. `--assert-only` drives without writing clips. |
 | `npm run capture:ci` | Boots a local Worker, starts `npm run web` against it, runs capture `--assert-only`. CI's `capture` job. No Cloudflare account. |
 | `npm run capture:board` | Still-shoots the board itself for a slice that changed it. Needs `npm run board:serve` already serving. |

@@ -14,7 +14,7 @@ Last updated: slice 0039
 - Stack: Expo React Native, Expo Router, Legend State, expo-sqlite, Cloudflare Worker + one SQLite Durable Object per group + D1 token/invite index
 - Remote Worker `splitnext` at `https://splitnext.santistebanc94.workers.dev` (D1 `splitnext-index`)
 - Access tokens in `expo-secure-store`
-- Dev/demo: physical phone + Expo Go; `npm run web` runs the whole app full-bleed in a browser for testing and screenshots. Desktop visitors use the landing **Use on web** page, which iframes `/app` in a phone frame.
+- Dev/demo: physical phone + Expo Go (`npm start`); desktop browser uses the landing phone frame (`npm run landing`). `npm run web` is full-bleed for capture only.
 - Money as integer cents; version (not timestamps) for conflicts; soft-delete only
 - Device floor iOS 16+ / Android 12+; English-only; light-only UI
 - Clients never talk to D1 or the Durable Object; the Worker is the only door, after a capability hash-check
@@ -25,7 +25,7 @@ Last updated: slice 0039
 ## Capabilities
 
 - Create a group from a form (group name, your name, currency), mint a per-device access token, persist locally with the creator already bound, sync the group to the server, and land on the hub of names — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0027](slices/0027-first-run.md)
-- Open the public landing and try the live app in a desktop phone frame (**Use on web**); `/app` itself is full-bleed — [slice 0039](slices/0039-landing-page.md)
+- Open the public landing and try the live app in a desktop phone frame (**Use on web**); locally that is `npm run landing`. `/app` itself is full-bleed — [slice 0039](slices/0039-landing-page.md)
 - Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + directly under the list; **Recent activity** (last three, with relative times) pinned above the expense CTAs once anything is recorded; a top toast when someone else mutates the group while this hub is open; **View all events** opens the activity page; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Relaunch into the last-opened group hub when that group is still on the lobby (Home still returns to the list) — [slice 0037](slices/0037-last-opened-group.md)
@@ -40,7 +40,7 @@ Last updated: slice 0039
 - Remove an unclaimed member from the group list (soft-delete); You and claimed slots cannot be removed — [slice 0033](slices/0033-kick-member.md)
 - See recent group activity on the hub (last three events, relative timestamps) and open a full activity page; mutating jobs append matching activity events when this device has an assumed member; another member's events toast on the hub after sync — [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md)
 - Assumed member is set at create or join and cannot be changed; leave unbinds — [slice 0005](slices/0005-expense-spine.md) / [slice 0027](slices/0027-first-run.md)
-- Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
+- Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs possible; humans use `npm run landing` for the framed site — [slice 0006](slices/0006-web-target.md) / [slice 0039](slices/0039-landing-page.md)
 - Split every expense across the members chosen at record time (default everyone live), or by share units and fixed cents — frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md) / [slice 0030](slices/0030-mixed-splits.md)
 - Choose who paid and who shares on a dedicated new-expense screen; default is You paid and everyone shares — [slice 0018](slices/0018-expense-form.md)
 - See each member's net position on the hub — paid minus owed, most-negative first, You marked — [slice 0007](slices/0007-allocations-balances.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
@@ -150,6 +150,7 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/app` 
 - `activityForExpenseAdded` / `activityForExpenseEdited` / `activityForExpenseDeleted` / `activityForMemberKicked` / `activityForMemberRenamed` / `formatActivityLine` / `sortActivities` — `src/domain/activity.ts` — vitest — build and format activity events; newest first
 - `InFrameOverlay` / `ConfirmDrawer` — `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — drawers portal into `#overlay-root`; the Expo web app is full-bleed. The phone bezel is `landing/try`. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
 - `assemble` — `docs/scripts/assemble_pages.py` — unittest via `npm run test:board` — Pages tree is landing + `/app`, never the slicer board
+- `inject_app_origin` — `docs/scripts/serve_landing.py` — unittest via `npm run test:board` — local `/try` points at Metro; assembled HTML does not
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload. `--assert-only` skips writing clips. CI runs that against a local Worker (`npm run capture:ci`).

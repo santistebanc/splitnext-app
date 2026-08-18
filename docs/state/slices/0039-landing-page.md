@@ -12,7 +12,7 @@ Public Pages is a product landing. **Use on web** embeds `/app` in a phone frame
 Open the site → landing → Use on web → live app in a bezel; `/app` and capture stay full-bleed.
 
 ### Highlights
-- **`L-landing` / `L-tryWeb`** — static `landing/`.
+- **`L-landing` / `L-tryWeb` / `L-serveLanding`** — static `landing/`; locally `npm run landing` frames Metro.
 - **`L-assemblePages`** — Pages tree never includes `slicer.html` or `docs/state`.
 - **App** — phone frame removed from `+html.tsx`.
 
@@ -22,17 +22,17 @@ Open the site → landing → Use on web → live app in a bezel; `/app` and cap
 | --- | --- | --- |
 | Pages `/` | Slicer board | Landing |
 | Phone frame | Inside Expo web | `/try` iframe only |
-| Board | Published | `npm run board:serve` only |
+| Manual web | `npm run web` full-bleed | `npm run landing` framed `/try` (D-094) |
 
 ### Surfaces touched
 
 - **Client** — `app/+html.tsx` · `InFrameOverlay` · deleted `phoneFrame.ts`
 - **Public site** — `landing/` · `assemble_pages.py` · `pages.yml`
-- **State** — `OVERVIEW.md`, `LOGIC.md`, `DECISIONS.md` (D-093), `PARKING.md`, this archive
+- **State** — `OVERVIEW.md`, `LOGIC.md`, `DECISIONS.md` (D-093, D-094), `PARKING.md`, this archive
 
 ### Logic delta
 
-- **Added** — `L-landing` · `L-tryWeb` · `L-assemblePages`
+- **Added** — `L-landing` · `L-tryWeb` · `L-assemblePages` · `L-serveLanding`
 - **Removed** — `L-webFrame`
 - **Changed** — Pages assemble; overlay-root still used for drawers
 
@@ -47,13 +47,14 @@ Open the site → landing → Use on web → live app in a bezel; `/app` and cap
 | `L-tryWeb` | window width &lt; 480 | Redirect to `/app`. |
 | `L-tryWeb` | desktop | Live iframe of `/app` in a 420×900 bezel, scaled to fit. |
 | Capture | 420×900 viewport | Full-bleed app (no bezel). |
-| `L-landing` | no store listing | CTA is **Use on web** only. |
+| `L-serveLanding` | Metro not up yet | Landing serves; iframe fills when Expo answers. |
+| `L-serveLanding` | 8081 already serving | Reuses it; does not start a second Expo. |
 
 ### Review
 
 - **Invariants** — Worker/sync/money/capability door unchanged. Pages still same-origin `/app` (D-031 narrowed, not reversed).
 - **Spec** — Production `/` is the landing; board is local-only; phone bezel is `/try` only. Invite landing, legal, and store buttons stayed parked.
-- **Standards** — `assemble` is the seam (`assemble_pages_test` plus a Pages workflow assertion that CI never runs `generate-slicer-board.py`). Phone-scale CSS lives once, on `/try`. Overlay host is `#overlay-root` with `position: fixed` now that there is no in-app bezel.
+- **Standards** — `assemble` is the seam (`assemble_pages_test` plus a Pages workflow assertion that CI never runs `generate-slicer-board.py`). `inject_app_origin` is the local-frame seam (D-094). Phone-scale CSS lives once, on `/try`. Overlay host is `#overlay-root` with `position: fixed` now that there is no in-app bezel.
 
 ### Shots
 

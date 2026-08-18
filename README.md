@@ -18,8 +18,10 @@ Expo React Native 57 + Expo Router · Legend State v3 · expo-sqlite (localStora
 npm install
 cp .env.example .env      # already holds the Worker URL
 npm start                 # phone, via Expo Go
-npm run web               # the whole app in a browser
+npm run landing           # landing + phone-framed web app (http://127.0.0.1:8788/try/)
 ```
+
+`npm run web` is full-bleed Expo web for `npm run capture` / CI, not the manual browser path.
 
 ```bash
 npm test                  # seam tests (vitest)
