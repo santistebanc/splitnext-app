@@ -147,7 +147,7 @@ jobs:
               echo
               echo "Open the [slice board]($BOARD_URL) — the slicer page for this PR, not a file list."
               echo
-              echo "The published board no longer carries the current slice. After the next merge to \`main\`, the same page also lives at ${PAGES_URL}."
+              echo "The slicer board is local-only and does not carry the current slice. After the next merge to \`main\`, this PR's slice page also lives at ${PAGES_URL}."
               echo
               echo "<details><summary>Map delta (text)</summary>"
               echo

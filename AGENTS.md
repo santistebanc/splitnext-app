@@ -35,9 +35,9 @@ A slice is a branch → PR → **squash** merge → annotated tag `slice-NNNN` o
 - **One slice opens one PR.** Squash-only enforces one commit per PR, not per slice; two PRs under one slice number is two commits on `main` and a slice you can no longer revert.
 - **`docs/slicer.html` is generated and gitignored** — regenerate it, never hand-edit or hand-merge it. Same for `docs/slice.html`, the per-PR slice page.
 
-Every PR gets a generated slicer page for **this slice only** — same chrome as the published board, hosted from the `pr-boards` branch and linked in a CI comment (D-055). Read that before the file diff: it is the one view that says which *pieces* moved. The published board does not carry the current slice. That comment also carries a QR of the published web app (`L-prPhone`) so a phone camera can open it; Expo Go still needs `npm start`.
+Every PR gets a generated slicer page for **this slice only** — same chrome as the local board, hosted from the `pr-boards` branch and linked in a CI comment (D-055). Read that before the file diff: it is the one view that says which *pieces* moved. The local board does not carry the current slice. That comment also carries a QR of the published web app (`L-prPhone`) so a phone camera can open it; Expo Go still needs `npm start`.
 
-Merging `main` republishes the board and the web app to GitHub Pages.
+Merging `main` republishes the public landing at `/` and the web app at `/app` on GitHub Pages. The slicer board is local-only (`npm run board:serve`) and must not become the production homepage (D-093).
 
 ## Commands
 
@@ -54,7 +54,7 @@ Merging `main` republishes the board and the web app to GitHub Pages.
 | `npm run capture:ci` | Boots a local Worker, starts `npm run web` against it, runs capture `--assert-only`. CI's `capture` job. No Cloudflare account. |
 | `npm run capture:board` | Still-shoots the board itself for a slice that changed it. Needs `npm run board:serve` already serving. |
 | `npm run delta` | What the working tree changed, in map vocabulary — symbols touched, flows through them, what `NEXT.md` says each is for. `-- --range main` for the branch. The PR's slice *page* is `npm run board -- --slice-page`. |
-| `npm run board` | Regenerates `docs/slicer.html` (the published map). `-- --slice-page` writes the per-PR slice view. |
+| `npm run board` | Regenerates `docs/slicer.html` (the local map). `-- --slice-page` writes the per-PR slice view. |
 | `npm run board:serve` | Regenerates both boards, then serves them at http://127.0.0.1:8777/slicer.html and `/slice.html`. Path chips open the file in the editor. Localhost-only and token-gated; `-- --lan` binds wider. |
 | `npx expo export -p web` | The static build CI publishes to `/app` on Pages. |
 

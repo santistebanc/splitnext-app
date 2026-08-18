@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0038
+Last updated: slice 0039
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: undo on activity, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Public GitHub Pages is a landing plus framed **Use on web**; the slicer board is local-only. Product still to land: undo on activity, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -14,17 +14,18 @@ Last updated: slice 0038
 - Stack: Expo React Native, Expo Router, Legend State, expo-sqlite, Cloudflare Worker + one SQLite Durable Object per group + D1 token/invite index
 - Remote Worker `splitnext` at `https://splitnext.santistebanc94.workers.dev` (D1 `splitnext-index`)
 - Access tokens in `expo-secure-store`
-- Dev/demo: physical phone + Expo Go; `npm run web` runs the whole app in a browser for testing and screenshots, in a 420×900 phone frame when the window is wide (centered, scaled to fit the viewport — shrinks or grows as the window does)
+- Dev/demo: physical phone + Expo Go; `npm run web` runs the whole app full-bleed in a browser for testing and screenshots. Desktop visitors use the landing **Use on web** page, which iframes `/app` in a phone frame.
 - Money as integer cents; version (not timestamps) for conflicts; soft-delete only
 - Device floor iOS 16+ / Android 12+; English-only; light-only UI
 - Clients never talk to D1 or the Durable Object; the Worker is the only door, after a capability hash-check
 - Slice quality: thin scope, high craft inside the slice (seams + TDD + review); speed ≠ skip quality
 
-**Non-goals** — User accounts / OAuth, payment rails, contact import / social graphs, accounting / OCR / budgets / recurring bills, behavioural analytics, marketing site (invite landing is not that), OTA updates, full CRDT sync frameworks, dedicated sync platforms (ElectricSQL, PowerSync, Replicache), group-wide invite UI, short group join codes, create-with-full-roster, changing assumed member after create/join (D-076), close/reopen UI (MVP), a whole-group Settle up screen, lobby nets, dark mode / v1 brand chrome
+**Non-goals** — User accounts / OAuth, payment rails, contact import / social graphs, accounting / OCR / budgets / recurring bills, behavioural analytics, OTA updates, full CRDT sync frameworks, dedicated sync platforms (ElectricSQL, PowerSync, Replicache), group-wide invite UI, short group join codes, create-with-full-roster, changing assumed member after create/join (D-076), close/reopen UI (MVP), a whole-group Settle up screen, lobby nets, dark mode / v1 brand chrome
 
 ## Capabilities
 
 - Create a group from a form (group name, your name, currency), mint a per-device access token, persist locally with the creator already bound, sync the group to the server, and land on the hub of names — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0027](slices/0027-first-run.md)
+- Open the public landing and try the live app in a desktop phone frame (**Use on web**); `/app` itself is full-bleed — [slice 0039](slices/0039-landing-page.md)
 - Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + directly under the list; **Recent activity** (last three, with relative times) pinned above the expense CTAs once anything is recorded; a top toast when someone else mutates the group while this hub is open; **View all events** opens the activity page; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Relaunch into the last-opened group hub when that group is still on the lobby (Home still returns to the list) — [slice 0037](slices/0037-last-opened-group.md)
@@ -51,7 +52,7 @@ Last updated: slice 0038
 - Reopen a group with several expenses without the screen crashing on revived `Date` timestamps — [slice 0007](slices/0007-allocations-balances.md)
 - Record a clip per flow and stills for the board with `npm run capture`, driving the real app against the deployed Worker; CI asserts those same flows against a local Worker without rewriting the clips — [slice 0007](slices/0007-allocations-balances.md) / [slice 0022](slices/0022-capture-ci.md)
 - Work the repo from any clone: the loop is vendored at `.claude/skills/`, `AGENTS.md` is the entry point, CI enforces the gates — [slice 0008](slices/0008-repo-home.md)
-- Read the board and use the app as URLs, both published by CI on every merge, with code chips linking to GitHub — [slice 0008](slices/0008-repo-home.md)
+- Open the public landing and the live web app as URLs published by CI on every merge; the slicer board is local (`npm run board:serve`) — [slice 0008](slices/0008-repo-home.md) / [slice 0039](slices/0039-landing-page.md)
 - Read the symbol map two ways — flat by area, or as a tree nested under what calls what, derived from the source — [slice 0009](slices/0009-symbol-tree.md)
 - Trust that what is on `main` is what is on the server — merge applies D1 migrations, redeploys the Worker, and fails unless every route answers with that merge's sha — [slice 0010](slices/0010-deploy-pipeline.md)
 - Catch up a group whose wake socket died while the hub stayed open — the client retries the socket, then runs the same flush + roster pull as open, for that group only — [slice 0011](slices/0011-missed-wake.md) / [slice 0016](slices/0016-wake-reconnect.md)
@@ -76,9 +77,9 @@ Last updated: slice 0038
 - Hosting — Cloudflare Worker `splitnext` (`splitnext.santistebanc94.workers.dev`)
 - Server deploy — `.github/workflows/workers.yml` on push to `main` or `slice/**`: D1 migrations apply, `wrangler deploy` with `DEPLOY_SHA`, verify each health endpoint; last green run wins; never by hand, never a wipe — D-052, D-058
 - Repo — `github.com/santistebanc/splitnext-app`, public; a slice is branch → PR (CI: `check` + `capture`) → squash merge → tag `slice-NNNN` on `main` — D-028, D-072
-- Board — regenerated by CI and published to https://santistebanc.github.io/splitnext-app/ on every merge to `main`; its path chips link to the file on GitHub, and to the editor when served locally. The current slice is a separate page generated per PR, not a tab on that board (D-055)
+- Board — regenerated locally by `npm run board` / `npm run board:serve`; not published on Pages (D-093). Per-PR slice pages still copy under `/pr/N/` (D-055)
 - Board tooling — Python under `docs/scripts/`; the Symbols call graph is derived from source by `callgraph.py` and gated by `npm run test:board` in CI — D-034, D-037
-- Live app — the static web export ships to https://santistebanc.github.io/splitnext-app/app/ from the same workflow, linked from the board's topbar — D-031
+- Live site — landing at https://santistebanc.github.io/splitnext-app/ and the static web export at `/app`, same workflow — D-031, D-093
 - Agent entry point — `AGENTS.md` + the process vendored at `.claude/skills/{slicer,tdd,code-review,prototype}`, so a clone carries the loop — D-029
 
 ## Data model
@@ -106,6 +107,8 @@ Last updated: slice 0038
 **Outbound queue** (client) — per-group `{ entity_type, id, version, payload }` on the Legend store; flushed to `merge` in flush order. Auto-flushed on open, foreground, and wake-socket reconnect via `syncGroup`.
 
 ## Routes / surfaces
+
+Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/app` Expo export (full-bleed).
 
 | Route | What it does | Shipped in |
 | --- | --- | --- |
@@ -145,7 +148,8 @@ Last updated: slice 0038
 - `patchMember` — `src/domain/member.ts` — vitest — next member version for a display-name change; whitespace or unchanged name is null
 - `tombstoneMember` — `src/domain/member.ts` — vitest — soft-delete a live member at the next version
 - `activityForExpenseAdded` / `activityForExpenseEdited` / `activityForExpenseDeleted` / `activityForMemberKicked` / `activityForMemberRenamed` / `formatActivityLine` / `sortActivities` — `src/domain/activity.ts` — vitest — build and format activity events; newest first
-- `phoneFrame` / `InFrameOverlay` / `ConfirmDrawer` — `src/ui/phoneFrame.ts` / `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — web-only: a 420×900 phone frame when the window is wider than 480px, always centered and scaled to fit the viewport (shrinks or grows as the window does); drawers portal into that frame instead of covering the desktop; capture's 420 viewport stays full-bleed. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
+- `InFrameOverlay` / `ConfirmDrawer` — `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — drawers portal into `#overlay-root`; the Expo web app is full-bleed. The phone bezel is `landing/try`. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
+- `assemble` — `docs/scripts/assemble_pages.py` — unittest via `npm run test:board` — Pages tree is landing + `/app`, never the slicer board
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload. `--assert-only` skips writing clips. CI runs that against a local Worker (`npm run capture:ci`).
