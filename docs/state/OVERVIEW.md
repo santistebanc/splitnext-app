@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0034
+Last updated: slice 0035
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: toast/push/undo on activity, last-opened group, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: push/undo on activity, last-opened group, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -25,7 +25,7 @@ Last updated: slice 0034
 ## Capabilities
 
 - Create a group from a form (group name, your name, currency), mint a per-device access token, persist locally with the creator already bound, sync the group to the server, and land on the hub of names — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0027](slices/0027-first-run.md)
-- Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + directly under the list; **Recent activity** (last three) pinned above the expense CTAs once anything is recorded; **View all events** opens the activity page; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0034](slices/0034-activity-spine.md)
+- Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + directly under the list; **Recent activity** (last three, with relative times) pinned above the expense CTAs once anything is recorded; a top toast when someone else records a cost while this hub is open; **View all events** opens the activity page; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
 - Add name-slot members, bind this device to one (assumed member), show You on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
@@ -35,7 +35,7 @@ Last updated: slice 0034
 - Soft-delete an expense from the edit form; lists and balances refold without it — [slice 0031](slices/0031-expense-delete.md)
 - Destructive confirms (Leave group, Delete expense) use a bottom drawer — [slice 0032](slices/0032-confirm-drawer.md)
 - Remove an unclaimed member from the group list (soft-delete); You and claimed slots cannot be removed — [slice 0033](slices/0033-kick-member.md)
-- See recent group activity on the hub (last three events) and open a full activity page; recording an expense appends an `expense_added` event when this device has an assumed member — [slice 0034](slices/0034-activity-spine.md)
+- See recent group activity on the hub (last three events, relative timestamps) and open a full activity page; recording an expense appends an `expense_added` event when this device has an assumed member; another member's add toasts on the hub after sync — [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md)
 - Assumed member is set at create or join and cannot be changed; leave unbinds — [slice 0005](slices/0005-expense-spine.md) / [slice 0027](slices/0027-first-run.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs and board screenshots possible — [slice 0006](slices/0006-web-target.md)
 - Split every expense across the members chosen at record time (default everyone live), or by share units and fixed cents — frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md) / [slice 0030](slices/0030-mixed-splits.md)
@@ -111,8 +111,8 @@ Last updated: slice 0034
 | `/create` | Create form: group name, your name, currency; submit opens the hub named and bound | slice 0027 |
 | `/j/[token]` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 / 0028 |
 | `/join` | Same redeem as `/j/[token]`, via `?token=` (legacy) | slice 0012 |
-| `/group/[id]` | Hub: group name as large centered type above the list (header is home + settings); names until the first expense (rows open member detail; no expense list link), then balances (You highlighted; tap opens member detail); add member + directly under the list; **Recent activity** (last three) above the expense CTAs once anything is recorded; **View all expenses** at the bottom once spent; FAB + Expense once bound; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 / 0027 / 0028 / 0034 |
-| `/group/[id]/activity` | Full activity list, newest first; opened from **View all events** on the hub | slice 0034 |
+| `/group/[id]` | Hub: group name as large centered type above the list (header is home + settings); names until the first expense (rows open member detail; no expense list link), then balances (You highlighted; tap opens member detail); add member + directly under the list; **Recent activity** (last three, relative times) above the expense CTAs once anything is recorded; top toast when sync brings someone else's activity; **View all expenses** at the bottom once spent; FAB + Expense once bound; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 / 0027 / 0028 / 0034 / 0035 |
+| `/group/[id]/activity` | Full activity list with relative timestamps, newest first; opened from **View all events** on the hub | slice 0034 / 0035 |
 | `/group/[id]/settings` | Group name and currency; Done once named and bound; Leave group (confirm drawer) | slice 0027 / 0032 |
 | `/group/[id]/member/[memberId]` | Member: name + edit in the header; join link + copy/share if unclaimed; Remove member (confirm drawer) if unclaimed and not You; paid-for / owe-for / net / suggested settlement once the group has an expense; a bucket line opens that expense | slice 0023 / 0024 / 0025 / 0027 / 0028 / 0029 / 0033 |
 | `/group/[id]/expenses` | All expenses, newest first; a row opens the expense editor | slice 0023 / 0029 |

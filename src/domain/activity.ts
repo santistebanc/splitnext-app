@@ -15,6 +15,7 @@ export type ActivityLine = {
   who: string;
   description: string;
   amount: string;
+  at: string;
 };
 
 /** First version of an expense-added event, or null when ids are missing. */
@@ -54,6 +55,7 @@ export function formatActivityLine(
     ),
     description: expense.description.trim() || '(no description)',
     amount: formatMoney(expense.amount_cents, currency),
+    at: activity.updated_at,
   };
 }
 
@@ -68,6 +70,24 @@ export function sortActivities(
         b.updated_at.localeCompare(a.updated_at) ||
         b.id.localeCompare(a.id),
     );
+}
+
+/** New live activities in `after` that were not in `before`, excluding this device. */
+export function activitiesFromOthers(
+  before: Record<string, ActivityEntity>,
+  after: Record<string, ActivityEntity>,
+  assumedMemberId: string | null,
+): ActivityEntity[] {
+  if (!assumedMemberId) return [];
+  const added = Object.values(after).filter((activity) => {
+    if (activity.deleted_at != null) return false;
+    if (before[activity.id]) return false;
+    return activity.actor_member_id !== assumedMemberId;
+  });
+  if (added.length === 0) return [];
+  return sortActivities(
+    Object.fromEntries(added.map((activity) => [activity.id, activity])),
+  );
 }
 
 /** Readable activity lines for live events, newest first. */

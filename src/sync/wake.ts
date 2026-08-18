@@ -1,7 +1,5 @@
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
-import type { EntityType } from '@/src/domain/version';
 import { getAccessToken } from '@/src/secrets/tokens';
-import { applyRemoteFetch } from '@/src/sync/inbound';
 import {
   nextReconnectDelayMs,
   shouldCatchUpOnStatus,
@@ -121,17 +119,12 @@ export async function startWakeSubscription(
         return;
       }
       const payload = parsed.payload;
-      if (
-        parsed.event === 'wake' &&
-        payload?.group_id === groupId &&
-        payload.entity_type &&
-        payload.id
-      ) {
-        void applyRemoteFetch(
-          groupId,
-          payload.entity_type as EntityType,
-          payload.id,
-        );
+      if (parsed.event === 'wake' && payload?.group_id === groupId) {
+        const catchUp = reconnectByGroup.get(groupId);
+        if (!catchUp) return;
+        void Promise.resolve(catchUp()).catch(() => {
+          // syncGroup records lastError; never let it kill the socket callback.
+        });
       }
     };
 
