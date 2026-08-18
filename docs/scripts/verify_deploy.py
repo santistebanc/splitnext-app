@@ -37,6 +37,8 @@ FUNCTIONS = [
     "mint-invite",
     "join-group",
     "leave-group",
+    "register-push-token",
+    "revoke-push-token",
 ]
 
 

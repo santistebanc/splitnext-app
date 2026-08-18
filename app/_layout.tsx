@@ -1,4 +1,5 @@
 import { useLobbyForegroundSync } from '@/src/sync/appForegroundSync';
+import { usePushNotificationOpen } from '@/src/push/usePushNotificationOpen';
 import { colors } from '@/src/ui/theme';
 import '@/src/ui/phoneFrame';
 import { Stack } from 'expo-router';
@@ -6,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 
 export default function RootLayout() {
   useLobbyForegroundSync();
+  usePushNotificationOpen();
 
   return (
     <>

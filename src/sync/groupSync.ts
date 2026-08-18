@@ -13,6 +13,7 @@ import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPat
 import { buildExpenseAllocations, patchExpense, tombstoneExpense, type SplitAmongEntry } from '@/src/domain/expense';
 import { patchMember, tombstoneMember } from '@/src/domain/member';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
+import { registerPushTokenForGroup } from '@/src/push/registerPushToken';
 import {
   addLobbyGroupId,
   listLobbyGroupIds,
@@ -535,6 +536,7 @@ export async function syncAllLobbyGroups(): Promise<void> {
 export async function openGroup(groupId: string): Promise<void> {
   getGroupStore(groupId);
   await saveLastOpenedGroupId(groupId);
+  void registerPushTokenForGroup(groupId);
   try {
     await startWakeSubscription(groupId, () => syncGroup(groupId));
   } catch {

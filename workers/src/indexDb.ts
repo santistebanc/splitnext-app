@@ -5,6 +5,7 @@ export type IndexDb = {
   prepare(query: string): {
     bind(...values: unknown[]): {
       first<T = Record<string, unknown>>(): Promise<T | null>;
+      all<T = Record<string, unknown>>(): Promise<{ results: T[] }>;
       run(): Promise<{ success: boolean; meta: { changes: number } }>;
     };
   };
@@ -128,4 +129,54 @@ export async function claimInvite(
     .bind(redeemedAt, tokenHash)
     .run();
   return result.meta.changes === 1;
+}
+
+export type DevicePushTokenRow = {
+  device_user_id: string;
+  expo_push_token: string;
+};
+
+export async function upsertPushToken(
+  db: IndexDb,
+  groupId: string,
+  deviceUserId: string,
+  expoPushToken: string,
+  updatedAt: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO device_push_tokens (group_id, device_user_id, expo_push_token, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(group_id, device_user_id) DO UPDATE SET
+         expo_push_token = excluded.expo_push_token,
+         updated_at = excluded.updated_at`,
+    )
+    .bind(groupId, deviceUserId, expoPushToken, updatedAt)
+    .run();
+}
+
+export async function deletePushToken(
+  db: IndexDb,
+  groupId: string,
+  deviceUserId: string,
+): Promise<void> {
+  await db
+    .prepare(
+      'DELETE FROM device_push_tokens WHERE group_id = ? AND device_user_id = ?',
+    )
+    .bind(groupId, deviceUserId)
+    .run();
+}
+
+export async function listPushTokensForGroup(
+  db: IndexDb,
+  groupId: string,
+): Promise<DevicePushTokenRow[]> {
+  const result = await db
+    .prepare(
+      'SELECT device_user_id, expo_push_token FROM device_push_tokens WHERE group_id = ?',
+    )
+    .bind(groupId)
+    .all<DevicePushTokenRow>();
+  return result.results ?? [];
 }

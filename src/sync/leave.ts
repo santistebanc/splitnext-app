@@ -1,4 +1,5 @@
 import { leaveGroupRemote } from '@/src/api/edge';
+import { revokePushTokenForGroup } from '@/src/push/revokePushToken';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import { tombstoneBind } from '@/src/domain/bind';
 import {
@@ -72,6 +73,7 @@ export async function leaveGroup(groupId: string): Promise<boolean> {
   }
 
   stopWakeSubscription(groupId);
+  await revokePushTokenForGroup(groupId);
   await deleteAccessToken(groupId);
   await removeLobbyGroupId(groupId);
   store$.lastError.set(null);
