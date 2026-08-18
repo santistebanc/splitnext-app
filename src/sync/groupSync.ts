@@ -9,6 +9,7 @@ import {
   activityForMemberRenamed,
 } from '@/src/domain/activity';
 import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
+import { planUndo } from '@/src/domain/undo';
 import { createGroupDraft, patchGroup, type CreateGroupDraftInput, type GroupPatch } from '@/src/domain/group';
 import { buildExpenseAllocations, patchExpense, tombstoneExpense, type SplitAmongEntry } from '@/src/domain/expense';
 import { patchMember, tombstoneMember } from '@/src/domain/member';
@@ -320,6 +321,7 @@ export async function addExpense(
           actorMemberId,
           expense,
           at,
+          snapshot: expense,
         }),
       expense.updated_at,
     )),
@@ -421,6 +423,7 @@ export async function deleteExpense(
           actorMemberId,
           expense: current,
           at,
+          snapshot: current,
         }),
       next.updated_at,
     )),
@@ -459,10 +462,72 @@ export async function deleteMember(
           actorMemberId,
           member: current,
           at,
+          snapshot: current,
         }),
       next.updated_at,
     )),
   );
+  store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
+  await flushQueue(groupId);
+}
+
+export async function undoActivity(
+  groupId: string,
+  activityId: string,
+): Promise<void> {
+  const store$ = getGroupStore(groupId);
+  const deviceUserId = await getOrCreateDeviceUserId();
+  const assumedMemberId = assumedMemberIdFromBinds(
+    store$.binds.get() ?? {},
+    deviceUserId,
+  );
+  const activity = (store$.activities.get() ?? {})[activityId];
+  if (!activity) return;
+
+  const plan = planUndo({
+    activity,
+    assumedMemberId,
+    expense: (store$.expenses.get() ?? {})[activity.expense_id],
+    member: (store$.members.get() ?? {})[activity.member_id],
+    at: new Date().toISOString(),
+  });
+  if (!plan) return;
+
+  const queueItems: OutboundItem[] = [];
+  if (plan.expense) {
+    store$.expenses.set({
+      ...(store$.expenses.get() ?? {}),
+      [plan.expense.id]: plan.expense,
+    });
+    queueItems.push({
+      entity_type: 'expenses',
+      id: plan.expense.id,
+      version: plan.expense.version,
+      payload: plan.expense,
+    });
+  }
+  if (plan.member) {
+    store$.members.set({
+      ...(store$.members.get() ?? {}),
+      [plan.member.id]: plan.member,
+    });
+    queueItems.push({
+      entity_type: 'members',
+      id: plan.member.id,
+      version: plan.member.version,
+      payload: plan.member,
+    });
+  }
+  store$.activities.set({
+    ...(store$.activities.get() ?? {}),
+    [plan.activity.id]: plan.activity,
+  });
+  queueItems.push({
+    entity_type: 'activities',
+    id: plan.activity.id,
+    version: plan.activity.version,
+    payload: plan.activity,
+  });
   store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
   await flushQueue(groupId);
 }

@@ -4,7 +4,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 ## Foundation-risk
 
-- **Activity spine** — `expense_added` through rename/kick/edit/delete, hub recent section, Activity page, relative timestamps, hub toast — delivered through [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md). Still parked: join/leave/group-rename events, push, undo / `undo_snapshot`. — area: activity — raised: bootstrap · restated: steering after 0029
+- **Activity spine** — `expense_added` through rename/kick/edit/delete, hub recent section, Activity page, relative timestamps, hub toast — delivered through [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md). Undo of add/delete/kick — [slice 0040](slices/0040-activity-undo.md). Still parked: join/leave/group-rename events, undo of edit/rename, Undo on the hub recent list. — area: activity — raised: bootstrap · restated: steering after 0029
 - **Mixed / uneven splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
 
 - **Soft-delete an expense** — delivered in [slice 0031](slices/0031-expense-delete.md).
@@ -93,3 +93,5 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Push notifications** — delivered in [slice 0038](slices/0038-push-notifications.md).
 
 - **Public landing + framed web** — delivered in [slice 0039](slices/0039-landing-page.md).
+
+- **Activity undo** — delivered in [slice 0040](slices/0040-activity-undo.md).

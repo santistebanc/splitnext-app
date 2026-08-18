@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0039
+Last updated: slice 0040
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Public GitHub Pages is a landing plus framed **Use on web**; the slicer board is local-only. Product still to land: undo on activity, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Public GitHub Pages is a landing plus framed **Use on web**; the slicer board is local-only. Product still to land: invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -38,7 +38,7 @@ Last updated: slice 0039
 - Soft-delete an expense from the edit form; lists and balances refold without it — [slice 0031](slices/0031-expense-delete.md)
 - Destructive confirms (Leave group, Delete expense) use a bottom drawer — [slice 0032](slices/0032-confirm-drawer.md)
 - Remove an unclaimed member from the group list (soft-delete); You and claimed slots cannot be removed — [slice 0033](slices/0033-kick-member.md)
-- See recent group activity on the hub (last three events, relative timestamps) and open a full activity page; mutating jobs append matching activity events when this device has an assumed member; another member's events toast on the hub after sync — [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md)
+- See recent group activity on the hub (last three events, relative timestamps) and open a full activity page; mutating jobs append matching activity events when this device has an assumed member; another member's events toast on the hub after sync; this device can Undo its own add, delete, or kick from that page — [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md) / [slice 0040](slices/0040-activity-undo.md)
 - Assumed member is set at create or join and cannot be changed; leave unbinds — [slice 0005](slices/0005-expense-spine.md) / [slice 0027](slices/0027-first-run.md)
 - Run the whole app in a browser (`npm run web`), which is what makes headless end-to-end runs possible; humans use `npm run landing` for the framed site — [slice 0006](slices/0006-web-target.md) / [slice 0039](slices/0039-landing-page.md)
 - Split every expense across the members chosen at record time (default everyone live), or by share units and fixed cents — frozen into the expense, identical on every device — [slice 0007](slices/0007-allocations-balances.md) / [slice 0018](slices/0018-expense-form.md) / [slice 0030](slices/0030-mixed-splits.md)
@@ -117,7 +117,7 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/app` 
 | `/j/[token]` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 / 0028 |
 | `/join` | Same redeem as `/j/[token]`, via `?token=` (legacy) | slice 0012 |
 | `/group/[id]` | Hub: group name as large centered type above the list (header is home + settings); names until the first expense (rows open member detail; no expense list link), then balances (You highlighted; tap opens member detail); add member + directly under the list; **Recent activity** (last three, relative times) above the expense CTAs once anything is recorded; top toast when sync brings someone else's activity; **View all expenses** at the bottom once spent; FAB + Expense once bound; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 / 0027 / 0028 / 0034 / 0035 / 0036 |
-| `/group/[id]/activity` | Full activity list with relative timestamps, newest first; opened from **View all events** on the hub | slice 0034 / 0035 / 0036 |
+| `/group/[id]/activity` | Full activity list with relative timestamps, newest first; **Undo** on this device's add/delete/kick lines; opened from **View all events** on the hub | slice 0034 / 0035 / 0036 / 0040 |
 | `/group/[id]/settings` | Group name and currency; Done once named and bound; Leave group (confirm drawer) | slice 0027 / 0032 |
 | `/group/[id]/member/[memberId]` | Member: name + edit in the header; join link + copy/share if unclaimed; Remove member (confirm drawer) if unclaimed and not You; paid-for / owe-for / net / suggested settlement once the group has an expense; a bucket line opens that expense | slice 0023 / 0024 / 0025 / 0027 / 0028 / 0029 / 0033 |
 | `/group/[id]/expenses` | All expenses, newest first; a row opens the expense editor | slice 0023 / 0029 |
@@ -148,6 +148,8 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/app` 
 - `patchMember` — `src/domain/member.ts` — vitest — next member version for a display-name change; whitespace or unchanged name is null
 - `tombstoneMember` — `src/domain/member.ts` — vitest — soft-delete a live member at the next version
 - `activityForExpenseAdded` / `activityForExpenseEdited` / `activityForExpenseDeleted` / `activityForMemberKicked` / `activityForMemberRenamed` / `formatActivityLine` / `sortActivities` — `src/domain/activity.ts` — vitest — build and format activity events; newest first
+- `planUndo` / `activityCanUndo` — `src/domain/undo.ts` — vitest — restore a delete/kick or tombstone an add from `undo_snapshot`; refuse foreign, stale, or missing snapshot
+- `activityRow` / `parseUndoSnapshot` — `workers/src/entities.ts` — vitest — persist `undo_snapshot` as JSON on the activity row
 - `InFrameOverlay` / `ConfirmDrawer` — `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — drawers portal into `#overlay-root`; the Expo web app is full-bleed. The phone bezel is `landing/try`. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
 - `assemble` — `docs/scripts/assemble_pages.py` — unittest via `npm run test:board` — Pages tree is landing + `/app`, never the slicer board
 - `metro_path_for` / `rewrite_root_urls` — `docs/scripts/serve_landing.py` — unittest via `npm run test:board` — local `/try` iframes same-origin `/app` (proxied Metro)

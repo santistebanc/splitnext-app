@@ -77,6 +77,8 @@ export type ActivityEntity = {
   version: number;
   updated_at: string;
   deleted_at: string | null;
+  /** Target entity as it was before this event, when the event is undoable. */
+  undo_snapshot?: ExpenseEntity | MemberEntity | null;
 };
 
 export type SyncEntity =

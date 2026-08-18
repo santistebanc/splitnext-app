@@ -141,6 +141,37 @@ describe('mergeOne', () => {
     expect(store.rows.activities.a1.kind).toBe('expense_added');
   });
 
+  it('stores undo_snapshot on an accepted activity', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    store.upsert('expenses', { id: 'e1', payer_member_id: 'm1', amount_cents: 100 });
+    const snapshot = {
+      id: 'e1',
+      group_id: 'g1',
+      payer_member_id: 'm1',
+      amount_cents: 100,
+      description: 'x',
+      allocations: [],
+      version: 1,
+      updated_at: '2026-08-17T12:00:00.000Z',
+      deleted_at: null,
+    };
+    mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a1',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'expense_added',
+        actor_member_id: 'm1',
+        expense_id: 'e1',
+        member_id: '',
+        undo_snapshot: snapshot,
+      },
+    });
+    expect(store.rows.activities.a1.undo_snapshot).toEqual(snapshot);
+  });
+
   it('accepts expense_edited when the expense exists', () => {
     const store = memoryStore();
     store.upsert('members', { id: 'm1' });

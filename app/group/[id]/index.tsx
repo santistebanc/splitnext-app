@@ -393,9 +393,9 @@ export default function GroupHubScreen() {
             {!namesOnly && recentActivityLines.length > 0 ? (
               <View testID="activity-recent" style={styles.activitySection}>
                 <Text style={styles.activityHeading}>Recent activity</Text>
-                {recentActivityLines.map((line, index) => (
+                {recentActivityLines.map((line) => (
                   <ActivityRow
-                    key={`${line.at}-${line.description}-${index}`}
+                    key={line.id}
                     line={line}
                     lineStyle={styles.activityLine}
                     testID="activity-recent-row"
