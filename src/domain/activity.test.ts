@@ -63,6 +63,19 @@ describe('activityForExpenseAdded', () => {
     });
   });
 
+  it('carries the live expense as undo_snapshot when given', () => {
+    expect(
+      activityForExpenseAdded({
+        id: 'a1',
+        groupId: 'g1',
+        actorMemberId: 'm1',
+        expense,
+        at: '2026-08-17T12:00:00.000Z',
+        snapshot: expense,
+      })?.undo_snapshot,
+    ).toEqual(expense);
+  });
+
   it('returns null when the actor is missing', () => {
     expect(
       activityForExpenseAdded({
@@ -113,6 +126,19 @@ describe('activityForExpenseDeleted', () => {
         at: '2026-08-17T14:00:00.000Z',
       })?.kind,
     ).toBe('expense_deleted');
+  });
+
+  it('carries the live expense as undo_snapshot', () => {
+    expect(
+      activityForExpenseDeleted({
+        id: 'a3',
+        groupId: 'g1',
+        actorMemberId: 'm1',
+        expense,
+        at: '2026-08-17T14:00:00.000Z',
+        snapshot: expense,
+      })?.undo_snapshot,
+    ).toEqual(expense);
   });
 });
 
@@ -175,12 +201,60 @@ describe('formatActivityLine', () => {
         'm1',
       ),
     ).toEqual({
+      id: 'a1',
       kind: 'expense_added',
       who: 'You',
       description: 'Taxi',
       amount: '10.00 €',
       at: '2026-08-17T12:00:00.000Z',
+      canUndo: false,
     });
+  });
+
+  it('marks canUndo when this device is the actor and the snapshot still matches', () => {
+    expect(
+      formatActivityLine(
+        {
+          id: 'a1',
+          group_id: 'g1',
+          kind: 'expense_added',
+          actor_member_id: 'm1',
+          expense_id: 'e1',
+          member_id: '',
+          version: 1,
+          updated_at: '2026-08-17T12:00:00.000Z',
+          deleted_at: null,
+          undo_snapshot: expense,
+        },
+        { m1: ana },
+        { e1: expense },
+        'EUR',
+        'm1',
+      )?.canUndo,
+    ).toBe(true);
+  });
+
+  it('hides undo when the expense was edited after the add', () => {
+    expect(
+      formatActivityLine(
+        {
+          id: 'a1',
+          group_id: 'g1',
+          kind: 'expense_added',
+          actor_member_id: 'm1',
+          expense_id: 'e1',
+          member_id: '',
+          version: 1,
+          updated_at: '2026-08-17T12:00:00.000Z',
+          deleted_at: null,
+          undo_snapshot: expense,
+        },
+        { m1: ana },
+        { e1: { ...expense, version: 2 } },
+        'EUR',
+        'm1',
+      )?.canUndo,
+    ).toBe(false);
   });
 
   it('returns null when the expense is tombstoned for expense_added', () => {
@@ -225,11 +299,13 @@ describe('formatActivityLine', () => {
         'm1',
       ),
     ).toEqual({
+      id: 'a1',
       kind: 'expense_deleted',
       who: 'You',
       description: 'Taxi',
       amount: '10.00 €',
       at: '2026-08-17T12:00:00.000Z',
+      canUndo: false,
     });
   });
 
@@ -253,10 +329,12 @@ describe('formatActivityLine', () => {
         'm1',
       ),
     ).toEqual({
+      id: 'a1',
       kind: 'member_kicked',
       who: 'You',
       description: 'Bob',
       at: '2026-08-17T12:00:00.000Z',
+      canUndo: false,
     });
   });
 });

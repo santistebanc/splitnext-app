@@ -48,6 +48,20 @@ export function bindRow(item: MergeItem, groupId: string) {
   };
 }
 
+/** Snapshot as an object, whether the payload sent JSON text or a value. */
+export function parseUndoSnapshot(raw: unknown): unknown {
+  if (raw == null || raw === '') return null;
+  if (typeof raw === 'object') return raw;
+  if (typeof raw !== 'string') return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function activityRow(item: MergeItem, groupId: string) {
   return {
     id: item.id,
@@ -60,6 +74,7 @@ export function activityRow(item: MergeItem, groupId: string) {
     updated_at:
       (item.payload.updated_at as string) ?? new Date().toISOString(),
     deleted_at: (item.payload.deleted_at as string | null) ?? null,
+    undo_snapshot: parseUndoSnapshot(item.payload.undo_snapshot),
   };
 }
 

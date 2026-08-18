@@ -1,4 +1,5 @@
 import type { ActivityEntity, ExpenseEntity, MemberEntity } from '@/src/types/group';
+import { planUndo } from '@/src/domain/undo';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 
 export type ActivityKind =
@@ -12,24 +13,28 @@ export type ExpenseActivityInput = {
   id: string;
   groupId: string;
   actorMemberId: string;
-  expense: Pick<ExpenseEntity, 'id' | 'group_id'>;
+  expense: Pick<ExpenseEntity, 'id' | 'group_id'> | ExpenseEntity;
   at: string;
+  snapshot?: ExpenseEntity | null;
 };
 
 export type MemberActivityInput = {
   id: string;
   groupId: string;
   actorMemberId: string;
-  member: Pick<MemberEntity, 'id' | 'group_id'>;
+  member: Pick<MemberEntity, 'id' | 'group_id'> | MemberEntity;
   at: string;
+  snapshot?: MemberEntity | null;
 };
 
 export type ActivityLine = {
+  id: string;
   kind: ActivityKind;
   who: string;
   description: string;
   amount?: string;
   at: string;
+  canUndo: boolean;
 };
 
 const EXPENSE_KINDS = new Set<ActivityKind>([
@@ -42,7 +47,7 @@ function expenseActivity(
   kind: ActivityKind,
   input: ExpenseActivityInput,
 ): ActivityEntity | null {
-  const { id, groupId, actorMemberId, expense, at } = input;
+  const { id, groupId, actorMemberId, expense, at, snapshot } = input;
   if (!id || !groupId || !actorMemberId || !expense.id) return null;
   if (expense.group_id !== groupId) return null;
   return {
@@ -55,6 +60,7 @@ function expenseActivity(
     version: 1,
     updated_at: at,
     deleted_at: null,
+    ...(snapshot ? { undo_snapshot: snapshot } : {}),
   };
 }
 
@@ -62,7 +68,7 @@ function memberActivity(
   kind: ActivityKind,
   input: MemberActivityInput,
 ): ActivityEntity | null {
-  const { id, groupId, actorMemberId, member, at } = input;
+  const { id, groupId, actorMemberId, member, at, snapshot } = input;
   if (!id || !groupId || !actorMemberId || !member.id) return null;
   if (member.group_id !== groupId) return null;
   return {
@@ -75,6 +81,7 @@ function memberActivity(
     version: 1,
     updated_at: at,
     deleted_at: null,
+    ...(snapshot ? { undo_snapshot: snapshot } : {}),
   };
 }
 
@@ -122,6 +129,23 @@ function expenseDescription(expense: ExpenseEntity): string {
   return expense.description.trim() || '(no description)';
 }
 
+function lineCanUndo(
+  activity: ActivityEntity,
+  assumedMemberId: string | null,
+  members: Record<string, MemberEntity>,
+  expenses: Record<string, ExpenseEntity>,
+): boolean {
+  return (
+    planUndo({
+      activity,
+      assumedMemberId,
+      expense: expenses[activity.expense_id],
+      member: members[activity.member_id],
+      at: activity.updated_at,
+    }) != null
+  );
+}
+
 export function formatActivityLine(
   activity: ActivityEntity,
   members: Record<string, MemberEntity>,
@@ -140,11 +164,13 @@ export function formatActivityLine(
       return null;
     }
     return {
+      id: activity.id,
       kind: activity.kind,
       who,
       description: expenseDescription(expense),
       amount: formatMoney(expense.amount_cents, currency),
       at: activity.updated_at,
+      canUndo: lineCanUndo(activity, assumedMemberId, members, expenses),
     };
   }
 
@@ -152,6 +178,7 @@ export function formatActivityLine(
     const member = members[activity.member_id];
     if (!member) return null;
     return {
+      id: activity.id,
       kind: activity.kind,
       who,
       description: memberLabel(
@@ -159,6 +186,7 @@ export function formatActivityLine(
         activity.member_id === assumedMemberId,
       ),
       at: activity.updated_at,
+      canUndo: lineCanUndo(activity, assumedMemberId, members, expenses),
     };
   }
 

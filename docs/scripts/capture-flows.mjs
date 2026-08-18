@@ -263,6 +263,44 @@ const FLOWS = [
     },
   },
   {
+    id: 'F-undo',
+    from: 'bound',
+    async run(d, page) {
+      await d.tapNewExpense();
+      await d.typeAmount('5.00');
+      await d.type('What for', 'Lunch');
+      await d.tap('Add expense');
+      await d.beat(2400);
+      await d.press(page.getByTestId('activity-view-all'));
+      await d.beat(800);
+      const listed = await page.getByTestId('activity-page').innerText();
+      if (!/Lunch/.test(listed)) {
+        problems.push(
+          `[F-undo] activity list did not show Lunch (got ${JSON.stringify(listed.slice(0, 200))})`,
+        );
+      }
+      const undo = page.getByTestId('activity-undo');
+      if ((await undo.count()) === 0) {
+        problems.push('[F-undo] no Undo control on the add');
+        return;
+      }
+      await d.press(undo.first());
+      await d.beat(1200);
+      const after = await page.getByTestId('activity-page').innerText();
+      if (/Lunch/.test(after)) {
+        problems.push(
+          `[F-undo] Lunch still on Activity after Undo (got ${JSON.stringify(after.slice(0, 200))})`,
+        );
+      }
+      await page.goBack({ waitUntil: 'networkidle', timeout: 120000 });
+      await d.beat(800);
+      const hub = await page.innerText('body');
+      if (/Lunch/.test(hub)) {
+        problems.push('[F-undo] hub still mentions Lunch after Undo');
+      }
+    },
+  },
+  {
     id: 'F-edit-expense',
     from: 'spent',
     async run(d, page) {

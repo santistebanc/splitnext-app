@@ -291,7 +291,7 @@ export default function NewExpenseScreen() {
         visible={Boolean(editing && confirmingDelete)}
         onRequestClose={() => setConfirmingDelete(false)}
         title="Delete expense?"
-        message="This removes the expense from balances and lists. It cannot be undone yet."
+        message="This removes the expense from balances and lists. You can Undo it from Activity."
         confirmLabel="Delete expense"
         onConfirm={() => void onDelete()}
         testID="expense-delete-confirm"

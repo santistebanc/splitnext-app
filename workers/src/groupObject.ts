@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { mergeOne, type GroupStore, type MergeResult } from './merge';
-import type { MergeItem } from './entities';
+import { parseUndoSnapshot, type MergeItem } from './entities';
 
 type Sql = {
   exec<T extends Record<string, unknown>>(
@@ -60,6 +60,7 @@ export type ActivityRecord = {
   version: number;
   updated_at: string;
   deleted_at: string | null;
+  undo_snapshot?: string | null;
 };
 
 export class GroupObject extends DurableObject {
@@ -115,7 +116,8 @@ export class GroupObject extends DurableObject {
         member_id TEXT NOT NULL DEFAULT '',
         version INTEGER NOT NULL,
         updated_at TEXT NOT NULL,
-        deleted_at TEXT
+        deleted_at TEXT,
+        undo_snapshot TEXT
       )`);
     const activityColumns = this.sql
       .exec<{ name: string }>('PRAGMA table_info(activities)')
@@ -124,6 +126,9 @@ export class GroupObject extends DurableObject {
       this.sql.exec(
         `ALTER TABLE activities ADD COLUMN member_id TEXT NOT NULL DEFAULT ''`,
       );
+    }
+    if (!activityColumns.some((column) => column.name === 'undo_snapshot')) {
+      this.sql.exec(`ALTER TABLE activities ADD COLUMN undo_snapshot TEXT`);
     }
     this.sql.exec(
       `CREATE UNIQUE INDEX IF NOT EXISTS binds_one_active_per_device
@@ -436,8 +441,8 @@ function upsertRow(
   }
   if (entityType === 'activities') {
     sql.exec(
-      `INSERT INTO activities (id, group_id, kind, actor_member_id, expense_id, member_id, version, updated_at, deleted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO activities (id, group_id, kind, actor_member_id, expense_id, member_id, version, updated_at, deleted_at, undo_snapshot)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          kind = excluded.kind,
          actor_member_id = excluded.actor_member_id,
@@ -445,7 +450,8 @@ function upsertRow(
          member_id = excluded.member_id,
          version = excluded.version,
          updated_at = excluded.updated_at,
-         deleted_at = excluded.deleted_at`,
+         deleted_at = excluded.deleted_at,
+         undo_snapshot = excluded.undo_snapshot`,
       row.id,
       groupId,
       row.kind,
@@ -455,6 +461,9 @@ function upsertRow(
       row.version,
       row.updated_at,
       row.deleted_at,
+      row.undo_snapshot == null
+        ? null
+        : JSON.stringify(row.undo_snapshot),
     );
     return;
   }
@@ -537,6 +546,7 @@ function expenseEntity(row: ExpenseRecord) {
 }
 
 function activityEntity(row: ActivityRecord) {
+  const snapshot = parseUndoSnapshot(row.undo_snapshot);
   return {
     id: row.id,
     group_id: row.group_id,
@@ -547,5 +557,6 @@ function activityEntity(row: ActivityRecord) {
     version: row.version,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,
+    ...(snapshot ? { undo_snapshot: snapshot } : {}),
   };
 }

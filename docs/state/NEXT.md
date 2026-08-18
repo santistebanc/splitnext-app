@@ -1,15 +1,51 @@
-# Next slice — pick from parking
+# Slice 0041 — invite landing
 
-**Tier** — steer from `docs/state/PARKING.md`
+**Tier** — breadth
 
-## Candidates (risk-first)
+## Goal
 
-1. **Undo on activity** — `undo_snapshot` on destructive jobs; foundation-risk for activity UX.
-2. **Invite landing** — `/j/{token}` using `landing/` chrome; send a phone to the app, desktop can redeem.
-3. **Legal** — privacy/terms on the same static site.
+Opening `/j/{token}` on the public site shows a SplitNext invite page (landing chrome). A phone is pointed at the app; desktop continues to redeem.
 
-## Parked this session
+## Before → After
 
-- Store listings, per-group push mute, pending badge
+| Aspect | Before | After |
+| --- | --- | --- |
+| `splitnext.online/j/{token}` | 404 or Expo `/app/j/…` if they hit `/app` | Static invite page using `landing/` chrome |
+| Phone | No store/app CTA on the public host | CTA toward the app (stores parked) |
+| Desktop | Must already be in `/app` | Continue to redeem at `/app/j/{token}` |
 
-Propose one slice in interview format before building.
+## Plan
+
+1. Root `landing/404.html`: if the path is `/j/{token}`, render invite chrome; otherwise a normal not-found.
+2. Phone: copy that points at installing/opening the app; do not link the v1 store listing.
+3. Desktop: continue into `/app/j/{token}` (existing `L-join`).
+4. Local `npm run landing` serves the same 404 fallback so `/j/…` can be tried.
+
+## Seams under test
+
+| Seam | Behavior |
+| --- | --- |
+| Invite path detect | `/j/{token}` is an invite; other unknown paths are not |
+| Token extract | 11-char secret pulled from the path |
+
+## Acceptance
+
+- Desktop `/j/{token}` shows invite chrome and a continue control into `/app/j/{token}`.
+- Phone-sized `/j/{token}` shows app-directed copy, not a store listing.
+- `/no-such-page` is a generic 404, not invite chrome.
+- Landing home and `/try` unchanged.
+
+## Edge paths
+
+| Surface | State | What happens |
+| --- | --- | --- |
+| Invite page | missing/short token | Generic 404 |
+| Invite page | desktop | Continue to `/app/j/{token}` |
+| Invite page | narrow window | App CTA; stores stay parked |
+
+## Out of scope
+
+- Store listings
+- Deep-link `.well-known` / Expo Go app links
+- Legal
+- Changing token format or redeem

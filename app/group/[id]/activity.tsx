@@ -2,7 +2,7 @@ import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
 import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
 import { activityLines } from '@/src/domain/activity';
 import { getGroupStore } from '@/src/store/groupStore';
-import { openGroup } from '@/src/sync/groupSync';
+import { openGroup, undoActivity } from '@/src/sync/groupSync';
 import { ActivityRow } from '@/src/ui/ActivityRow';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -60,13 +60,17 @@ export default function ActivityScreen() {
       {lines.length === 0 ? (
         <Text style={styles.hint}>No activity yet.</Text>
       ) : (
-        lines.map((line, index) => (
+        lines.map((line) => (
           <View
-            key={`${line.at}-${line.description}-${index}`}
+            key={line.id}
             style={styles.row}
             testID="activity-row"
           >
-            <ActivityRow line={line} lineStyle={styles.rowText} />
+            <ActivityRow
+              line={line}
+              lineStyle={styles.rowText}
+              onUndo={() => void undoActivity(groupId, line.id)}
+            />
           </View>
         ))
       )}

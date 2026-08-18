@@ -241,3 +241,13 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 2. It retries after `L-wakeCatchUp`'s backoff (1s, then doubling, capped at 30s). A close of a socket it already replaced is ignored.
 3. When the socket is `OPEN` again, `L-wakeCatchUp` says this group missed wakes. The first `OPEN` does not, because `L-openGroup` already ran `L-syncGroup`.
 4. `L-wakeSub` runs `L-syncGroup` for that group only — flush, fetch the group, pull the roster — the same catch-up as Open group.
+
+## F-undo — Undo from Activity
+
+**Trigger** — After adding, deleting, or kicking from this device, the person opens **View all events** and taps **Undo** on that line.  
+**Outcome** — The add is gone, or the delete/kick is restored. The activity line disappears. Someone else's line has no Undo.
+
+1. `L-addExpense`, `L-deleteExpense`, or `L-deleteMember` stored the pre-job entity on `undo_snapshot` of the activity.
+2. `L-activity` shows **Undo** on that line when `L-formatActivityLine` says `canUndo` (`L-planUndo` would succeed: this device is the actor, snapshot present, add not edited since).
+3. Tap calls `L-undoActivity`, which applies `L-planUndo`: tombstone the added expense, or restore the deleted expense / kicked member at the current version + 1, then tombstone the activity. Entity then activity are queued; `L-flushQueue` sends them.
+4. Hub lists and balances refold without waiting for the network. A stale add (edited after) or a foreign line has no control.
