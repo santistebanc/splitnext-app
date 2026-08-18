@@ -1,10 +1,10 @@
 import type { ActivityLine } from '@/src/domain/activity';
 import { colors } from '@/src/ui/theme';
-import { StyleSheet, Text, type TextStyle } from 'react-native';
+import { StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
 
 type Props = {
   line: ActivityLine;
-  style?: TextStyle;
+  style?: StyleProp<TextStyle>;
   descriptionStyle?: TextStyle;
   testID?: string;
 };

@@ -3,20 +3,28 @@ import {
   assumedMemberIdFromBinds,
   bindingIsOpen,
 } from '@/src/domain/assumedMember';
-import { activityLines } from '@/src/domain/activity';
+import {
+  activitiesFromOthers,
+  activityLines,
+  formatActivityLine,
+  type ActivityLine,
+} from '@/src/domain/activity';
 import { computeBalances } from '@/src/domain/balances';
 import { lobbyGroupTitle } from '@/src/domain/lobby';
 import { getGroupStore } from '@/src/store/groupStore';
 import { addMember, openGroup } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
-import { ActivityLineText } from '@/src/ui/ActivityLineText';
+import { ActivityRow } from '@/src/ui/ActivityRow';
+import { ActivityToast } from '@/src/ui/ActivityToast';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
 import { SymbolView } from 'expo-symbols';
 import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import type { ActivityEntity } from '@/src/types/group';
 
 const TYPE_MAX = 48;
 const TYPE_MIN = 14;
@@ -80,12 +88,29 @@ export default function GroupHubScreen() {
   const [areaH, setAreaH] = useState(0);
   const [areaW, setAreaW] = useState(0);
   const [titleH, setTitleH] = useState(TITLE_FALLBACK_H);
+  const [syncReady, setSyncReady] = useState(false);
+  const [toastLine, setToastLine] = useState<ActivityLine | null>(null);
+  const knownActivityIdsRef = useRef<Set<string>>(new Set());
+
+  const dismissToast = useCallback(() => setToastLine(null), []);
 
   useEffect(() => {
     if (!groupId) return;
-    void openGroup(groupId);
+    setSyncReady(false);
+    setToastLine(null);
+    knownActivityIdsRef.current = new Set();
     void getOrCreateDeviceUserId().then(setDeviceUserId);
-  }, [groupId]);
+    void (async () => {
+      await openGroup(groupId);
+      const live = store$.activities.get() ?? {};
+      knownActivityIdsRef.current = new Set(
+        Object.entries(live)
+          .filter(([, activity]) => activity.deleted_at == null)
+          .map(([id]) => id),
+      );
+      setSyncReady(true);
+    })();
+  }, [groupId, store$]);
 
   const title = lobbyGroupTitle(group.name);
   useEffect(() => {
@@ -160,6 +185,48 @@ export default function GroupHubScreen() {
     [activities, members, expenses, currency, assumedMemberId],
   );
   const recentActivityLines = allActivityLines.slice(0, 3);
+
+  useEffect(() => {
+    if (!syncReady || !assumedMemberId) return;
+    const after = activities ?? {};
+    const known = knownActivityIdsRef.current;
+    const before = Object.fromEntries(
+      [...known]
+        .filter((id) => after[id])
+        .map((id) => [id, after[id] as ActivityEntity]),
+    );
+
+    for (const activity of Object.values(after)) {
+      if (activity.deleted_at != null) continue;
+      if (activity.actor_member_id === assumedMemberId || before[activity.id]) {
+        known.add(activity.id);
+      }
+    }
+
+    const foreign = activitiesFromOthers(before, after, assumedMemberId);
+    if (foreign.length === 0) return;
+
+    const line = formatActivityLine(
+      foreign[0],
+      members ?? {},
+      expenses ?? {},
+      currency,
+      assumedMemberId,
+    );
+    if (!line) return;
+
+    setToastLine(line);
+    for (const activity of foreign) {
+      known.add(activity.id);
+    }
+  }, [
+    syncReady,
+    activities,
+    assumedMemberId,
+    members,
+    expenses,
+    currency,
+  ]);
 
   const onAdd = async () => {
     if (!newName.trim() || busy) return;
@@ -327,10 +394,10 @@ export default function GroupHubScreen() {
               <View testID="activity-recent" style={styles.activitySection}>
                 <Text style={styles.activityHeading}>Recent activity</Text>
                 {recentActivityLines.map((line, index) => (
-                  <ActivityLineText
-                    key={`${line.description}-${line.amount}-${index}`}
+                  <ActivityRow
+                    key={`${line.at}-${line.description}-${index}`}
                     line={line}
-                    style={styles.activityLine}
+                    lineStyle={styles.activityLine}
                     testID="activity-recent-row"
                   />
                 ))}
@@ -378,6 +445,15 @@ export default function GroupHubScreen() {
           <Text style={styles.expensesBarText}>View all expenses</Text>
         </Pressable>
       ) : null}
+
+      <ActivityToast
+        line={toastLine}
+        onDismiss={dismissToast}
+        onPress={() => {
+          dismissToast();
+          router.push(`/group/${groupId}/activity` as Href);
+        }}
+      />
 
     </View>
   );

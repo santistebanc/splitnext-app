@@ -107,8 +107,9 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Outcome** — One line for that add (“You added …” with description and amount). Newest first.
 
 1. `L-addExpense` already wrote the `expense_added` activity when this device has an assumed member.
-2. `L-hub` shows up to three lines pinned above the expense CTAs via `L-formatActivityLine` and `L-activityLineText`.
-3. **View all events** opens `L-activity` with every live event.
+2. `L-hub` shows up to three lines pinned above the expense CTAs via `L-activityRow` (`L-formatActivityLine`, `L-relativeTime`).
+3. **View all events** opens `L-activity` with every live event and relative timestamps.
+4. On another device, the same add wakes this hub; `L-activitiesFromOthers` surfaces it and `L-activityToast` shows a top banner until dismiss or tap (opens `L-activity`).
 
 ## F-edit-expense — Edit an expense
 

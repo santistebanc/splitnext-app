@@ -3,7 +3,7 @@ import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
 import { activityLines } from '@/src/domain/activity';
 import { getGroupStore } from '@/src/store/groupStore';
 import { openGroup } from '@/src/sync/groupSync';
-import { ActivityLineText } from '@/src/ui/ActivityLineText';
+import { ActivityRow } from '@/src/ui/ActivityRow';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
@@ -62,11 +62,11 @@ export default function ActivityScreen() {
       ) : (
         lines.map((line, index) => (
           <View
-            key={`${line.description}-${line.amount}-${index}`}
+            key={`${line.at}-${line.description}-${index}`}
             style={styles.row}
             testID="activity-row"
           >
-            <ActivityLineText line={line} style={styles.rowText} />
+            <ActivityRow line={line} lineStyle={styles.rowText} />
           </View>
         ))
       )}

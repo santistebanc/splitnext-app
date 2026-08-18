@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { ExpenseEntity, MemberEntity } from '@/src/types/group';
+import type { ActivityEntity, ExpenseEntity, MemberEntity } from '@/src/types/group';
 import {
   activityForExpenseAdded,
+  activitiesFromOthers,
   formatActivityLine,
   sortActivities,
 } from './activity';
@@ -96,6 +97,7 @@ describe('formatActivityLine', () => {
       who: 'You',
       description: 'Taxi',
       amount: '10.00 €',
+      at: '2026-08-17T12:00:00.000Z',
     });
   });
 
@@ -156,5 +158,65 @@ describe('sortActivities', () => {
       },
     });
     expect(sorted.map((a) => a.id)).toEqual(['a-new', 'a-old']);
+  });
+});
+
+const activity = (
+  id: string,
+  actorId: string,
+  expenseId: string,
+  at: string,
+): ActivityEntity => ({
+  id,
+  group_id: 'g1',
+  kind: 'expense_added',
+  actor_member_id: actorId,
+  expense_id: expenseId,
+  version: 1,
+  updated_at: at,
+  deleted_at: null,
+});
+
+describe('activitiesFromOthers', () => {
+  it('returns empty when there is no assumed member', () => {
+    expect(
+      activitiesFromOthers(
+        {},
+        { a1: activity('a1', 'm2', 'e1', '2026-08-17T12:00:00.000Z') },
+        null,
+      ),
+    ).toEqual([]);
+  });
+
+  it('excludes activities from this device', () => {
+    expect(
+      activitiesFromOthers(
+        {},
+        { a1: activity('a1', 'm1', 'e1', '2026-08-17T12:00:00.000Z') },
+        'm1',
+      ),
+    ).toEqual([]);
+  });
+
+  it('returns only activities that were not in the before snapshot', () => {
+    const before = { a1: activity('a1', 'm2', 'e1', '2026-08-16T12:00:00.000Z') };
+    const after = {
+      ...before,
+      a2: activity('a2', 'm2', 'e2', '2026-08-17T12:00:00.000Z'),
+    };
+    expect(activitiesFromOthers(before, after, 'm1').map((a) => a.id)).toEqual([
+      'a2',
+    ]);
+  });
+
+  it('orders multiple new foreign activities newest first', () => {
+    const after = {
+      a1: activity('a1', 'm2', 'e1', '2026-08-16T12:00:00.000Z'),
+      a2: activity('a2', 'm2', 'e2', '2026-08-18T12:00:00.000Z'),
+    };
+    expect(activitiesFromOthers({}, after, 'm1').map((a) => a.id)).toEqual([
+      'a2',
+      'a1',
+    ]);
   });
 });

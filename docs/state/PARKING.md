@@ -4,7 +4,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 ## Foundation-risk
 
-- **Activity spine** — `expense_added` merge entity, hub recent section, Activity page — delivered in [slice 0034](slices/0034-activity-spine.md). Still parked: other event kinds (edit/delete/kick/rename/join/leave/group rename), toast, push, undo / `undo_snapshot`. — area: activity — raised: bootstrap · restated: steering after 0029
+- **Activity spine** — `expense_added`, hub recent section, Activity page, relative timestamps, hub toast — delivered through [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md). Still parked: other event kinds (edit/delete/kick/rename/join/leave/group rename), push, undo / `undo_snapshot`. — area: activity — raised: bootstrap · restated: steering after 0029
 - **Mixed / uneven splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
 
 - **Soft-delete an expense** — delivered in [slice 0031](slices/0031-expense-delete.md).
@@ -41,7 +41,6 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Invite landing** — `/j/{token}` on the web: a landing that can send a phone to the app/store and still lets desktop continue to redeem. Not a marketing site. — area: invites — raised: steering after 0029
 - **Legal** — public privacy + terms that match actual behaviour (no accounts, capability tokens, what is stored). Deletion-on-request without a join code is part of this, not v1's join-code verified wipe. — area: legal — raised: steering after 0029
 - **Pending badge** — an expense (or row) that has not been acknowledged by the server is visibly pending. — area: sync — raised: steering after 0029
-- **Activity toast** — a live toast when someone else writes; depends on richer activity events and wake delivery. — area: awareness — raised: steering after 0029
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
 - **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — `/j/{token}` shipped (D-080); the short origin is still parked — area: invites — raised: bootstrap · *partially delivered in 0028*
@@ -85,3 +84,5 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Kick member** — delivered in [slice 0033](slices/0033-kick-member.md).
 
 - **Activity spine** — delivered in [slice 0034](slices/0034-activity-spine.md).
+
+- **Activity toast + relative time** — delivered in [slice 0035](slices/0035-activity-toast.md).
