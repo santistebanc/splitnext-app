@@ -17,6 +17,7 @@ import {
   addLobbyGroupId,
   listLobbyGroupIds,
   saveAccessToken,
+  saveLastOpenedGroupId,
 } from '@/src/secrets/tokens';
 import { getGroupStore, initLocalGroup } from '@/src/store/groupStore';
 import { runExclusive } from '@/src/sync/exclusive';
@@ -533,6 +534,7 @@ export async function syncAllLobbyGroups(): Promise<void> {
 
 export async function openGroup(groupId: string): Promise<void> {
   getGroupStore(groupId);
+  await saveLastOpenedGroupId(groupId);
   try {
     await startWakeSubscription(groupId, () => syncGroup(groupId));
   } catch {

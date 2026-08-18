@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0035
+Last updated: slice 0037
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: push/undo on activity, last-opened group, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Product still to land: push/undo on activity, invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -27,6 +27,7 @@ Last updated: slice 0035
 - Create a group from a form (group name, your name, currency), mint a per-device access token, persist locally with the creator already bound, sync the group to the server, and land on the hub of names — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0027](slices/0027-first-run.md)
 - Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + directly under the list; **Recent activity** (last three, with relative times) pinned above the expense CTAs once anything is recorded; a top toast when someone else mutates the group while this hub is open; **View all events** opens the activity page; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
+- Relaunch into the last-opened group hub when that group is still on the lobby (Home still returns to the list) — [slice 0037](slices/0037-last-opened-group.md)
 - Auto-flush outbound queue + thin inbound group fetch on group open and app foreground (all lobby groups) — [slice 0002](slices/0002-queue-auto-flush.md)
 - Add name-slot members, bind this device to one (assumed member), show You on hub; roster list-pull on open/foreground — [slice 0003](slices/0003-members-binds.md)
 - Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version` — [slice 0004](slices/0004-sync-quality-harden.md)
@@ -107,7 +108,7 @@ Last updated: slice 0035
 
 | Route | What it does | Shipped in |
 | --- | --- | --- |
-| `/` | Lobby (no header, content vertically centered): groups by name with a one-line member summary (hidden when empty), quiet Join with link, Create group under that; root AppState sync | slice 0001 / 0002 / 0012 / 0027 |
+| `/` | Lobby (no header, content vertically centered): groups by name with a one-line member summary (hidden when empty), quiet Join with link, Create group under that; on first visit each session auto-opens the last hub when still known; root AppState sync | slice 0001 / 0002 / 0012 / 0027 / 0037 |
 | `/create` | Create form: group name, your name, currency; submit opens the hub named and bound | slice 0027 |
 | `/j/[token]` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 / 0028 |
 | `/join` | Same redeem as `/j/[token]`, via `?token=` (legacy) | slice 0012 |
@@ -139,7 +140,7 @@ Last updated: slice 0035
 - `patchGroup` / `settingsDoneEnabled` / `createGroupDraft` — `src/domain/group.ts` — vitest — next group version for a name and/or currency patch; empty currency keeps the current label. Done on Settings needs a name and an assumed member. Create draft is named group + creator + bind, or null.
 - `formatCents` / `formatMoney` / `memberLabel` — `src/ui/format.ts` — integer cents as decimal text with the currency's symbol; assumed member is You
 - `currencySymbol` / `allCurrencies` — `src/domain/currency.ts` — vitest — ISO code to display symbol; picker catalog of tender currencies
-- `lobbyGroupTitle` / `lobbyMemberSummary` — `src/domain/lobby.ts` — vitest — lobby row title and one-line live member list
+- `lastOpenedHubId` — `src/domain/lastOpened.ts` — vitest — pick hub when last-opened id is still on lobby
 - `patchMember` — `src/domain/member.ts` — vitest — next member version for a display-name change; whitespace or unchanged name is null
 - `tombstoneMember` — `src/domain/member.ts` — vitest — soft-delete a live member at the next version
 - `activityForExpenseAdded` / `activityForExpenseEdited` / `activityForExpenseDeleted` / `activityForMemberKicked` / `activityForMemberRenamed` / `formatActivityLine` / `sortActivities` — `src/domain/activity.ts` — vitest — build and format activity events; newest first
