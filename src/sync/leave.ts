@@ -18,6 +18,7 @@ import { stopWakeSubscription } from '@/src/sync/wake';
  */
 export async function leaveGroup(groupId: string): Promise<boolean> {
   const store$ = getGroupStore(groupId);
+  stopWakeSubscription(groupId);
   const deviceUserId = await getOrCreateDeviceUserId();
   const binds = store$.binds.get() ?? {};
   const live = Object.values(binds).find(

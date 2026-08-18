@@ -122,8 +122,11 @@ export async function startWakeSubscription(
       if (parsed.event === 'wake' && payload?.group_id === groupId) {
         const catchUp = reconnectByGroup.get(groupId);
         if (!catchUp) return;
-        void Promise.resolve(catchUp()).catch(() => {
-          // syncGroup records lastError; never let it kill the socket callback.
+        void getAccessToken(groupId).then((token) => {
+          if (!token) return;
+          void Promise.resolve(catchUp()).catch(() => {
+            // syncGroup records lastError; never let it kill the socket callback.
+          });
         });
       }
     };
