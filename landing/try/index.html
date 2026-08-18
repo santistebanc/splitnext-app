@@ -52,8 +52,12 @@
         top: 16px;
         left: 16px;
         z-index: 2;
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
         color: #5c5f52;
-        font: 600 14px system-ui, sans-serif;
+        font: 600 28px/1 system-ui, sans-serif;
         text-decoration: none;
       }
       .try-back:hover {
@@ -62,7 +66,7 @@
     </style>
   </head>
   <body>
-    <a class="try-back" href="../">← SplitNext</a>
+    <a class="try-back" href="../" aria-label="Back">←</a>
     <div class="try-stage">
       <div class="try-sizer">
         <div class="try-frame">
