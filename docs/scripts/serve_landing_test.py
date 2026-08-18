@@ -34,8 +34,10 @@ class ServeTry(unittest.TestCase):
         thread.start()
         try:
             port = server.server_address[1]
-            html = urllib.request.urlopen(f"http://127.0.0.1:{port}/try/").read().decode()
-            home = urllib.request.urlopen(f"http://127.0.0.1:{port}/").read().decode()
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/try/") as res:
+                html = res.read().decode()
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/") as res:
+                home = res.read().decode()
         finally:
             server.shutdown()
         self.assertIn('window.SPLITNEXT_APP="http://127.0.0.1:8081/"', html)
