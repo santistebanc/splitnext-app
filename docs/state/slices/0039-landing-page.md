@@ -54,7 +54,7 @@ Open the site → landing → Use on web → live app in a bezel; `/app` and cap
 
 - **Invariants** — Worker/sync/money/capability door unchanged. Pages still same-origin `/app` (D-031 narrowed, not reversed).
 - **Spec** — Production `/` is the landing; board is local-only; phone bezel is `/try` only. Invite landing, legal, and store buttons stayed parked.
-- **Standards** — `assemble` is the seam (`assemble_pages_test` plus a Pages workflow assertion that CI never runs `generate-slicer-board.py`). `inject_app_origin` is the local-frame seam (D-094). Phone-scale CSS lives once, on `/try`. Overlay host is `#overlay-root` with `position: fixed` now that there is no in-app bezel.
+- **Standards** — `assemble` is the seam (`assemble_pages_test` plus a Pages workflow assertion that CI never runs `generate-slicer-board.py`). `metro_path_for` / `rewrite_root_urls` is the local-frame seam (D-094): `/try` iframes same-origin `/app`, proxied to Metro. Phone-scale CSS lives once, on `/try`. Overlay host is `#overlay-root` with `position: fixed` now that there is no in-app bezel.
 
 ### Shots
 

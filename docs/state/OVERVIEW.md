@@ -150,7 +150,7 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/app` 
 - `activityForExpenseAdded` / `activityForExpenseEdited` / `activityForExpenseDeleted` / `activityForMemberKicked` / `activityForMemberRenamed` / `formatActivityLine` / `sortActivities` — `src/domain/activity.ts` — vitest — build and format activity events; newest first
 - `InFrameOverlay` / `ConfirmDrawer` — `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — drawers portal into `#overlay-root`; the Expo web app is full-bleed. The phone bezel is `landing/try`. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
 - `assemble` — `docs/scripts/assemble_pages.py` — unittest via `npm run test:board` — Pages tree is landing + `/app`, never the slicer board
-- `inject_app_origin` — `docs/scripts/serve_landing.py` — unittest via `npm run test:board` — local `/try` points at Metro; assembled HTML does not
+- `metro_path_for` / `rewrite_root_urls` — `docs/scripts/serve_landing.py` — unittest via `npm run test:board` — local `/try` iframes same-origin `/app` (proxied Metro)
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload. `--assert-only` skips writing clips. CI runs that against a local Worker (`npm run capture:ci`).
