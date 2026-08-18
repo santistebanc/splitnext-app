@@ -10,11 +10,49 @@ type Props = {
 };
 
 export function ActivityLineText({ line, style, descriptionStyle, testID }: Props) {
+  const emphasis = [styles.description, descriptionStyle];
+
+  if (line.kind === 'expense_edited') {
+    return (
+      <Text style={style} testID={testID}>
+        {line.who} edited{' '}
+        <Text style={emphasis}>{line.description}</Text>
+        {line.amount ? <> {line.amount}</> : null}
+      </Text>
+    );
+  }
+
+  if (line.kind === 'expense_deleted') {
+    return (
+      <Text style={style} testID={testID}>
+        {line.who} deleted{' '}
+        <Text style={emphasis}>{line.description}</Text>
+        {line.amount ? <> {line.amount}</> : null}
+      </Text>
+    );
+  }
+
+  if (line.kind === 'member_kicked') {
+    return (
+      <Text style={style} testID={testID}>
+        {line.who} removed <Text style={emphasis}>{line.description}</Text>
+      </Text>
+    );
+  }
+
+  if (line.kind === 'member_renamed') {
+    return (
+      <Text style={style} testID={testID}>
+        {line.who} renamed <Text style={emphasis}>{line.description}</Text>
+      </Text>
+    );
+  }
+
   return (
     <Text style={style} testID={testID}>
       {line.who} added{' '}
-      <Text style={[styles.description, descriptionStyle]}>{line.description}</Text>{' '}
-      {line.amount}
+      <Text style={emphasis}>{line.description}</Text>
+      {line.amount ? <> {line.amount}</> : null}
     </Text>
   );
 }

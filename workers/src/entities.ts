@@ -55,6 +55,7 @@ export function activityRow(item: MergeItem, groupId: string) {
     kind: String(item.payload.kind ?? ''),
     actor_member_id: String(item.payload.actor_member_id ?? ''),
     expense_id: String(item.payload.expense_id ?? ''),
+    member_id: String(item.payload.member_id ?? ''),
     version: item.version,
     updated_at:
       (item.payload.updated_at as string) ?? new Date().toISOString(),

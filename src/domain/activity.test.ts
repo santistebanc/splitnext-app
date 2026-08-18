@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { ActivityEntity, ExpenseEntity, MemberEntity } from '@/src/types/group';
 import {
   activityForExpenseAdded,
+  activityForExpenseDeleted,
+  activityForExpenseEdited,
+  activityForMemberKicked,
+  activityForMemberRenamed,
   activitiesFromOthers,
   formatActivityLine,
   sortActivities,
@@ -27,6 +31,15 @@ const ana: MemberEntity = {
   deleted_at: null,
 };
 
+const bob: MemberEntity = {
+  id: 'm2',
+  group_id: 'g1',
+  display_name: 'Bob',
+  version: 1,
+  updated_at: '2026-08-01T00:00:00.000Z',
+  deleted_at: null,
+};
+
 describe('activityForExpenseAdded', () => {
   it('creates a version-1 expense_added event', () => {
     expect(
@@ -43,6 +56,7 @@ describe('activityForExpenseAdded', () => {
       kind: 'expense_added',
       actor_member_id: 'm1',
       expense_id: 'e1',
+      member_id: '',
       version: 1,
       updated_at: '2026-08-17T12:00:00.000Z',
       deleted_at: null,
@@ -74,8 +88,74 @@ describe('activityForExpenseAdded', () => {
   });
 });
 
+describe('activityForExpenseEdited', () => {
+  it('creates an expense_edited event', () => {
+    expect(
+      activityForExpenseEdited({
+        id: 'a2',
+        groupId: 'g1',
+        actorMemberId: 'm1',
+        expense,
+        at: '2026-08-17T13:00:00.000Z',
+      })?.kind,
+    ).toBe('expense_edited');
+  });
+});
+
+describe('activityForExpenseDeleted', () => {
+  it('creates an expense_deleted event', () => {
+    expect(
+      activityForExpenseDeleted({
+        id: 'a3',
+        groupId: 'g1',
+        actorMemberId: 'm1',
+        expense,
+        at: '2026-08-17T14:00:00.000Z',
+      })?.kind,
+    ).toBe('expense_deleted');
+  });
+});
+
+describe('activityForMemberKicked', () => {
+  it('creates a member_kicked event', () => {
+    expect(
+      activityForMemberKicked({
+        id: 'a4',
+        groupId: 'g1',
+        actorMemberId: 'm1',
+        member: bob,
+        at: '2026-08-17T15:00:00.000Z',
+      }),
+    ).toEqual({
+      id: 'a4',
+      group_id: 'g1',
+      kind: 'member_kicked',
+      actor_member_id: 'm1',
+      expense_id: '',
+      member_id: 'm2',
+      version: 1,
+      updated_at: '2026-08-17T15:00:00.000Z',
+      deleted_at: null,
+    });
+  });
+});
+
+describe('activityForMemberRenamed', () => {
+  it('creates a member_renamed event', () => {
+    expect(
+      activityForMemberRenamed({
+        id: 'a5',
+        groupId: 'g1',
+        actorMemberId: 'm1',
+        member: bob,
+        at: '2026-08-17T16:00:00.000Z',
+      })?.kind,
+    ).toBe('member_renamed');
+  });
+});
+
 describe('formatActivityLine', () => {
-  it('labels the assumed member as You', () => {
+  it('labels the assumed member as You for expense_added', () => {
     expect(
       formatActivityLine(
         {
@@ -84,6 +164,7 @@ describe('formatActivityLine', () => {
           kind: 'expense_added',
           actor_member_id: 'm1',
           expense_id: 'e1',
+          member_id: '',
           version: 1,
           updated_at: '2026-08-17T12:00:00.000Z',
           deleted_at: null,
@@ -94,6 +175,7 @@ describe('formatActivityLine', () => {
         'm1',
       ),
     ).toEqual({
+      kind: 'expense_added',
       who: 'You',
       description: 'Taxi',
       amount: '10.00 €',
@@ -101,7 +183,7 @@ describe('formatActivityLine', () => {
     });
   });
 
-  it('returns null when the expense is tombstoned', () => {
+  it('returns null when the expense is tombstoned for expense_added', () => {
     expect(
       formatActivityLine(
         {
@@ -110,6 +192,7 @@ describe('formatActivityLine', () => {
           kind: 'expense_added',
           actor_member_id: 'm1',
           expense_id: 'e1',
+          member_id: '',
           version: 1,
           updated_at: '2026-08-17T12:00:00.000Z',
           deleted_at: null,
@@ -120,6 +203,61 @@ describe('formatActivityLine', () => {
         'm1',
       ),
     ).toBeNull();
+  });
+
+  it('still formats expense_deleted when the expense is tombstoned', () => {
+    expect(
+      formatActivityLine(
+        {
+          id: 'a1',
+          group_id: 'g1',
+          kind: 'expense_deleted',
+          actor_member_id: 'm1',
+          expense_id: 'e1',
+          member_id: '',
+          version: 1,
+          updated_at: '2026-08-17T12:00:00.000Z',
+          deleted_at: null,
+        },
+        { m1: ana },
+        { e1: { ...expense, deleted_at: '2026-08-18T00:00:00.000Z' } },
+        'EUR',
+        'm1',
+      ),
+    ).toEqual({
+      kind: 'expense_deleted',
+      who: 'You',
+      description: 'Taxi',
+      amount: '10.00 €',
+      at: '2026-08-17T12:00:00.000Z',
+    });
+  });
+
+  it('formats member_kicked for a tombstoned member', () => {
+    expect(
+      formatActivityLine(
+        {
+          id: 'a1',
+          group_id: 'g1',
+          kind: 'member_kicked',
+          actor_member_id: 'm1',
+          expense_id: '',
+          member_id: 'm2',
+          version: 1,
+          updated_at: '2026-08-17T12:00:00.000Z',
+          deleted_at: null,
+        },
+        { m1: ana, m2: { ...bob, deleted_at: '2026-08-18T00:00:00.000Z' } },
+        {},
+        'EUR',
+        'm1',
+      ),
+    ).toEqual({
+      kind: 'member_kicked',
+      who: 'You',
+      description: 'Bob',
+      at: '2026-08-17T12:00:00.000Z',
+    });
   });
 });
 
@@ -132,6 +270,7 @@ describe('sortActivities', () => {
         kind: 'expense_added',
         actor_member_id: 'm1',
         expense_id: 'e1',
+        member_id: '',
         version: 1,
         updated_at: '2026-08-16T12:00:00.000Z',
         deleted_at: null,
@@ -142,6 +281,7 @@ describe('sortActivities', () => {
         kind: 'expense_added',
         actor_member_id: 'm1',
         expense_id: 'e2',
+        member_id: '',
         version: 1,
         updated_at: '2026-08-17T12:00:00.000Z',
         deleted_at: null,
@@ -152,6 +292,7 @@ describe('sortActivities', () => {
         kind: 'expense_added',
         actor_member_id: 'm1',
         expense_id: 'e3',
+        member_id: '',
         version: 1,
         updated_at: '2026-08-18T12:00:00.000Z',
         deleted_at: '2026-08-18T12:00:00.000Z',
@@ -172,6 +313,7 @@ const activity = (
   kind: 'expense_added',
   actor_member_id: actorId,
   expense_id: expenseId,
+  member_id: '',
   version: 1,
   updated_at: at,
   deleted_at: null,

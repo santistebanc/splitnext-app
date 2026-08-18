@@ -214,10 +214,11 @@ const FLOWS = [
       await d.beat(400);
       await d.press(page.getByTestId('member-remove-confirm-ok'));
       await d.beat(2000);
-      const body = await page.innerText('body');
-      if (/\bBo\b/.test(body)) {
+      const memberRows = await page.getByTestId('balance-row').allInnerTexts();
+      if (memberRows.some((row) => /\bBo\b/.test(row))) {
         problems.push('[F-kick-member] hub still shows Bo');
       }
+      const body = await page.innerText('body');
       if (!/\bCy\b/.test(body)) {
         problems.push('[F-kick-member] hub lost Cy');
       }

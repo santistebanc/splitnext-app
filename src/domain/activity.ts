@@ -1,9 +1,14 @@
 import type { ActivityEntity, ExpenseEntity, MemberEntity } from '@/src/types/group';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 
-export type ActivityKind = 'expense_added';
+export type ActivityKind =
+  | 'expense_added'
+  | 'expense_edited'
+  | 'expense_deleted'
+  | 'member_kicked'
+  | 'member_renamed';
 
-export type ActivityInput = {
+export type ExpenseActivityInput = {
   id: string;
   groupId: string;
   actorMemberId: string;
@@ -11,28 +16,110 @@ export type ActivityInput = {
   at: string;
 };
 
-export type ActivityLine = {
-  who: string;
-  description: string;
-  amount: string;
+export type MemberActivityInput = {
+  id: string;
+  groupId: string;
+  actorMemberId: string;
+  member: Pick<MemberEntity, 'id' | 'group_id'>;
   at: string;
 };
 
-/** First version of an expense-added event, or null when ids are missing. */
-export function activityForExpenseAdded(input: ActivityInput): ActivityEntity | null {
+export type ActivityLine = {
+  kind: ActivityKind;
+  who: string;
+  description: string;
+  amount?: string;
+  at: string;
+};
+
+const EXPENSE_KINDS = new Set<ActivityKind>([
+  'expense_added',
+  'expense_edited',
+  'expense_deleted',
+]);
+
+function expenseActivity(
+  kind: ActivityKind,
+  input: ExpenseActivityInput,
+): ActivityEntity | null {
   const { id, groupId, actorMemberId, expense, at } = input;
   if (!id || !groupId || !actorMemberId || !expense.id) return null;
   if (expense.group_id !== groupId) return null;
   return {
     id,
     group_id: groupId,
-    kind: 'expense_added',
+    kind,
     actor_member_id: actorMemberId,
     expense_id: expense.id,
+    member_id: '',
     version: 1,
     updated_at: at,
     deleted_at: null,
   };
+}
+
+function memberActivity(
+  kind: ActivityKind,
+  input: MemberActivityInput,
+): ActivityEntity | null {
+  const { id, groupId, actorMemberId, member, at } = input;
+  if (!id || !groupId || !actorMemberId || !member.id) return null;
+  if (member.group_id !== groupId) return null;
+  return {
+    id,
+    group_id: groupId,
+    kind,
+    actor_member_id: actorMemberId,
+    expense_id: '',
+    member_id: member.id,
+    version: 1,
+    updated_at: at,
+    deleted_at: null,
+  };
+}
+
+export function activityForExpenseAdded(
+  input: ExpenseActivityInput,
+): ActivityEntity | null {
+  return expenseActivity('expense_added', input);
+}
+
+export function activityForExpenseEdited(
+  input: ExpenseActivityInput,
+): ActivityEntity | null {
+  return expenseActivity('expense_edited', input);
+}
+
+export function activityForExpenseDeleted(
+  input: ExpenseActivityInput,
+): ActivityEntity | null {
+  return expenseActivity('expense_deleted', input);
+}
+
+export function activityForMemberKicked(
+  input: MemberActivityInput,
+): ActivityEntity | null {
+  return memberActivity('member_kicked', input);
+}
+
+export function activityForMemberRenamed(
+  input: MemberActivityInput,
+): ActivityEntity | null {
+  return memberActivity('member_renamed', input);
+}
+
+function actorLabel(
+  members: Record<string, MemberEntity>,
+  actorId: string,
+  assumedMemberId: string | null,
+): string | null {
+  const actor = members[actorId];
+  if (!actor || actor.deleted_at != null) return null;
+  return memberLabel(actor.display_name, actorId === assumedMemberId);
+}
+
+function expenseDescription(expense: ExpenseEntity): string {
+  return expense.description.trim() || '(no description)';
 }
 
 export function formatActivityLine(
@@ -43,20 +130,39 @@ export function formatActivityLine(
   assumedMemberId: string | null,
 ): ActivityLine | null {
   if (activity.deleted_at != null) return null;
-  if (activity.kind !== 'expense_added') return null;
-  const actor = members[activity.actor_member_id];
-  if (!actor || actor.deleted_at != null) return null;
-  const expense = expenses[activity.expense_id];
-  if (!expense || expense.deleted_at != null) return null;
-  return {
-    who: memberLabel(
-      actor.display_name,
-      activity.actor_member_id === assumedMemberId,
-    ),
-    description: expense.description.trim() || '(no description)',
-    amount: formatMoney(expense.amount_cents, currency),
-    at: activity.updated_at,
-  };
+  const who = actorLabel(members, activity.actor_member_id, assumedMemberId);
+  if (!who) return null;
+
+  if (EXPENSE_KINDS.has(activity.kind)) {
+    const expense = expenses[activity.expense_id];
+    if (!expense) return null;
+    if (activity.kind !== 'expense_deleted' && expense.deleted_at != null) {
+      return null;
+    }
+    return {
+      kind: activity.kind,
+      who,
+      description: expenseDescription(expense),
+      amount: formatMoney(expense.amount_cents, currency),
+      at: activity.updated_at,
+    };
+  }
+
+  if (activity.kind === 'member_kicked' || activity.kind === 'member_renamed') {
+    const member = members[activity.member_id];
+    if (!member) return null;
+    return {
+      kind: activity.kind,
+      who,
+      description: memberLabel(
+        member.display_name,
+        activity.member_id === assumedMemberId,
+      ),
+      at: activity.updated_at,
+    };
+  }
+
+  return null;
 }
 
 /** Live activities, newest first. */
