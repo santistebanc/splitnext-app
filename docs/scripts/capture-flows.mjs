@@ -519,8 +519,14 @@ const FLOWS = [
       await d.beat(400);
       await d.tap('Done');
       await d.beat(2400);
-      if (/\/settings/.test(page.url())) {
-        problems.push('[F-bump] still on Settings after Done');
+      const title = page.getByTestId('group-title');
+      if (!(await title.isVisible().catch(() => false))) {
+        problems.push('[F-bump] hub title not visible after Done');
+      } else if (!/Cabin/.test(await title.innerText())) {
+        problems.push('[F-bump] hub title did not become Cabin');
+      }
+      if (await page.getByTestId('settings-panel').isVisible().catch(() => false)) {
+        problems.push('[F-bump] settings panel still open after Done');
       }
     },
   },

@@ -1,148 +1,26 @@
-import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
-import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
-import { expenseEditHref } from '@/src/domain/expensePrefill';
-import { getGroupStore } from '@/src/store/groupStore';
-import { openGroup } from '@/src/sync/groupSync';
-import { expenseIsPending } from '@/src/sync/queuePolicy';
-import { formatMoney, memberLabel } from '@/src/ui/format';
+import { ExpensesPanel } from '@/src/ui/ExpensesPanel';
 import { colors } from '@/src/ui/theme';
-import { useValue } from '@legendapp/state/react';
-import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 export default function ExpensesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const groupId = id ?? '';
-  const navigation = useNavigation();
   const router = useRouter();
-  const store$ = getGroupStore(groupId);
-  const group = useValue(store$.group);
-  const members = useValue(store$.members);
-  const binds = useValue(store$.binds);
-  const expenses = useValue(store$.expenses);
-  const queue = useValue(store$.queue);
-  const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!groupId) return;
-    void openGroup(groupId);
-    void getOrCreateDeviceUserId().then(setDeviceUserId);
-  }, [groupId]);
-
-  useEffect(() => {
-    navigation.setOptions({ title: 'All expenses' });
-  }, [navigation]);
-
-  const assumedMemberId = useMemo(
-    () =>
-      deviceUserId
-        ? assumedMemberIdFromBinds(binds ?? {}, deviceUserId)
-        : null,
-    [binds, deviceUserId],
-  );
-
-  const expenseList = useMemo(
-    () =>
-      Object.values(expenses ?? {})
-        .filter((e) => e.deleted_at == null)
-        .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
-    [expenses],
-  );
-
-  const nameOf = (memberId: string) => {
-    const m = (members ?? {})[memberId];
-    return memberLabel(m?.display_name ?? '', memberId === assumedMemberId);
-  };
+  const groupId = id ?? '';
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {expenseList.length === 0 ? (
-        <Text style={styles.hint}>
-          {assumedMemberId
-            ? 'No expenses yet — add the first one.'
-            : 'This device is not a member of this group; expenses are recorded against you.'}
-        </Text>
-      ) : (
-        expenseList.map((e) => {
-          const pending = expenseIsPending(queue ?? [], e.id);
-          const title = e.description || '(no description)';
-          return (
-          <Pressable
-            key={e.id}
-            testID="expense-row"
-            style={styles.row}
-            onPress={() =>
-              router.push(expenseEditHref(groupId, e.id) as Href)
-            }
-            accessibilityRole="button"
-            accessibilityLabel={pending ? `${title}, pending` : title}
-          >
-            <View style={styles.body}>
-              <Text style={styles.title}>{title}</Text>
-              <Text style={styles.sub}>
-                {nameOf(e.payer_member_id)}
-                {e.allocations?.length
-                  ? ` · split ${e.allocations.length} way${e.allocations.length === 1 ? '' : 's'}`
-                  : ''}
-                {pending ? (
-                  <Text style={styles.pending}> · Pending</Text>
-                ) : null}
-              </Text>
-            </View>
-            <Text style={styles.amt}>
-              {formatMoney(e.amount_cents, group.currency_label)}
-            </Text>
-          </Pressable>
-          );
-        })
-      )}
-    </ScrollView>
+    <View style={styles.screen}>
+      <ExpensesPanel
+        groupId={groupId}
+        onClose={() => router.replace(`/group/${groupId}` as Href)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 14,
-    paddingBottom: 48,
-    backgroundColor: colors.bg,
-  },
-  hint: {
-    marginTop: 8,
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
-  },
-  body: {
+  screen: {
     flex: 1,
-    minWidth: 0,
-  },
-  title: {
-    fontWeight: '600',
-    fontSize: 16,
-    color: colors.ink,
-  },
-  sub: {
-    marginTop: 2,
-    fontSize: 13,
-    color: colors.muted,
-  },
-  pending: {
-    fontSize: 13,
-    color: colors.warn,
-  },
-  amt: {
-    fontFamily: 'monospace',
-    fontSize: 14,
-    color: colors.ink,
+    backgroundColor: colors.bg,
   },
 });
