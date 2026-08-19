@@ -519,7 +519,7 @@ const FLOWS = [
   },
   {
     id: 'F-bump',
-    from: 'bound',
+    from: 'spent',
     async run(d, page) {
       await d.tapSettings();
       const field = page.getByPlaceholder('Group name');
@@ -538,6 +538,16 @@ const FLOWS = [
       if (await page.getByTestId('settings-panel').isVisible().catch(() => false)) {
         problems.push('[F-bump] settings panel still open after Done');
       }
+      await d.press(page.getByTestId('activity-view-all'));
+      await d.beat(900);
+      const activityText = await page.getByTestId('activity-page').innerText();
+      if (!/renamed the group/i.test(activityText)) {
+        problems.push(
+          `[F-bump] activity list did not include group rename event (got ${JSON.stringify(activityText.slice(0, 220))})`,
+        );
+      }
+      await d.press(page.getByTestId('activity-close'));
+      await d.beat(600);
     },
   },
 ];
