@@ -14,9 +14,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 type Props = {
   groupId: string;
   onClose: () => void;
+  onOpenExpense?: (expenseId: string) => void;
 };
 
-export function ExpensesPanel({ groupId, onClose }: Props) {
+export function ExpensesPanel({ groupId, onClose, onOpenExpense }: Props) {
   const router = useRouter();
   const store$ = getGroupStore(groupId);
   const group = useValue(store$.group);
@@ -84,7 +85,9 @@ export function ExpensesPanel({ groupId, onClose }: Props) {
                 testID="expense-row"
                 style={styles.row}
                 onPress={() =>
-                  router.push(expenseEditHref(groupId, e.id) as Href)
+                  onOpenExpense
+                    ? onOpenExpense(e.id)
+                    : router.push(expenseEditHref(groupId, e.id) as Href)
                 }
                 accessibilityRole="button"
                 accessibilityLabel={pending ? `${title}, pending` : title}

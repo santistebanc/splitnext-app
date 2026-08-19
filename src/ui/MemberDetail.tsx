@@ -10,6 +10,7 @@ import {
   type BucketLine,
 } from '@/src/domain/buckets';
 import { expenseEditHref, settlementHref } from '@/src/domain/expensePrefill';
+import type { ExpensePrefill } from '@/src/domain/expensePrefill';
 import { patchMember } from '@/src/domain/member';
 import {
   settlementsForMember,
@@ -60,9 +61,17 @@ type Props = {
   groupId: string;
   memberId: string;
   onClose: () => void;
+  onOpenExpenseEdit?: (expenseId: string) => void;
+  onOpenExpenseNew?: (prefill: ExpensePrefill) => void;
 };
 
-export function MemberDetail({ groupId, memberId: targetId, onClose }: Props) {
+export function MemberDetail({
+  groupId,
+  memberId: targetId,
+  onClose,
+  onOpenExpenseEdit,
+  onOpenExpenseNew,
+}: Props) {
   const router = useRouter();
   const store$ = getGroupStore(groupId);
   const group = useValue(store$.group);
@@ -314,7 +323,9 @@ export function MemberDetail({ groupId, memberId: targetId, onClose }: Props) {
         currency={currency}
         nameOf={nameOf}
         onOpen={(expenseId) =>
-          router.push(expenseEditHref(groupId, expenseId) as Href)
+          onOpenExpenseEdit
+            ? onOpenExpenseEdit(expenseId)
+            : router.push(expenseEditHref(groupId, expenseId) as Href)
         }
       />
       ) : null}
@@ -326,7 +337,9 @@ export function MemberDetail({ groupId, memberId: targetId, onClose }: Props) {
         currency={currency}
         nameOf={nameOf}
         onOpen={(expenseId) =>
-          router.push(expenseEditHref(groupId, expenseId) as Href)
+          onOpenExpenseEdit
+            ? onOpenExpenseEdit(expenseId)
+            : router.push(expenseEditHref(groupId, expenseId) as Href)
         }
       />
       ) : null}
@@ -362,7 +375,19 @@ export function MemberDetail({ groupId, memberId: targetId, onClose }: Props) {
                 <Pressable
                   testID="settle-row"
                   style={styles.settleBtn}
-                  onPress={() => router.push(settlementHref(groupId, s) as Href)}
+                  onPress={() => {
+                    const prefill: ExpensePrefill = {
+                      payerId: s.from_member_id,
+                      amountCents: s.amount_cents,
+                      participantIds: [s.to_member_id],
+                      what: 'Settlement',
+                    };
+                    if (onOpenExpenseNew) {
+                      onOpenExpenseNew(prefill);
+                      return;
+                    }
+                    router.push(settlementHref(groupId, s) as Href);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={`Settle: ${label}`}
                 >
