@@ -11,11 +11,18 @@ export { wakeUrl };
 
 const SUBSCRIBE_WAIT_MS = 8000;
 
+const OPEN_STATE = 1;
+
 const sockets = new Map<string, WebSocket>();
 const reconnectByGroup = new Map<string, () => Promise<void>>();
 const lastStatusByGroup = new Map<string, string>();
 const reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const failedAttemptsByGroup = new Map<string, number>();
+
+function hasLiveWakeSocket(groupId: string): boolean {
+  const socket = sockets.get(groupId);
+  return socket != null && socket.readyState === OPEN_STATE;
+}
 
 function clearReconnectTimer(groupId: string): void {
   const timer = reconnectTimers.get(groupId);
@@ -58,7 +65,7 @@ export async function startWakeSubscription(
   clearReconnectTimer(groupId);
   if (
     !shouldReplaceSubscription(
-      sockets.has(groupId),
+      hasLiveWakeSocket(groupId),
       lastStatusByGroup.get(groupId),
     )
   ) {
@@ -139,6 +146,32 @@ export async function startWakeSubscription(
       dropCurrent(groupId, socket, 'CLOSED');
     };
   });
+}
+
+/** Clear module state between vitest cases. */
+export function resetWakeStateForTests(): void {
+  for (const timer of reconnectTimers.values()) clearTimeout(timer);
+  reconnectTimers.clear();
+  for (const socket of sockets.values()) {
+    socket.onerror = null;
+    socket.onclose = null;
+    socket.onmessage = null;
+    socket.onopen = null;
+    try {
+      socket.close();
+    } catch {
+      // already closed
+    }
+  }
+  sockets.clear();
+  reconnectByGroup.clear();
+  lastStatusByGroup.clear();
+  failedAttemptsByGroup.clear();
+}
+
+/** Test seam: the live socket for a group, if any. */
+export function getWakeSocketForTests(groupId: string): WebSocket | undefined {
+  return sockets.get(groupId);
 }
 
 /** Stop listening and do not retry — used when this device leaves the group. */
