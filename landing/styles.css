@@ -213,6 +213,44 @@ a {
   text-align: center;
 }
 
+.page-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px clamp(20px, 5vw, 64px) 56px;
+}
+
+.page-copy {
+  max-width: 560px;
+}
+
+.page-copy .cta-row {
+  max-width: 360px;
+}
+
+.page-copy h1 {
+  font-size: clamp(36px, 6vw, 64px);
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.invite-phone {
+  display: none;
+}
+
+@media (max-width: 479px) {
+  .invite-desktop {
+    display: none;
+  }
+
+  .invite-phone {
+    display: block;
+  }
+}
+
 @media (max-width: 800px) {
   .home-hero {
     grid-template-columns: 1fr;

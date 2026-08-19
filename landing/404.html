@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SplitNext</title>
+    <meta name="description" content="Join a SplitNext group. No accounts." />
+    <script>
+      (function () {
+        var PAGES = "/splitnext-app";
+        var p = location.pathname;
+        var root =
+          p === PAGES || p.indexOf(PAGES + "/") === 0 ? PAGES + "/" : "/";
+        window.SPLITNEXT_ROOT = root;
+        var base = document.createElement("base");
+        base.href = root;
+        document.head.appendChild(base);
+      })();
+    </script>
+    <link rel="icon" href="favicon.png" type="image/png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="home-nav">
+      <a class="nav-brand" href="./" aria-label="SplitNext home">
+        <img src="favicon.png" width="32" height="32" alt="" />
+        <span>SplitNext</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="try/">Use on web</a>
+      </nav>
+    </header>
+
+    <main class="page-main">
+      <section id="invite" class="page-copy" hidden>
+        <p class="eyebrow">Invite</p>
+        <h1>You've been invited</h1>
+        <p class="home-tagline">
+          Someone shared a SplitNext group with you. Continue to open it in the
+          web app.
+        </p>
+        <div class="cta-row invite-desktop">
+          <a
+            id="continue"
+            class="cta-btn cta-btn--primary"
+            href="app/"
+            >Continue</a
+          >
+        </div>
+        <p class="cta-note invite-desktop">
+          You'll join as the member they invited. SplitNext never moves money.
+        </p>
+        <div class="invite-phone">
+          <p class="home-tagline">
+            Open this invite in SplitNext when the app is installed. Store
+            listings are not up yet.
+          </p>
+          <p class="cta-note">
+            On a computer, or in this browser, you can still continue to the web
+            app.
+          </p>
+          <div class="cta-row">
+            <a
+              id="continue-browser"
+              class="cta-btn cta-btn--primary"
+              href="app/"
+              >Continue in the browser</a
+            >
+          </div>
+        </div>
+      </section>
+
+      <section id="missing" class="page-copy">
+        <p class="eyebrow">Not found</p>
+        <h1>Page not found</h1>
+        <p class="home-tagline">
+          That address isn't a SplitNext page. Head home, or open the web app.
+        </p>
+        <div class="cta-row">
+          <a class="cta-btn cta-btn--primary" href="./">Home</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">SplitNext</footer>
+    <script>
+      (function () {
+        var TOKEN = /^[A-Za-z0-9_-]{11}$/;
+        var PAGES = "/splitnext-app";
+        function sitePath(pathname) {
+          if (pathname === PAGES || pathname.indexOf(PAGES + "/") === 0) {
+            return pathname.slice(PAGES.length) || "/";
+          }
+          return pathname;
+        }
+        function inviteToken(pathname) {
+          var match = sitePath(pathname).match(/^\/j\/([^/]+)\/?$/);
+          if (!match) return null;
+          try {
+            var token = decodeURIComponent(match[1]);
+          } catch (err) {
+            return null;
+          }
+          return TOKEN.test(token) ? token : null;
+        }
+        var token = inviteToken(location.pathname);
+        var invite = document.getElementById("invite");
+        var missing = document.getElementById("missing");
+        if (!token) {
+          invite.hidden = true;
+          missing.hidden = false;
+          document.title = "Page not found — SplitNext";
+          return;
+        }
+        invite.hidden = false;
+        missing.hidden = true;
+        document.title = "You've been invited — SplitNext";
+        var href =
+          (window.SPLITNEXT_ROOT || "/") + "app/j/" + encodeURIComponent(token);
+        document.getElementById("continue").href = href;
+        document.getElementById("continue-browser").href = href;
+      })();
+    </script>
+  </body>
+</html>

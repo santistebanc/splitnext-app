@@ -1,51 +1,47 @@
-# Slice 0041 — invite landing
+# Slice 0042 — legal
 
 **Tier** — breadth
 
 ## Goal
 
-Opening `/j/{token}` on the public site shows a SplitNext invite page (landing chrome). A phone is pointed at the app; desktop continues to redeem.
+Public privacy and terms pages that match what the app actually does, linked from the landing footer.
 
 ## Before → After
 
 | Aspect | Before | After |
 | --- | --- | --- |
-| `splitnext.online/j/{token}` | 404 or Expo `/app/j/…` if they hit `/app` | Static invite page using `landing/` chrome |
-| Phone | No store/app CTA on the public host | CTA toward the app (stores parked) |
-| Desktop | Must already be in `/app` | Continue to redeem at `/app/j/{token}` |
+| Privacy / terms | None on the public site | Pages that describe no accounts, capability tokens, and what is stored |
+| Footer | Brand name only | Links to those pages |
+| Deletion | Not stated | Deletion-on-request, without a join-code wipe |
 
 ## Plan
 
-1. Root `landing/404.html`: if the path is `/j/{token}`, render invite chrome; otherwise a normal not-found.
-2. Phone: copy that points at installing/opening the app; do not link the v1 store listing.
-3. Desktop: continue into `/app/j/{token}` (existing `L-join`).
-4. Local `npm run landing` serves the same 404 fallback so `/j/…` can be tried.
+1. Static privacy and terms under `landing/`, same chrome as `L-landing`.
+2. Footer on home, invite/404, and try: Privacy, Terms.
+3. Copy matches real behaviour: no accounts, per-device capability tokens, Worker/D1/DO what is stored, integer cents, soft-delete. Deletion-on-request without v1's join-code verified wipe.
 
 ## Seams under test
 
 | Seam | Behavior |
 | --- | --- |
-| Invite path detect | `/j/{token}` is an invite; other unknown paths are not |
-| Token extract | 11-char secret pulled from the path |
+| `L-assemblePages` | Privacy and terms files land at the Pages root; `/app` is unchanged |
+| Footer links | Home, invite 404, and try point at those pages |
 
 ## Acceptance
 
-- Desktop `/j/{token}` shows invite chrome and a continue control into `/app/j/{token}`.
-- Phone-sized `/j/{token}` shows app-directed copy, not a store listing.
-- `/no-such-page` is a generic 404, not invite chrome.
-- Landing home and `/try` unchanged.
+- Landing footer opens privacy and terms.
+- Copy does not claim accounts, payments, or a join-code wipe.
+- Invite landing and `/try` still work.
 
 ## Edge paths
 
 | Surface | State | What happens |
 | --- | --- | --- |
-| Invite page | missing/short token | Generic 404 |
-| Invite page | desktop | Continue to `/app/j/{token}` |
-| Invite page | narrow window | App CTA; stores stay parked |
+| Legal pages | (filled during the build) | |
 
 ## Out of scope
 
 - Store listings
-- Deep-link `.well-known` / Expo Go app links
-- Legal
-- Changing token format or redeem
+- Implementing a deletion pipeline (copy only)
+- Deep-link `.well-known`
+- Changing invite redeem

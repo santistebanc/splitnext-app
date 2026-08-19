@@ -1,4 +1,5 @@
 import unittest
+import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
@@ -20,6 +21,10 @@ class MetroPath(unittest.TestCase):
     def test_other_paths_proxy_so_absolute_bundle_urls_work(self):
         self.assertEqual(metro_path_for("/node_modules/expo-router/entry.bundle"), "/node_modules/expo-router/entry.bundle")
         self.assertEqual(metro_path_for("/create"), "/create")
+
+    def test_invite_join_path_is_not_proxied(self):
+        self.assertIsNone(metro_path_for("/j/xK3mP9qL2nQ"))
+        self.assertEqual(metro_path_for("/app/j/xK3mP9qL2nQ"), "/j/xK3mP9qL2nQ")
 
 
 class RewriteRootUrls(unittest.TestCase):
@@ -83,6 +88,32 @@ class ServeTry(unittest.TestCase):
         self.assertIn("lobby", html)
         self.assertIn('src="/app/node_modules/x.js"', html)
         self.assertIn("history.replaceState", html)
+
+
+class ServeInvite(unittest.TestCase):
+    def test_invite_path_serves_landing_invite_chrome(self):
+        server = ThreadingHTTPServer(("127.0.0.1", 0), handler_for("http://127.0.0.1:9/"))
+        Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            port = server.server_address[1]
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/j/xK3mP9qL2nQ")
+                self.fail("expected 404")
+            except urllib.error.HTTPError as err:
+                self.assertEqual(err.code, 404)
+                html = err.read().decode()
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/") as res:
+                home = res.read().decode()
+        finally:
+            server.shutdown()
+            server.server_close()
+        self.assertIn("You've been invited", html)
+        self.assertIn("app/j/", html)
+        self.assertIn("Page not found", html)
+        self.assertNotIn("play.google.com", html.lower())
+        self.assertNotIn("apps.apple.com", html.lower())
+        self.assertIn("Use on web", home)
+        self.assertNotIn("You've been invited", home)
 
 
 if __name__ == "__main__":

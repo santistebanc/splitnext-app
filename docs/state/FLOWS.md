@@ -188,19 +188,20 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-hub` opens `L-member`. `L-memberClaimed` marks the slot; the invite row is only on Unclaimed. `L-member` calls `L-mintInvite` with that member when the screen opens.
 2. `L-edgeMintInvite` posts to `L-efMintInvite`, which checks this device's access token, refuses a missing or tombstoned member, stores the hash, and returns the plaintext once.
-3. That screen shows **invite link** above the `/j/{token}` link (web) or the raw token (native) via `L-inviteShare` in a read-only field, with copy and share. The secret is not kept on the device after that.
+3. That screen shows **invite link** above the `/j/{token}` link (web) or the raw token (native) via `L-inviteShare` in a read-only field, with copy and share. On web the copied URL is the public invite path (`L-parseInviteToken` / `joinPathForToken`), not `/app/j/…`. The secret is not kept on the device after that.
 
 ## F-join — Join from an invite
 
 **Trigger** — On another device, the person opens the join link, or expands **Join with link** on the lobby, pastes, and submits.  
 **Outcome** — The group is on this device, this device is already that member, and there is no This is me to tap.
 
-1. `L-join` (from the URL) or `L-lobby` (from the expanded join field) calls `L-joinGroup`. `L-parseInviteToken` accepts a raw token, a `/j/{token}` URL, or a `/join?token=` URL.
-2. `L-edgeJoin` posts the secret and this install's `device_user_id` to `L-efJoin`.
-3. `L-efJoin` looks up the hash. `L-inviteIsLive` (the same three checks, on the server) refuses a spent, expired, or tombstoned-member invite. A device that already has a live token for the group is refused without consuming the invite.
-4. On success it mints an access token, inserts a v1 bind for the named member, marks the invite redeemed, and `L-efWake` tells the group's other devices.
-5. `L-joinGroup` stores the token, adds the group to the lobby, and commits the bind. The hub then `L-openGroup`s — subscribe for wakes, then pull the roster — so the live socket is started on the screen that stays open, not on the join spinner that unmounts.
-6. `L-assumedMember` already resolves, so `L-hub` shows You. `L-bindOnce` would refuse a later pick.
+1. A public-site `/j/{token}` opens `L-inviteLanding` (`L-invitePath`). Desktop Continue goes to `/app/j/{token}`. Native, lobby paste, and a link that already is `/app/j/…` skip that page.
+2. `L-join` (from the URL) or `L-lobby` (from the expanded join field) calls `L-joinGroup`. `L-parseInviteToken` accepts a raw token, a `/j/{token}` URL, or a `/join?token=` URL.
+3. `L-edgeJoin` posts the secret and this install's `device_user_id` to `L-efJoin`.
+4. `L-efJoin` looks up the hash. `L-inviteIsLive` (the same three checks, on the server) refuses a spent, expired, or tombstoned-member invite. A device that already has a live token for the group is refused without consuming the invite.
+5. On success it mints an access token, inserts a v1 bind for the named member, marks the invite redeemed, and `L-efWake` tells the group's other devices.
+6. `L-joinGroup` stores the token, adds the group to the lobby, and commits the bind. The hub then `L-openGroup`s — subscribe for wakes, then pull the roster — so the live socket is started on the screen that stays open, not on the join spinner that unmounts.
+7. `L-assumedMember` already resolves, so `L-hub` shows You. `L-bindOnce` would refuse a later pick.
 
 ## F-bump — Rename group
 

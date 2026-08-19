@@ -38,7 +38,6 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 ## Breadth
 
 - **Last opened group on launch** — delivered in [slice 0037](slices/0037-last-opened-group.md).
-- **Invite landing** — `/j/{token}` on the web: a landing that can send a phone to the app/store and still lets desktop continue to redeem. Reuse `landing/` chrome. — area: invites — raised: steering after 0029
 - **Store listings** — Play / App Store buttons on the landing when a listing exists. Do not link the v1 listing. — area: distribution — raised: slice 0039
 - **Legal** — public privacy + terms that match actual behaviour (no accounts, capability tokens, what is stored). Deletion-on-request without a join code is part of this, not v1's join-code verified wipe. — area: legal — raised: steering after 0029
 - **Pending badge** — an expense (or row) that has not been acknowledged by the server is visibly pending. — area: sync — raised: steering after 0029
@@ -61,9 +60,10 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Wire-hop edges in the symbol graph** — draw `mergeEntities` → `merge` as a distinct kind of edge so the tree can cross the device/server boundary the way Flows does; today it is not a call and so not an edge — area: board — raised: slice 0009
 - **Lobby index out of Secure Store** — move `lobby_group_ids` to Legend/SQLite; Secure Store for secrets only — area: client — raised: slice 0001
 - **Design system application** — locked palette/components in blueprint; apply across screens. Slice 0023 extracts prototype tokens and restacks the hub; lobby / join / expense-form layouts stay. Do not take v1 dark mode / fonts / avatar seeds (D-084 keep surfaces). — area: ui — raised: bootstrap · restated: steering after 0029 · *partially 0023*
-- **Smooth member view transitions** — "smooth view transitions, where each member is smoothly transitioned from view to view" — area: ui — raised: slice 0025
+- **Smooth member view transitions** — "smooth view transitions, where each member is smoothly transitioned from view to view". Folded into hub-as-shell below. — area: ui — raised: slice 0025 · restated: 2026-08-19
 - **Invite copy/share sheet** — prototype copy/share sheet after mint; today the join link lands on the screen that minted — area: ui — raised: slice 0023
-- **Expense editor as a sheet** — hub-chrome.html adds/edits in a bottom sheet; add stays the dedicated `L-expenseNew` screen (keep this surface). — area: ui — raised: slice 0023
+- **Expense editor as a sheet** — hub-chrome.html adds/edits in a bottom sheet; add stays the dedicated `L-expenseNew` screen (keep this surface). Folded into hub-as-shell below if that lands. — area: ui — raised: slice 0023 · restated: 2026-08-19
+- **Hub as the only place (no in-app routes)** — "there are no routes in the app, that the lobby, the settings, and the add expense, activities, and all expenses are just views that pop in or slide in on top of the main current group view, and they always just close back to the main group view. The details are just shown with some animation kind of like accordion when clicking the name in the balances, also when clicking the recent activity the component just sort of expands into full view while the other components slide out or animate out. When the user has no current group then show the lobby view and is unclosable because there is no current group selected, however when changing highlight in the view the current group and on select another group then it switches to that one." No headers: "just put the navigation buttons there on same corners, but without a clear header break in the page." Contradicts D-084 keep-surfaces, D-088 activity as a page, D-091 Home → lobby. Invite `/j/{token}` still has to be a URL. — area: ui — raised: 2026-08-19
 - **Debug telemetry** — crash reporter; tags group_id + device_user_id only — area: observability — raised: bootstrap
 - **Handoff checklist** — "Final spec section outline and the acceptance checklist proving the design is implementable" — area: meta — raised: bootstrap
 
@@ -72,26 +72,10 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **First-run create** — delivered in [slice 0027](slices/0027-first-run.md); form then hub of names, bind once, lobby by name, Settings without a roster.
-
-- **Member rename** — delivered in [slice 0028](slices/0028-member-rename.md); any slot’s display name from member detail; bind stays. Kick stays parked.
-
-- **Equal-split expense edit** — delivered in [slice 0029](slices/0029-expense-editor.md); list or bucket line.
-
-- **Mixed splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
-
-- **Expense delete** — delivered in [slice 0031](slices/0031-expense-delete.md).
-
-- **Kick member** — delivered in [slice 0033](slices/0033-kick-member.md).
-
-- **Activity spine** — delivered in [slice 0034](slices/0034-activity-spine.md).
-
-- **Activity toast + relative time** — delivered in [slice 0035](slices/0035-activity-toast.md).
-
-- **Activity event kinds** — edit/delete/kick/rename — delivered in [slice 0036](slices/0036-activity-event-kinds.md).
-
-- **Push notifications** — delivered in [slice 0038](slices/0038-push-notifications.md).
-
 - **Public landing + framed web** — delivered in [slice 0039](slices/0039-landing-page.md).
+
+- **Activity undo** — delivered in [slice 0040](slices/0040-activity-undo.md).
+
+- **Invite landing** — delivered in [slice 0041](slices/0041-invite-landing.md). `/j/{token}` on the public site is landing chrome; desktop continues to redeem.
 
 - **Activity undo** — delivered in [slice 0040](slices/0040-activity-undo.md).

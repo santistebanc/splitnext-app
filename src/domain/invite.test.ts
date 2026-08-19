@@ -80,6 +80,14 @@ describe('parseInviteToken', () => {
     ).toBe('xK3mP9qL2nQ');
   });
 
+  it('pulls token out of a Pages invite-landing /j/ URL', () => {
+    expect(
+      parseInviteToken(
+        'https://santistebanc.github.io/splitnext-app/j/xK3mP9qL2nQ',
+      ),
+    ).toBe('xK3mP9qL2nQ');
+  });
+
   it('pulls token out of a pasted path with no origin', () => {
     expect(parseInviteToken('/join?token=abc-DEF_123')).toBe('abc-DEF_123');
   });
@@ -107,9 +115,9 @@ describe('joinPathForToken', () => {
     expect(joinPathForToken('abc', '/group/g1')).toBe('/j/abc');
   });
 
-  it('keeps the Pages base path so a copied link still opens the app', () => {
+  it('keeps the Pages site prefix so a copied link opens the invite landing', () => {
     expect(joinPathForToken('abc', '/splitnext-app/app/group/g1')).toBe(
-      '/splitnext-app/app/j/abc',
+      '/splitnext-app/j/abc',
     );
   });
 });
