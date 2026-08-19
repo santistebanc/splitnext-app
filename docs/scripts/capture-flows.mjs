@@ -196,7 +196,7 @@ const FLOWS = [
           `[F-rename] member screen did not show the new name (got ${JSON.stringify(renamed)})`,
         );
       }
-      await page.goBack({ waitUntil: 'networkidle', timeout: 120000 });
+      await d.press(page.getByTestId('member-close'));
       await d.beat(1200);
       const body = await page.innerText('body');
       if (!/\bYou\b/.test(body)) {
@@ -424,6 +424,8 @@ const FLOWS = [
       if (!before) problems.push('[F-settle] no settle buttons');
       await page.goto(page.url(), { waitUntil: 'networkidle', timeout: 120000 });
       await page.waitForTimeout(4000);
+      await d.press(balanceRowOf(page));
+      await d.beat(1600);
       const after = settleOf(await page.innerText('body'));
       if (!after) problems.push('[F-settle] no settle buttons after reload');
       if (before !== after) {
