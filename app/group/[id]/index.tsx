@@ -18,6 +18,7 @@ import { ActivityFeed } from '@/src/ui/ActivityFeed';
 import { ActivityRow } from '@/src/ui/ActivityRow';
 import { ActivityToast } from '@/src/ui/ActivityToast';
 import { HubCornerChrome } from '@/src/ui/HubCornerChrome';
+import { MemberDetail } from '@/src/ui/MemberDetail';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -100,21 +101,30 @@ export default function GroupHubScreen() {
   const [syncReady, setSyncReady] = useState(false);
   const [toastLine, setToastLine] = useState<ActivityLine | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [memberOpenId, setMemberOpenId] = useState<string | null>(null);
   const recede = useRef(new Animated.Value(1)).current;
   const knownActivityIdsRef = useRef<Set<string>>(new Set());
 
   const dismissToast = useCallback(() => setToastLine(null), []);
   const openActivity = useCallback(() => {
     dismissToast();
+    setMemberOpenId(null);
     setActivityOpen(true);
   }, [dismissToast]);
   const closeActivity = useCallback(() => setActivityOpen(false), []);
+  const openMember = useCallback((memberId: string) => {
+    dismissToast();
+    setActivityOpen(false);
+    setMemberOpenId(memberId);
+  }, [dismissToast]);
+  const closeMember = useCallback(() => setMemberOpenId(null), []);
 
   useEffect(() => {
     if (!groupId) return;
     setSyncReady(false);
     setToastLine(null);
     setActivityOpen(false);
+    setMemberOpenId(null);
     knownActivityIdsRef.current = new Set();
     void getOrCreateDeviceUserId().then(setDeviceUserId);
     void (async () => {
@@ -249,7 +259,7 @@ export default function GroupHubScreen() {
           styles.body,
           {
             paddingTop: insets.top + 44,
-            paddingBottom: activityOpen ? 16 : 80,
+            paddingBottom: activityOpen || memberOpenId ? 16 : 80,
           },
         ]}
         testID="balances"
@@ -260,7 +270,13 @@ export default function GroupHubScreen() {
           </Text>
         ) : null}
 
-        {activityOpen ? (
+        {memberOpenId ? (
+          <MemberDetail
+            groupId={groupId}
+            memberId={memberOpenId}
+            onClose={closeMember}
+          />
+        ) : activityOpen ? (
           <Animated.View
             style={[styles.activityExpand, { opacity: recede.interpolate({
               inputRange: [0, 1],
@@ -318,11 +334,7 @@ export default function GroupHubScreen() {
                       <Pressable
                         key={b.member_id}
                         style={[styles.balRow, isYou ? styles.balRowYou : null]}
-                        onPress={() =>
-                          router.push(
-                            `/group/${groupId}/member/${b.member_id}` as Href,
-                          )
-                        }
+                        onPress={() => openMember(b.member_id)}
                         accessibilityRole="button"
                         accessibilityLabel={label}
                       >
@@ -355,11 +367,7 @@ export default function GroupHubScreen() {
                         key={b.member_id}
                         testID="balance-row"
                         style={[styles.balRow, isYou ? styles.balRowYou : null]}
-                        onPress={() =>
-                          router.push(
-                            `/group/${groupId}/member/${b.member_id}` as Href,
-                          )
-                        }
+                        onPress={() => openMember(b.member_id)}
                         accessibilityRole="button"
                         accessibilityLabel={label}
                       >
@@ -463,7 +471,7 @@ export default function GroupHubScreen() {
         )}
       </View>
 
-      {!activityOpen && assumedMemberId ? (
+      {!activityOpen && !memberOpenId && assumedMemberId ? (
         <View style={[styles.fabBar, !namesOnly ? styles.fabBarRaised : null]}>
           <Pressable
             style={styles.fab}
@@ -476,7 +484,7 @@ export default function GroupHubScreen() {
         </View>
       ) : null}
 
-      {!activityOpen && !namesOnly ? (
+      {!activityOpen && !memberOpenId && !namesOnly ? (
         <Pressable
           style={styles.expensesBar}
           onPress={() => router.push(`/group/${groupId}/expenses` as Href)}

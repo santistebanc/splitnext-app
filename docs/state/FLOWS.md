@@ -71,21 +71,21 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On a member screen, the person taps the edit icon, types a new name, and submits or leaves the field.  
 **Outcome** — That slot’s display name updates on their screen and anywhere the name itself is shown. This device’s hub row stays You. Who they are (the bind) does not change.
 
-1. `L-hub` opens `L-member` — a names row or a balance row.
-2. `L-member` shows the display name and an edit icon in the header. Tapping the icon turns the title into a focused field.
+1. `L-hub` expands `L-memberDetail` — a names row or a balance row.
+2. `L-memberDetail` shows the display name and an edit icon in the panel. Tapping the icon turns the title into a focused field.
 3. Blur or enter calls `L-updateMember`. `L-patchMember` builds the next version, or returns null when the trimmed name is empty or unchanged — then nothing is written.
-4. The header title is restored with the new display name. A successful write updates the store and queues the member; `L-flushQueue` pushes it.
-5. Back on `L-hub`, `L-memberLabel` still writes You for this device's member; other rows and `L-lobbyMembers` show the new name. Expenses and the bind still point at the same member id.
+4. The title is restored with the new display name. A successful write updates the store and queues the member; `L-flushQueue` pushes it.
+5. **Close** returns to `L-hub`. `L-memberLabel` still writes You for this device's member; other rows and `L-lobbyMembers` show the new name. Expenses and the bind still point at the same member id.
 
 ## F-kick-member — Remove a member
 
 **Trigger** — On an unclaimed member's screen, the person taps **Remove member**, reads the confirm drawer, and taps **Remove member** again.  
 **Outcome** — That member id drops off the hub, lobby summary, and pickers. Past expenses and allocations stay; live folds exclude the tombstone.
 
-1. `L-hub` opens `L-member` for a slot that is not You and has no live bind.
+1. `L-hub` expands `L-memberDetail` for a slot that is not You and has no live bind.
 2. **Remove member** sits at the bottom. You and claimed slots omit it.
 3. Confirm drawer (same shape as Leave and Delete) then `L-deleteMember` calls `L-tombstoneMember`, queues the member, and flushes.
-4. `L-member` returns to `L-hub`. `L-balances` and `L-lobbyMembers` no longer list that id.
+4. `L-memberDetail` closes back to `L-hub`. `L-balances` and `L-lobbyMembers` no longer list that id.
 
 ## F-add-expense — Add expense
 
@@ -158,7 +158,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-hub` already has the nets from `L-balances`, so settle-up needs no network of its own.
 2. `L-settle` drops members at zero, partitions the rest into as many zero-sum subgroups as exist, and pairs poorest with richest inside each. Two devices holding the same nets list the same transfers.
-3. Tapping a balance row opens `L-member`. `L-memberBuckets` lists that person's expenses as paid-for and owe-for lines that sum to their net. `L-settlementsForMember` keeps only that person's outgoing transfers under **Suggested settlement**. Each row is the transfer as text and a **Settle** button that pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
+3. Tapping a balance row expands `L-memberDetail` on `L-hub`. `L-memberBuckets` lists that person's expenses as paid-for and owe-for lines that sum to their net. `L-settlementsForMember` keeps only that person's outgoing transfers under **Suggested settlement**. Each row is the transfer as text and a **Settle** button that pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
 4. When that member has no outgoing transfer — they are square, or only owed — the settle block is absent. An empty paid-for or owe-for section is omitted.
 
 ## F-settle-record — Record a suggested transfer
@@ -187,7 +187,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — The person opens an unclaimed member.  
 **Outcome** — A join link for that member is already on that screen. Copy or share sends it; another device can redeem it once, within seven days.
 
-1. `L-hub` opens `L-member`. `L-memberClaimed` marks the slot; the invite row is only on Unclaimed. `L-member` calls `L-mintInvite` with that member when the screen opens.
+1. `L-hub` expands `L-memberDetail`. `L-memberClaimed` marks the slot; the invite row is only on Unclaimed. `L-memberDetail` calls `L-mintInvite` with that member when the panel opens.
 2. `L-edgeMintInvite` posts to `L-efMintInvite`, which checks this device's access token, refuses a missing or tombstoned member, stores the hash, and returns the plaintext once.
 3. That screen shows **invite link** above the `/j/{token}` link (web) or the raw token (native) via `L-inviteShare` in a read-only field, with copy and share. On web the copied URL is the public invite path (`L-parseInviteToken` / `joinPathForToken`), not `/app/j/…`. The secret is not kept on the device after that.
 
