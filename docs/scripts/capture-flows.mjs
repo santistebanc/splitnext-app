@@ -463,8 +463,6 @@ const FLOWS = [
       }
       await d.tap('Add expense');
       await d.beat(2400);
-      await d.press(balanceRowOf(page));
-      await d.beat(800);
       const paidAfter = await paidForOf(page).innerText();
       if (!/Settlement/.test(paidAfter)) {
         problems.push('[F-settle-record] Settlement did not land in paid-for');
