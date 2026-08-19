@@ -10,6 +10,7 @@ import {
   type ActivityLine,
 } from '@/src/domain/activity';
 import { computeBalances } from '@/src/domain/balances';
+import type { ExpensePrefill } from '@/src/domain/expensePrefill';
 import { lobbyGroupTitle } from '@/src/domain/lobby';
 import { getGroupStore } from '@/src/store/groupStore';
 import { addMember, openGroup, undoActivity } from '@/src/sync/groupSync';
@@ -17,10 +18,11 @@ import { coerceSyncError } from '@/src/sync/syncErrors';
 import { ActivityFeed } from '@/src/ui/ActivityFeed';
 import { ActivityRow } from '@/src/ui/ActivityRow';
 import { ActivityToast } from '@/src/ui/ActivityToast';
-import { HubCornerChrome } from '@/src/ui/HubCornerChrome';
-import { MemberDetail } from '@/src/ui/MemberDetail';
 import { ExpenseForm } from '@/src/ui/ExpenseForm';
 import { ExpensesPanel } from '@/src/ui/ExpensesPanel';
+import { LobbyPanel } from '@/src/ui/LobbyPanel';
+import { HubCornerChrome } from '@/src/ui/HubCornerChrome';
+import { MemberDetail } from '@/src/ui/MemberDetail';
 import { SettingsPanel } from '@/src/ui/SettingsPanel';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
@@ -36,8 +38,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import type { ExpensePrefill } from '@/src/domain/expensePrefill';
 
 import type { ActivityEntity } from '@/src/types/group';
 
@@ -115,7 +115,7 @@ export default function GroupHubScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [expensesOpen, setExpensesOpen] = useState(false);
   const [expensePane, setExpensePane] = useState<ExpensePane>(null);
-  const expenseReturnToRef = useRef<'hub' | 'member' | 'expenses'>('hub');
+  const [lobbyOpen, setLobbyOpen] = useState(false);
   const recede = useRef(new Animated.Value(1)).current;
   const knownActivityIdsRef = useRef<Set<string>>(new Set());
 
@@ -126,6 +126,7 @@ export default function GroupHubScreen() {
     setSettingsOpen(false);
     setExpensesOpen(false);
     setExpensePane(null);
+    setLobbyOpen(false);
     setActivityOpen(true);
   }, [dismissToast]);
   const closeActivity = useCallback(() => setActivityOpen(false), []);
@@ -135,6 +136,7 @@ export default function GroupHubScreen() {
     setSettingsOpen(false);
     setExpensesOpen(false);
     setExpensePane(null);
+    setLobbyOpen(false);
     setMemberOpenId(memberId);
   }, [dismissToast]);
   const closeMember = useCallback(() => setMemberOpenId(null), []);
@@ -144,6 +146,7 @@ export default function GroupHubScreen() {
     setMemberOpenId(null);
     setExpensesOpen(false);
     setExpensePane(null);
+    setLobbyOpen(false);
     setSettingsOpen(true);
   }, [dismissToast]);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
@@ -153,6 +156,7 @@ export default function GroupHubScreen() {
     setMemberOpenId(null);
     setSettingsOpen(false);
     setExpensePane(null);
+    setLobbyOpen(false);
     setExpensesOpen(true);
   }, [dismissToast]);
   const closeExpenses = useCallback(() => setExpensesOpen(false), []);
@@ -163,6 +167,7 @@ export default function GroupHubScreen() {
       setSettingsOpen(false);
       setExpensesOpen(false);
       if (!keepMember) setMemberOpenId(null);
+      setLobbyOpen(false);
       setExpensePane({ mode: 'new', prefill });
     },
     [dismissToast],
@@ -174,12 +179,38 @@ export default function GroupHubScreen() {
       setSettingsOpen(false);
       setExpensesOpen(false);
       setMemberOpenId(null);
+      setLobbyOpen(false);
       setExpensePane({ mode: 'edit', expenseId });
     },
     [dismissToast],
   );
   const closeExpense = useCallback(() => setExpensePane(null), []);
-  const paneOpen = activityOpen || !!memberOpenId || settingsOpen || expensesOpen || expensePane != null;
+  const openLobby = useCallback(() => {
+    dismissToast();
+    setActivityOpen(false);
+    setMemberOpenId(null);
+    setSettingsOpen(false);
+    setExpensesOpen(false);
+    setExpensePane(null);
+    setLobbyOpen(true);
+  }, [dismissToast]);
+  const closeLobby = useCallback(() => setLobbyOpen(false), []);
+  const selectGroup = useCallback(
+    (id: string) => {
+      closeLobby();
+      if (id !== groupId) {
+        router.replace(`/group/${id}` as Href);
+      }
+    },
+    [closeLobby, groupId, router],
+  );
+  const paneOpen =
+    lobbyOpen ||
+    activityOpen ||
+    !!memberOpenId ||
+    settingsOpen ||
+    expensesOpen ||
+    expensePane != null;
 
   useEffect(() => {
     if (!groupId) return;
@@ -190,6 +221,7 @@ export default function GroupHubScreen() {
     setSettingsOpen(false);
     setExpensesOpen(false);
     setExpensePane(null);
+    setLobbyOpen(false);
     knownActivityIdsRef.current = new Set();
     void getOrCreateDeviceUserId().then(setDeviceUserId);
     void (async () => {
@@ -313,7 +345,7 @@ export default function GroupHubScreen() {
     <View style={styles.screen}>
       <HubCornerChrome
         topInset={insets.top}
-        onHome={() => router.navigate('/')}
+        onHome={() => openLobby()}
         onSettings={() => (settingsOpen ? closeSettings() : openSettings())}
       />
 
@@ -333,10 +365,20 @@ export default function GroupHubScreen() {
           </Text>
         ) : null}
 
-        {settingsOpen ? (
+        {lobbyOpen ? (
+          <LobbyPanel
+            currentGroupId={groupId}
+            onSelectGroup={selectGroup}
+            onClose={closeLobby}
+          />
+        ) : settingsOpen ? (
           <SettingsPanel groupId={groupId} onClose={closeSettings} />
         ) : expensesOpen ? (
-          <ExpensesPanel groupId={groupId} onClose={closeExpenses} />
+          <ExpensesPanel
+            groupId={groupId}
+            onClose={closeExpenses}
+            onOpenExpense={openExpenseEdit}
+          />
         ) : expensePane ? (
           <ExpenseForm
             groupId={groupId}

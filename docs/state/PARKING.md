@@ -81,5 +81,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Settings overlay on hub** — delivered in [slice 0048](slices/0048-settings-overlay.md). Settings gear expands in place; Close/Done return.
 
 - **All-expenses overlay on hub** — delivered in [slice 0049](slices/0049-all-expenses-overlay.md). **View all expenses** expands in place; Close returns.
+- **Expense form overlay on hub** — delivered in [slice 0050](slices/0050-expense-form-overlay.md).
+- **Lobby-as-switcher on hub** — delivered in [slice 0051](slices/0051-lobby-switcher.md). Home expands the group list; Close returns.
 
 - **Expense form overlay on hub** — delivered in [slice 0050](slices/0050-expense-form-overlay.md). FAB, rows, buckets, and settle expand `L-expenseForm`; save/delete/**Close** return.
