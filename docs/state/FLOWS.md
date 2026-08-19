@@ -185,11 +185,12 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 ## F-invite — Invite a member
 
 **Trigger** — The person opens an unclaimed member.  
-**Outcome** — A join link for that member is already on that screen. Copy or share sends it; another device can redeem it once, within seven days.
+**Outcome** — Invite status (Active, Expired, Used, or none) is visible; **Resend invite** mints a join link for that member; copy or share sends it; another device can redeem it once, within seven days.
 
-1. `L-hub` expands `L-memberDetail`. `L-memberClaimed` marks the slot; the invite row is only on Unclaimed. `L-memberDetail` calls `L-mintInvite` with that member when the panel opens.
-2. `L-edgeMintInvite` posts to `L-efMintInvite`, which checks this device's access token, refuses a missing or tombstoned member, stores the hash, and returns the plaintext once.
-3. That screen shows **invite link** above the `/j/{token}` link (web) or the raw token (native) via `L-inviteShare` in a read-only field, with copy and share. On web the copied URL is the public invite path (`L-parseInviteToken` / `joinPathForToken`), not `/app/j/…`. The secret is not kept on the device after that.
+1. `L-hub` expands `L-memberDetail`. `L-memberClaimed` marks the slot; the invite row is only on Unclaimed. `L-memberDetail` calls `L-loadMemberInvites` when the panel opens.
+2. `L-edgeListMemberInvites` posts to `L-efListMemberInvites`, which checks this device's access token and returns invite metadata (no secrets). `L-inviteListStatus` derives the label.
+3. **Resend invite** calls `L-mintInvite` → `L-edgeMintInvite` → `L-efMintInvite`, which stores the hash and returns the plaintext once; `L-mintInvite` caches it on this device.
+4. That screen shows **invite link**, the status, the `/j/{token}` link (web) or raw token (native) via `L-inviteShare` in a read-only field, with copy and share.
 
 ## F-join — Join from an invite
 

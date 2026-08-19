@@ -162,6 +162,25 @@ export async function mintInviteRemote(input: {
   );
 }
 
+export async function listMemberInvitesRemote(input: {
+  group_id: string;
+  device_user_id: string;
+  access_token: string;
+  member_id: string;
+}): Promise<{
+  invites: Array<{ expires_at: string; redeemed_at: string | null }>;
+  member_deleted_at: string | null;
+}> {
+  return callFunction(
+    'list-member-invites',
+    { group_id: input.group_id, member_id: input.member_id },
+    {
+      accessToken: input.access_token,
+      deviceUserId: input.device_user_id,
+    },
+  );
+}
+
 export async function joinGroupRemote(input: {
   token: string;
   device_user_id: string;

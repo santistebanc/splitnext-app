@@ -131,6 +131,27 @@ export async function claimInvite(
   return result.meta.changes === 1;
 }
 
+export type MemberInviteRow = {
+  expires_at: string;
+  redeemed_at: string | null;
+};
+
+export async function listInvitesForMember(
+  db: IndexDb,
+  groupId: string,
+  memberId: string,
+): Promise<MemberInviteRow[]> {
+  const result = await db
+    .prepare(
+      `SELECT expires_at, redeemed_at FROM invites
+       WHERE group_id = ? AND member_id = ?
+       ORDER BY expires_at DESC`,
+    )
+    .bind(groupId, memberId)
+    .all<MemberInviteRow>();
+  return result.results ?? [];
+}
+
 export type DevicePushTokenRow = {
   device_user_id: string;
   expo_push_token: string;

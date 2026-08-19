@@ -9,6 +9,7 @@ import {
   createGroupRemote,
   fetchEntity,
   joinGroupRemote,
+  listMemberInvitesRemote,
   listRoster,
   mergeEntities,
   mintInviteRemote,
@@ -218,6 +219,53 @@ describe('local Worker HTTP contract', () => {
       access_token: group.created.access_token,
     });
     expect(roster.members.map((m) => m.id)).toContain(member.id);
+  });
+
+  it('lists member invite metadata and joins as a second device', async () => {
+    const group = await seededGroup();
+    const member = await seededMember(group);
+    const empty = await listMemberInvitesRemote({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+      member_id: member.id,
+    });
+    expect(empty.invites).toEqual([]);
+
+    const minted = await mintInviteRemote({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+      member_id: member.id,
+    });
+    expect(minted.token).toMatch(/^[A-Za-z0-9_-]{11}$/);
+
+    const listed = await listMemberInvitesRemote({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+      member_id: member.id,
+    });
+    expect(listed.invites).toHaveLength(1);
+    expect(listed.invites[0]).toMatchObject({
+      expires_at: minted.expires_at,
+      redeemed_at: null,
+    });
+
+    const joiner = crypto.randomUUID();
+    const joined = await joinGroupRemote({
+      token: minted.token,
+      device_user_id: joiner,
+    });
+    expect(joined.bind.member_id).toBe(member.id);
+
+    const spent = await listMemberInvitesRemote({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+      member_id: member.id,
+    });
+    expect(spent.invites[0]?.redeemed_at).not.toBeNull();
   });
 
   it('mints an invite and joins as a second device', async () => {

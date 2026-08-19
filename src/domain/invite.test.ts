@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { inviteIsLive, joinPathForToken, parseInviteToken } from './invite';
+import {
+  inviteIsLive,
+  inviteListStatus,
+  inviteStatusForRow,
+  joinPathForToken,
+  parseInviteToken,
+} from './invite';
 
 const NOW = new Date('2026-08-13T00:00:00.000Z');
 
@@ -48,6 +54,64 @@ describe('inviteIsLive', () => {
         NOW,
       ),
     ).toBe(false);
+  });
+});
+
+describe('inviteListStatus', () => {
+  it('is none when there are no rows', () => {
+    expect(inviteListStatus([], NOW)).toBe('none');
+  });
+
+  it('is active when the newest row is still live', () => {
+    expect(inviteListStatus([invite()], NOW)).toBe('active');
+  });
+
+  it('is active when an older row was used but a newer one is live', () => {
+    expect(
+      inviteListStatus(
+        [
+          invite({ redeemed_at: '2026-08-12T00:00:00.000Z' }),
+          invite({ expires_at: '2026-08-21T00:00:00.000Z' }),
+        ],
+        NOW,
+      ),
+    ).toBe('active');
+  });
+
+  it('is used when the newest row was redeemed', () => {
+    expect(
+      inviteListStatus(
+        [invite({ redeemed_at: '2026-08-13T01:00:00.000Z' })],
+        NOW,
+      ),
+    ).toBe('used');
+  });
+
+  it('is expired when the newest row is past expiry', () => {
+    expect(
+      inviteListStatus(
+        [invite({ expires_at: '2026-08-12T00:00:00.000Z' })],
+        NOW,
+      ),
+    ).toBe('expired');
+  });
+});
+
+describe('inviteStatusForRow', () => {
+  it('classifies a single row', () => {
+    expect(inviteStatusForRow(invite(), NOW)).toBe('active');
+    expect(
+      inviteStatusForRow(
+        invite({ redeemed_at: '2026-08-13T01:00:00.000Z' }),
+        NOW,
+      ),
+    ).toBe('used');
+    expect(
+      inviteStatusForRow(
+        invite({ expires_at: '2026-08-12T00:00:00.000Z' }),
+        NOW,
+      ),
+    ).toBe('expired');
   });
 });
 

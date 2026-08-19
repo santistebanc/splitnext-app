@@ -1,10 +1,18 @@
-import { joinGroupRemote, mintInviteRemote } from '@/src/api/edge';
+import { joinGroupRemote, listMemberInvitesRemote, mintInviteRemote } from '@/src/api/edge';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
-import { parseInviteToken } from '@/src/domain/invite';
+import {
+  inviteIsLive,
+  inviteListStatus,
+  parseInviteToken,
+  type InviteView,
+} from '@/src/domain/invite';
 import {
   addLobbyGroupId,
+  deleteInviteToken,
   getAccessToken,
+  getInviteToken,
   saveAccessToken,
+  saveInviteToken,
 } from '@/src/secrets/tokens';
 import { getGroupStore, initLocalGroup } from '@/src/store/groupStore';
 import { commitRemoteEntity } from '@/src/sync/inbound';
@@ -30,6 +38,7 @@ export async function mintInvite(
       access_token: accessToken,
       member_id: memberId,
     });
+    await saveInviteToken(groupId, memberId, token);
     store$.lastError.set(null);
     return token;
   } catch (err) {
@@ -40,6 +49,54 @@ export async function mintInvite(
       ),
     );
     return '';
+  }
+}
+
+export type MemberInviteSnapshot = {
+  status: ReturnType<typeof inviteListStatus>;
+  cachedToken: string | null;
+};
+
+/** Load invite metadata and reconcile any cached plaintext token. */
+export async function loadMemberInvites(
+  groupId: string,
+  memberId: string,
+): Promise<MemberInviteSnapshot> {
+  const deviceUserId = await getOrCreateDeviceUserId();
+  const accessToken = await getAccessToken(groupId);
+  const store$ = getGroupStore(groupId);
+  if (!accessToken) {
+    store$.lastError.set(syncError('missing_token'));
+    return { status: 'none', cachedToken: null };
+  }
+
+  try {
+    const { invites, member_deleted_at } = await listMemberInvitesRemote({
+      group_id: groupId,
+      device_user_id: deviceUserId,
+      access_token: accessToken,
+      member_id: memberId,
+    });
+    const rows: InviteView[] = invites.map((row) => ({
+      ...row,
+      member_deleted_at,
+    }));
+    const status = inviteListStatus(rows, new Date());
+    let cachedToken = await getInviteToken(groupId, memberId);
+    if (status !== 'active') {
+      if (cachedToken) await deleteInviteToken(groupId, memberId);
+      cachedToken = null;
+    }
+    store$.lastError.set(null);
+    return { status, cachedToken };
+  } catch (err) {
+    store$.lastError.set(
+      syncError(
+        'invite_failed',
+        err instanceof Error ? err.message : 'invite_list_failed',
+      ),
+    );
+    return { status: 'none', cachedToken: null };
   }
 }
 

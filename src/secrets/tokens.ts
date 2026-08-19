@@ -62,3 +62,29 @@ export async function removeLobbyGroupId(groupId: string): Promise<void> {
 export async function deleteAccessToken(groupId: string): Promise<void> {
   await deleteSecret(tokenKey(groupId));
 }
+
+function inviteTokenKey(groupId: string, memberId: string): string {
+  return `invite_token.${groupId}.${memberId}`;
+}
+
+export async function saveInviteToken(
+  groupId: string,
+  memberId: string,
+  token: string,
+): Promise<void> {
+  await setSecret(inviteTokenKey(groupId, memberId), token);
+}
+
+export async function getInviteToken(
+  groupId: string,
+  memberId: string,
+): Promise<string | null> {
+  return getSecret(inviteTokenKey(groupId, memberId));
+}
+
+export async function deleteInviteToken(
+  groupId: string,
+  memberId: string,
+): Promise<void> {
+  await deleteSecret(inviteTokenKey(groupId, memberId));
+}

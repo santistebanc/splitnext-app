@@ -17,6 +17,33 @@ export function inviteIsLive(invite: InviteView, now: Date): boolean {
   return now.getTime() < Date.parse(invite.expires_at);
 }
 
+export type InviteStatus = 'active' | 'expired' | 'used';
+
+/** Status of one invite row at `now`. */
+export function inviteStatusForRow(invite: InviteView, now: Date): InviteStatus {
+  if (invite.redeemed_at != null) return 'used';
+  if (invite.member_deleted_at != null) return 'used';
+  if (now.getTime() >= Date.parse(invite.expires_at)) return 'expired';
+  return 'active';
+}
+
+export type InviteListStatus = InviteStatus | 'none';
+
+/**
+ * Status for the UI from server rows (newest `expires_at` first).
+ * Any still-live row counts as active even if an older row was spent.
+ */
+export function inviteListStatus(
+  invites: InviteView[],
+  now: Date,
+): InviteListStatus {
+  if (invites.length === 0) return 'none';
+  for (const row of invites) {
+    if (inviteIsLive(row, now)) return 'active';
+  }
+  return inviteStatusForRow(invites[0], now);
+}
+
 /**
  * Pull the invite secret out of whatever the person pasted: a raw token, a
  * `/j/{token}` path, a `/join?token=` URL, or a full URL of either. Empty /
