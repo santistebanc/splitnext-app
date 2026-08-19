@@ -292,7 +292,7 @@ const FLOWS = [
           `[F-undo] Lunch still on Activity after Undo (got ${JSON.stringify(after.slice(0, 200))})`,
         );
       }
-      await page.goBack({ waitUntil: 'networkidle', timeout: 120000 });
+      await d.press(page.getByTestId('activity-close'));
       await d.beat(800);
       const hub = await page.innerText('body');
       if (/Lunch/.test(hub)) {

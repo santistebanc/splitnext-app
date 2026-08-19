@@ -3,12 +3,12 @@ import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
 import { activityLines } from '@/src/domain/activity';
 import { getGroupStore } from '@/src/store/groupStore';
 import { openGroup, undoActivity } from '@/src/sync/groupSync';
-import { ActivityRow } from '@/src/ui/ActivityRow';
+import { ActivityFeed } from '@/src/ui/ActivityFeed';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 export default function ActivityScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -53,53 +53,19 @@ export default function ActivityScreen() {
   );
 
   return (
-    <ScrollView
-      testID="activity-page"
-      contentContainerStyle={styles.container}
-    >
-      {lines.length === 0 ? (
-        <Text style={styles.hint}>No activity yet.</Text>
-      ) : (
-        lines.map((line) => (
-          <View
-            key={line.id}
-            style={styles.row}
-            testID="activity-row"
-          >
-            <ActivityRow
-              line={line}
-              lineStyle={styles.rowText}
-              onUndo={() => void undoActivity(groupId, line.id)}
-            />
-          </View>
-        ))
-      )}
-    </ScrollView>
+    <View style={styles.screen}>
+      <ActivityFeed
+        lines={lines}
+        onUndo={(activityId) => void undoActivity(groupId, activityId)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 14,
-    paddingBottom: 48,
+  screen: {
+    flex: 1,
+    paddingHorizontal: 14,
     backgroundColor: colors.bg,
-  },
-  hint: {
-    marginTop: 8,
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-  },
-  row: {
-    paddingVertical: 12,
-    minHeight: 48,
-    justifyContent: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.line,
-  },
-  rowText: {
-    fontSize: 14,
-    color: colors.ink,
-    lineHeight: 20,
   },
 });

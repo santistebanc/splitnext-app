@@ -10,9 +10,10 @@ type Props = {
   line: ActivityLine | null;
   onPress: () => void;
   onDismiss: () => void;
+  offsetTop?: number;
 };
 
-export function ActivityToast({ line, onPress, onDismiss }: Props) {
+export function ActivityToast({ line, onPress, onDismiss, offsetTop = 0 }: Props) {
   useEffect(() => {
     if (!line) return;
     const timer = setTimeout(onDismiss, AUTO_DISMISS_MS);
@@ -22,7 +23,7 @@ export function ActivityToast({ line, onPress, onDismiss }: Props) {
   if (!line) return null;
 
   return (
-    <View style={styles.bar} pointerEvents="box-none">
+    <View style={[styles.bar, { top: offsetTop }]} pointerEvents="box-none">
       <Pressable
         testID="activity-toast"
         style={styles.toast}
