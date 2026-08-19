@@ -92,12 +92,12 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On the hub, the person taps **+ Expense**, types an amount, and taps **Add expense** on the form.  
 **Outcome** — The cost is listed immediately against the member who paid, split among whoever was selected (everyone, if they left the defaults), reaches the server on the next push, and the hub switches from names to balances.
 
-1. `L-hub` opens `L-expenseNew` for that group from the FAB.
-2. `L-expenseNew` shows **Paid by** first as a drawer (same shape as currency), defaulting to this device's assumed member, then a large amount field (focused on create, not edit), who shares (everyone 1 share unless the query prefills), and **What for** last.
-3. The person types an amount; `L-expenseNew` parses it into whole cents and calls `L-addExpense` with that payer and the checked members.
+1. `L-hub` expands `L-expenseForm` from the FAB.
+2. `L-expenseForm` shows **Paid by** first as a drawer (same shape as currency), defaulting to this device's assumed member, then a large amount field (focused on create, not edit), who shares (everyone 1 share unless the query prefills), and **What for** last.
+3. The person types an amount; `L-expenseForm` parses it into whole cents and calls `L-addExpense` with that payer and the checked members.
 4. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
 5. `L-participantsForSplit` accepts the checked members only when they are all live and at least one remains; `L-allocateMixed` (equal 1-share) divides the cost across that set, every cent. The split is frozen into the expense: a member added later joins the next expense, not this one.
-6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and `L-expenses` will list it; the hub's balances update before any network call. When this device has an assumed member, `L-addExpense` also queues an `expense_added` activity (flush order puts it after the expense). **View all expenses** shows **Pending** on that row until the server accepts it (`L-expenseIsPending`).
+6. The expense is written into the store at version 1, split and all, and queued — `L-expenseForm` closes back to `L-hub` and `L-expensesPanel` will list it; the hub's balances update before any network call. When this device has an assumed member, `L-addExpense` also queues an `expense_added` activity (flush order puts it after the expense). **View all expenses** shows **Pending** on that row until the server accepts it (`L-expenseIsPending`).
 7. `L-flushQueue` pushes both items, so the split can never arrive half-applied. `L-sortByFlushOrder` puts the expense after members and the activity after expenses, so the payer and expense exist on the server before the activity that names them.
 8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets. After this first live expense, `L-hub` shows balances, **View all expenses** at the bottom, and the + to add a member.
 
@@ -116,7 +116,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On All expenses, or on a member's paid-for / owe-for line, the person opens an expense, changes amount, payer, who shares, or what-for, and taps **Save**.  
 **Outcome** — That expense is the same id at the next version, split from the editor (equal 1-share unless they changed units or a fixed amount). Hub nets and buckets refold. A second expense is not created.
 
-1. `L-hub` expands `L-expensesPanel`, or a `L-member` bucket line opens `L-expenseNew` on `/expense/{id}` with the stored expense loaded — live members who were not in the original split stay out. Cents-only (pre-mixed) rows open as 1 share each.
+1. `L-hub` expands `L-expensesPanel`, or a `L-member` bucket line expands `L-expenseForm` for edit — live members who were not in the original split stay out. Cents-only (pre-mixed) rows open as 1 share each.
 2. Save calls `L-updateExpense`. `L-patchExpense` rebuilds allocations via `L-allocateMixed`, or returns null when nothing changed — then nothing is written and Save stays off.
 3. A successful write updates the store and queues the expense; `L-flushQueue` pushes it as one item, same as add.
 4. While that version is still queued, `L-expensesPanel` shows **Pending** on the row (`L-expenseIsPending`).
@@ -127,16 +127,16 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On the edit form, the person taps **Delete**, confirms, and the expense is tombstoned.  
 **Outcome** — That id drops out of All expenses, member buckets, and balance folds. The same expense is not hard-deleted.
 
-1. `L-hub` expands `L-expensesPanel`, or a bucket line opens edit; **Delete** is in the header.
+1. `L-hub` expands `L-expensesPanel`, or a bucket line opens edit; **Delete** is on `L-expenseForm`.
 2. Confirm drawer (same shape as Leave in Settings) then `L-deleteExpense` calls `L-tombstoneExpense`, queues the expense, and flushes.
-3. `L-expenseNew` returns to the previous screen; lists and `L-balances` no longer include that expense.
+3. `L-expenseForm` closes back to the prior pane; lists and `L-balances` no longer include that expense.
 
 ## F-mixed-split — Unequal split
 
 **Trigger** — On the new-expense form, with at least two members, the person types an amount, taps **Increase share** on one row, and taps **Add expense**.  
 **Outcome** — That member takes two shares; the others keep one. Hub nets match the mixed fold. The expense still has one id.
 
-1. `L-hub` opens `L-expenseNew`. The list starts at 1 share each (`L-splitEditor`).
+1. `L-hub` expands `L-expenseForm`. The list starts at 1 share each (`L-splitEditor`).
 2. **+/-** and tap-amount call `L-splitEditor`; `L-allocateMixed` shows the live cents on each row.
 3. `L-addExpense` writes `share_units` and optional `fixed_cents` inside the expense with the frozen `amount_cents`.
 4. `L-balances` refolds from those cents.
@@ -158,7 +158,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-hub` already has the nets from `L-balances`, so settle-up needs no network of its own.
 2. `L-settle` drops members at zero, partitions the rest into as many zero-sum subgroups as exist, and pairs poorest with richest inside each. Two devices holding the same nets list the same transfers.
-3. Tapping a balance row expands `L-memberDetail` on `L-hub`. `L-memberBuckets` lists that person's expenses as paid-for and owe-for lines that sum to their net. `L-settlementsForMember` keeps only that person's outgoing transfers under **Suggested settlement**. Each row is the transfer as text and a **Settle** button that pushes `L-settlementHref` into `L-expenseNew`; Back abandons.
+3. Tapping a balance row expands `L-memberDetail` on `L-hub`. `L-memberBuckets` lists that person's expenses as paid-for and owe-for lines that sum to their net. `L-settlementsForMember` keeps only that person's outgoing transfers under **Suggested settlement**. Each row is the transfer as text and a **Settle** button that expands `L-expenseForm` with settle prefill; **Close** abandons.
 4. When that member has no outgoing transfer — they are square, or only owed — the settle block is absent. An empty paid-for or owe-for section is omitted.
 
 ## F-settle-record — Record a suggested transfer
@@ -167,10 +167,10 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Outcome** — That transfer is recorded as an ordinary expense: the debtor paid, only the creditor shares, what-for is Settlement. The tap itself did not move money.
 
 1. `L-member` already has the transfers from `L-settlementsForMember`.
-2. The button's `L-settlementHref` opens `L-expenseNew` with payer, amount in cents, the creditor as the only participant, and what-for `Settlement`.
+2. The button expands `L-expenseForm` with payer, amount in cents, the creditor as the only participant, and what-for `Settlement`.
 3. `L-expensePrefill` turns that query into the form's starting values; missing or non-money params would have left the You / everyone defaults, which this path does not hit.
 4. **Add expense** calls `L-addExpense` with that payer and the one-person share — the same write as any other expense.
-5. `L-expenseNew` returns to `L-member`. `L-balances`, `L-memberBuckets` and `L-settle` refold from the new expense, so that transfer is gone or the list shrinks and the Settlement line appears in a bucket. `L-expenses` lists the Settlement row.
+5. `L-expenseForm` closes back to `L-memberDetail`. `L-balances`, `L-memberBuckets` and `L-settle` refold from the new expense, so that transfer is gone or the list shrinks and the Settlement line appears in a bucket. `L-expensesPanel` lists the Settlement row.
 
 ## F-bind — Assumed member
 

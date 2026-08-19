@@ -15,10 +15,10 @@ export default function GroupLayout() {
       <Stack.Screen name="member/[memberId]" options={{ headerShown: false, title: 'Member' }} />
       <Stack.Screen name="expenses" options={{ headerShown: false, title: 'All expenses' }} />
       <Stack.Screen name="activity" options={{ title: 'Activity' }} />
-      <Stack.Screen name="expense/new" options={{ title: 'New expense' }} />
+      <Stack.Screen name="expense/new" options={{ headerShown: false, title: 'New expense' }} />
       <Stack.Screen
         name="expense/[expenseId]"
-        options={{ title: 'Edit expense' }}
+        options={{ headerShown: false, title: 'Edit expense' }}
       />
     </Stack>
   );
