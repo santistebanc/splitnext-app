@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy — SplitNext</title>
+    <meta
+      name="description"
+      content="What SplitNext stores, and how to ask for deletion. No user accounts."
+    />
+    <link rel="icon" href="../favicon.png" type="image/png" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <header class="home-nav">
+      <a class="nav-brand" href="../" aria-label="SplitNext home">
+        <img src="../favicon.png" width="32" height="32" alt="" />
+        <span>SplitNext</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="../try/">Use on web</a>
+      </nav>
+    </header>
+
+    <main class="page-main legal-main">
+      <article class="legal">
+        <p class="eyebrow">Legal</p>
+        <h1>Privacy</h1>
+        <p>
+          SplitNext has no user accounts, no email sign-in, and no passwords.
+          Access to a group is a per-device capability token. The app records
+          shared costs and suggests who should pay whom. It never moves money.
+        </p>
+
+        <h2>What we store</h2>
+        <p>
+          On a device that uses the app: group names, member display names,
+          expenses as integer cents, how each cost is split, activity events,
+          and the capability tokens that prove access. On a phone those tokens
+          sit in the OS secret store; in a browser they sit in local storage.
+        </p>
+        <p>
+          On our Cloudflare Worker: the same group records live in a Durable
+          Object for that group. A D1 index holds hashes of access tokens and
+          invite secrets (not the secrets themselves), plus which device and
+          member they belong to. Invite links are one-use and expire after
+          seven days.
+        </p>
+        <p>
+          If you allow notifications on a native build, that device may
+          register an Expo push token with the Worker so we can send a ping
+          when someone else changes the group. We do not run ads or behavioural
+          analytics.
+        </p>
+        <p>
+          The public website (this landing, the invite page, and the web app
+          export) is hosted on GitHub Pages.
+        </p>
+
+        <h2>What we do not store</h2>
+        <p>
+          No login identity, no payment details, no contacts list. Member names
+          are labels you type, not accounts. Balances and suggested transfers
+          are derived from expenses; they are not stored as their own records.
+        </p>
+
+        <h2>Deletion</h2>
+        <p>
+          Leaving a group from this device revokes that device’s token and
+          unbinds it. The member slot and expenses stay for the rest of the
+          group. Soft-deleted rows stay in storage; they are hidden, not erased.
+        </p>
+        <p>
+          To ask us to delete group data we hold, open an issue on
+          <a href="https://github.com/santistebanc/splitnext-app/issues"
+            >the SplitNext GitHub repository</a
+          >
+          and name the group if you can. We do not verify a deletion request
+          with a join code. There is no self-serve wipe in the app.
+        </p>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <span>SplitNext</span>
+      <nav class="footer-links" aria-label="Legal">
+        <a href="../privacy/">Privacy</a>
+        <a href="../terms/">Terms</a>
+      </nav>
+    </footer>
+  </body>
+</html>

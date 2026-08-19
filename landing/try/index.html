@@ -63,10 +63,30 @@
       .try-back:hover {
         color: #1a1c16;
       }
+      .try-legal {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 2;
+        display: flex;
+        gap: 14px;
+      }
+      .try-legal a {
+        color: #5c5f52;
+        font: 600 13px/1 system-ui, sans-serif;
+        text-decoration: none;
+      }
+      .try-legal a:hover {
+        color: #1a1c16;
+      }
     </style>
   </head>
   <body>
     <a class="try-back" href="../" aria-label="Back">←</a>
+    <nav class="try-legal" aria-label="Legal">
+      <a href="../privacy/">Privacy</a>
+      <a href="../terms/">Terms</a>
+    </nav>
     <div class="try-stage">
       <div class="try-sizer">
         <div class="try-frame">

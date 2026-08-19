@@ -7,6 +7,10 @@ from threading import Thread
 from serve_landing import handler_for, metro_path_for, prepare_metro_html, rewrite_root_urls
 
 
+def fetch(url: str):
+    return urllib.request.urlopen(url, timeout=5)
+
+
 class MetroPath(unittest.TestCase):
     def test_app_prefix_maps_to_metro_root(self):
         self.assertEqual(metro_path_for("/app"), "/")
@@ -17,6 +21,8 @@ class MetroPath(unittest.TestCase):
         self.assertIsNone(metro_path_for("/"))
         self.assertIsNone(metro_path_for("/try/"))
         self.assertIsNone(metro_path_for("/styles.css"))
+        self.assertIsNone(metro_path_for("/privacy/"))
+        self.assertIsNone(metro_path_for("/terms/"))
 
     def test_other_paths_proxy_so_absolute_bundle_urls_work(self):
         self.assertEqual(metro_path_for("/node_modules/expo-router/entry.bundle"), "/node_modules/expo-router/entry.bundle")
@@ -47,9 +53,9 @@ class ServeTry(unittest.TestCase):
         Thread(target=server.serve_forever, daemon=True).start()
         try:
             port = server.server_address[1]
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/try/") as res:
+            with fetch(f"http://127.0.0.1:{port}/try/") as res:
                 html = res.read().decode()
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/") as res:
+            with fetch(f"http://127.0.0.1:{port}/") as res:
                 home = res.read().decode()
         finally:
             server.shutdown()
@@ -78,7 +84,7 @@ class ServeTry(unittest.TestCase):
         Thread(target=server.serve_forever, daemon=True).start()
         try:
             port = server.server_address[1]
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/app/") as res:
+            with fetch(f"http://127.0.0.1:{port}/app/") as res:
                 html = res.read().decode()
         finally:
             server.shutdown()
@@ -97,12 +103,12 @@ class ServeInvite(unittest.TestCase):
         try:
             port = server.server_address[1]
             try:
-                urllib.request.urlopen(f"http://127.0.0.1:{port}/j/xK3mP9qL2nQ")
+                fetch(f"http://127.0.0.1:{port}/j/xK3mP9qL2nQ")
                 self.fail("expected 404")
             except urllib.error.HTTPError as err:
                 self.assertEqual(err.code, 404)
                 html = err.read().decode()
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/") as res:
+            with fetch(f"http://127.0.0.1:{port}/") as res:
                 home = res.read().decode()
         finally:
             server.shutdown()
@@ -114,6 +120,34 @@ class ServeInvite(unittest.TestCase):
         self.assertNotIn("apps.apple.com", html.lower())
         self.assertIn("Use on web", home)
         self.assertNotIn("You've been invited", home)
+
+
+class ServeLegal(unittest.TestCase):
+    def test_privacy_and_terms_are_served_and_linked(self):
+        server = ThreadingHTTPServer(("127.0.0.1", 0), handler_for("http://127.0.0.1:9/"))
+        Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            port = server.server_address[1]
+            with fetch(f"http://127.0.0.1:{port}/privacy/") as res:
+                privacy = res.read().decode()
+            with fetch(f"http://127.0.0.1:{port}/terms/") as res:
+                terms = res.read().decode()
+            with fetch(f"http://127.0.0.1:{port}/") as res:
+                home = res.read().decode()
+            with fetch(f"http://127.0.0.1:{port}/try/") as res:
+                try_html = res.read().decode()
+        finally:
+            server.shutdown()
+            server.server_close()
+        self.assertIn("Privacy", privacy)
+        self.assertIn("no user accounts", privacy.lower())
+        self.assertIn("Terms", terms)
+        self.assertIn("never moves money", terms.lower())
+        self.assertIn('href="privacy/"', home)
+        self.assertIn('href="terms/"', home)
+        self.assertIn("../privacy/", try_html)
+        self.assertIn("../terms/", try_html)
+        self.assertIn("../app/", try_html)
 
 
 if __name__ == "__main__":

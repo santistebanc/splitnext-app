@@ -27,6 +27,23 @@ class AssemblePages(unittest.TestCase):
             try_html = (out / "try" / "index.html").read_text(encoding="utf-8")
             self.assertIn("../app/", try_html)
             self.assertNotIn('window.SPLITNEXT_APP="http://', try_html)
+            self.assertIn("../privacy/", try_html)
+            self.assertIn("../terms/", try_html)
+            self.assertIn('href="privacy/"', html)
+            self.assertIn('href="terms/"', html)
+            privacy = (out / "privacy" / "index.html").read_text(encoding="utf-8")
+            terms = (out / "terms" / "index.html").read_text(encoding="utf-8")
+            self.assertIn("no user accounts", privacy.lower())
+            self.assertIn("capability", privacy.lower())
+            self.assertIn("deletion", privacy.lower())
+            self.assertIn("join code", privacy.lower())
+            self.assertNotIn("credit card", privacy.lower())
+            self.assertNotIn("oauth", privacy.lower())
+            self.assertNotIn("join-code verified wipe", privacy.lower())
+            self.assertIn("never moves money", terms.lower())
+            self.assertNotIn("credit card", terms.lower())
+            self.assertIn('href="privacy/"', not_found)
+            self.assertIn('href="terms/"', not_found)
 
     def test_app_export_lands_under_app(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -37,6 +54,9 @@ class AssemblePages(unittest.TestCase):
             assemble(out, app=dist)
             self.assertEqual((out / "app" / "index.html").read_text(encoding="utf-8"), "<html>app</html>")
             self.assertEqual((out / "app" / "404.html").read_text(encoding="utf-8"), "<html>app</html>")
+            self.assertTrue((out / "privacy" / "index.html").exists())
+            self.assertTrue((out / "terms" / "index.html").exists())
+            self.assertFalse((out / "app" / "privacy").exists())
             self.assertIn("You've been invited", (out / "404.html").read_text(encoding="utf-8"))
             self.assertIn("Use on web", (out / "index.html").read_text(encoding="utf-8"))
 
