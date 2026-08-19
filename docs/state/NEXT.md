@@ -1,48 +1,49 @@
-# Slice 0054 — flow assertions for new activity kinds
+# Slice 0055 — wake orchestrator tests
 
 **Tier** — foundation-risk
 
 ## Goal
 
-Capture-driven flow checks assert the new activity behavior introduced in 0053, so regressions are caught in CI without needing a second device.
+`startWakeSubscription` is covered against the local Worker: token lookup, wake-tip catch-up, reconnect catch-up, and leave stop — not just the raw `/wake/` wire.
 
 ## Before → After
 
 | | Now | After |
 | --- | --- | --- |
-| `F-bump` capture flow | Asserts hub title rename only | Also asserts Activity feed includes group-rename event text |
-| Coverage of 0053 in capture | Join/leave/rename activity kinds covered by unit/contract tests | Group-rename event also covered by browser flow assertion |
+| Wake coverage | `wakePolicy` pure tests + `/wake/` wire contract in `edge.test.ts` | `wake.test.ts` drives `L-wakeSub` orchestration |
+| Catch-up trigger | Assumed by code review | Proven: wake tip and reconnect-after-drop both call catch-up |
+| Leave | `stopWakeSubscription` untested at orchestrator level | Proven: stop clears socket and skips retry catch-up |
 
 ## Plan
 
-1. Extend `F-bump` in `docs/scripts/capture-flows.mjs` to open Activity and assert `renamed the group`.
-2. Keep the assertion text-based and robust across actor label (`You` or member name).
-3. Run targeted capture assert-only for `F-bump`.
-4. Keep scope narrow: no multi-profile orchestration in this slice.
+1. Add test seams on `wake.ts`: `resetWakeStateForTests`, `getWakeSocketForTests`.
+2. **`wake.test.ts`** — local Worker harness; mock `getAccessToken` / `getOrCreateDeviceUserId`.
+3. Tests: no token → no socket; open succeeds; merge wake tip → catchUp; drop + timer → reconnect catchUp; stop → no retry.
+4. Groom `PARKING.md` entry.
 
 ## Seams under test
 
 | Seam | Behavior |
 | --- | --- |
-| `F-bump` capture flow | Renaming a group is visible in Activity as a group-rename line |
+| `L-wakeSub` | Opens `/wake/` with stored token; wake tip runs catch-up; reconnect after drop runs catch-up; stop closes without retry |
 
 ## Acceptance
 
-- Run `npm run capture -- F-bump --assert-only`; it passes clean.
-- Run `npm run check`; it stays green.
+- `npm run check` passes.
+- New tests fail if wake tip or reconnect catch-up wiring is removed.
 
 ## Edge paths
 
 | Surface | State | What happens |
 | --- | --- | --- |
-| `F-bump` | Activity overlay fails to open after rename | Flow records a failing problem line and exits non-zero |
+| | | *(filled during build)* |
 
 ## Out of scope
 
-- Multi-device capture for join/leave
-- Undo on hub recent list
-- Capture taxonomy refactor
+- Full `syncGroup` / inbound fetch integration
+- `/wake/` on `FUNCTIONS`
+- Capture clip for wake reconnect
 
 ## Parked this session
 
-- Multi-profile flow capture harness for invite join/leave — foundation-risk
+- Browser flow taxonomy expansion — testing
