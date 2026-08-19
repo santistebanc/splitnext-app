@@ -46,6 +46,14 @@ const { base: BASE, slice: SLICE, only, assertOnly: ASSERT_ONLY } = parseCapture
 
 const problems = [];
 
+async function reopenExpensesList(d, page) {
+  if ((await page.getByTestId('expenses-close').count()) > 0) return;
+  if ((await page.getByTestId('expense-row').count()) > 0) return;
+  await d.tap('View all expenses');
+  await d.beat(1200);
+}
+
+
 /**
  * Trim the dev-server load off the front of a clip.
  *
@@ -314,14 +322,15 @@ const FLOWS = [
       await d.beat(400);
       await d.tap('Save');
       await d.beat(2000);
+      await reopenExpensesList(d, page);
       const list = await page.innerText('body');
       if (!/12\.00/.test(list)) {
         problems.push(
           `[F-edit-expense] all-expenses list did not show the new amount (got ${JSON.stringify(list.slice(0, 400))})`,
         );
       }
-      await page.goBack({ waitUntil: 'networkidle', timeout: 120000 });
-      await d.beat(1600);
+      await d.press(page.getByTestId('expenses-close'));
+      await d.beat(1200);
       const hub = await page.innerText('body');
       if (!/8\.00/.test(hub) && !/\+8\.00/.test(hub)) {
         problems.push(
@@ -347,14 +356,15 @@ const FLOWS = [
       await d.beat(400);
       await d.press(page.getByTestId('expense-delete-confirm-ok'));
       await d.beat(2000);
+      await reopenExpensesList(d, page);
       const after = await page.getByTestId('expense-row').count();
       if (after >= before) {
         problems.push(
           `[F-delete-expense] expense still listed (${before} → ${after})`,
         );
       }
-      await page.goBack({ waitUntil: 'networkidle', timeout: 120000 });
-      await d.beat(1600);
+      await d.press(page.getByTestId('expenses-close'));
+      await d.beat(1200);
       const hub = await page.innerText('body');
       if (/Taxi/.test(hub)) {
         problems.push('[F-delete-expense] hub still mentions deleted expense');
