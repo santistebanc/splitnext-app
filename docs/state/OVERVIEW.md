@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0043
+Last updated: slice 0044
 
 ## Direction
 
@@ -35,6 +35,7 @@ Last updated: slice 0043
 - Sync split into flush / apply / subscribe modules behind a `groupSync` facade; typed clearable errors; queue identity by `entity_type + id + version` — [slice 0004](slices/0004-sync-quality-harden.md)
 - Record an expense against the member who paid — integer cents, listed under All expenses, synced through the same merge path — [slice 0005](slices/0005-expense-spine.md) / [slice 0023](slices/0023-member-first-hub-chrome.md)
 - Edit an existing expense from the list or a bucket line — equal or mixed split, share units and fixed cents restored on open — [slice 0029](slices/0029-expense-editor.md) / [slice 0030](slices/0030-mixed-splits.md)
+- See **Pending** on an All expenses row while that expense is still in the outbound queue — [slice 0044](slices/0044-pending-expense-badge.md)
 - Soft-delete an expense from the edit form; lists and balances refold without it — [slice 0031](slices/0031-expense-delete.md)
 - Destructive confirms (Leave group, Delete expense) use a bottom drawer — [slice 0032](slices/0032-confirm-drawer.md)
 - Remove an unclaimed member from the group list (soft-delete); You and claimed slots cannot be removed — [slice 0033](slices/0033-kick-member.md)
@@ -127,7 +128,7 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/j/{to
 ## Seams
 
 - `shouldAcceptVersion` / `sortByFlushOrder` — `src/domain/version.ts` — vitest
-- `shouldAttemptFlush` / `queueAfterMergeResults` — `src/sync/queuePolicy.ts` — vitest
+- `shouldAttemptFlush` / `queueAfterMergeResults` / `expenseIsPending` — `src/sync/queuePolicy.ts` — vitest
 - `assumedMemberIdFromBinds` / `bindingIsOpen` / `memberIsClaimed` — `src/domain/assumedMember.ts` — vitest — assumed member from this device's live bind; whether the group has no live expense (hub names vs balances)
 - `tombstoneBind` / `bindOnce` — `src/domain/bind.ts` — vitest — soft-delete a live bind at the next version; this device may bind only once
 - Worker routes behind `src/api/edge.ts` — vitest against a local Worker (`createTestHarness` + D1 migrations), never `workers.dev` — the HTTP capability boundary. Wake WebSocket at `/wake/:groupId` is the same harness: auth + tip after merge. `leave-group` revokes the token (D-075).

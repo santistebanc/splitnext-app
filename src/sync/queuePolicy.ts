@@ -3,6 +3,14 @@ export function shouldAttemptFlush(queueLength: number): boolean {
   return queueLength > 0;
 }
 
+/** True while this expense id is still in the outbound queue (any version). */
+export function expenseIsPending<T extends { entity_type: string; id: string }>(
+  queue: readonly T[],
+  expenseId: string,
+): boolean {
+  return queue.some((item) => item.entity_type === 'expenses' && item.id === expenseId);
+}
+
 type QueueItem = { entity_type: string; id: string; version: number };
 type MergeResult = {
   entity_type: string;

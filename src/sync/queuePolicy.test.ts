@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { queueAfterMergeResults, shouldAttemptFlush } from './queuePolicy';
+import {
+  expenseIsPending,
+  queueAfterMergeResults,
+  shouldAttemptFlush,
+} from './queuePolicy';
 
 describe('shouldAttemptFlush', () => {
   it('skips merge when the queue is empty', () => {
@@ -49,5 +53,44 @@ describe('queueAfterMergeResults', () => {
       },
     ]);
     expect(next).toEqual(queue);
+  });
+});
+
+describe('expenseIsPending', () => {
+  it('is true when that expense id is queued', () => {
+    expect(
+      expenseIsPending(
+        [{ entity_type: 'expenses', id: 'e1', version: 1 }],
+        'e1',
+      ),
+    ).toBe(true);
+  });
+
+  it('is true when two versions of the same expense are queued', () => {
+    expect(
+      expenseIsPending(
+        [
+          { entity_type: 'expenses', id: 'e1', version: 1 },
+          { entity_type: 'expenses', id: 'e1', version: 2 },
+        ],
+        'e1',
+      ),
+    ).toBe(true);
+  });
+
+  it('is false when the queue is empty or holds a different entity', () => {
+    expect(expenseIsPending([], 'e1')).toBe(false);
+    expect(
+      expenseIsPending(
+        [{ entity_type: 'members', id: 'e1', version: 1 }],
+        'e1',
+      ),
+    ).toBe(false);
+    expect(
+      expenseIsPending(
+        [{ entity_type: 'expenses', id: 'e2', version: 1 }],
+        'e1',
+      ),
+    ).toBe(false);
   });
 });

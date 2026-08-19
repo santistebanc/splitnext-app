@@ -3,6 +3,7 @@ import { assumedMemberIdFromBinds } from '@/src/domain/assumedMember';
 import { expenseEditHref } from '@/src/domain/expensePrefill';
 import { getGroupStore } from '@/src/store/groupStore';
 import { openGroup } from '@/src/sync/groupSync';
+import { expenseIsPending } from '@/src/sync/queuePolicy';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -20,6 +21,7 @@ export default function ExpensesScreen() {
   const members = useValue(store$.members);
   const binds = useValue(store$.binds);
   const expenses = useValue(store$.expenses);
+  const queue = useValue(store$.queue);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,7 +64,10 @@ export default function ExpensesScreen() {
             : 'This device is not a member of this group; expenses are recorded against you.'}
         </Text>
       ) : (
-        expenseList.map((e) => (
+        expenseList.map((e) => {
+          const pending = expenseIsPending(queue ?? [], e.id);
+          const title = e.description || '(no description)';
+          return (
           <Pressable
             key={e.id}
             testID="expense-row"
@@ -71,24 +76,26 @@ export default function ExpensesScreen() {
               router.push(expenseEditHref(groupId, e.id) as Href)
             }
             accessibilityRole="button"
-            accessibilityLabel={e.description || '(no description)'}
+            accessibilityLabel={pending ? `${title}, pending` : title}
           >
             <View style={styles.body}>
-              <Text style={styles.title}>
-                {e.description || '(no description)'}
-              </Text>
+              <Text style={styles.title}>{title}</Text>
               <Text style={styles.sub}>
                 {nameOf(e.payer_member_id)}
                 {e.allocations?.length
                   ? ` · split ${e.allocations.length} way${e.allocations.length === 1 ? '' : 's'}`
                   : ''}
+                {pending ? (
+                  <Text style={styles.pending}> · Pending</Text>
+                ) : null}
               </Text>
             </View>
             <Text style={styles.amt}>
               {formatMoney(e.amount_cents, group.currency_label)}
             </Text>
           </Pressable>
-        ))
+          );
+        })
       )}
     </ScrollView>
   );
@@ -128,6 +135,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 13,
     color: colors.muted,
+  },
+  pending: {
+    fontSize: 13,
+    color: colors.warn,
   },
   amt: {
     fontFamily: 'monospace',

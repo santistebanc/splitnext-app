@@ -97,7 +97,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 3. The person types an amount; `L-expenseNew` parses it into whole cents and calls `L-addExpense` with that payer and the checked members.
 4. `L-addExpense` refuses a fraction of a cent or a non-positive amount before anything is stored, and refuses a payer who is not a member here.
 5. `L-participantsForSplit` accepts the checked members only when they are all live and at least one remains; `L-allocateMixed` (equal 1-share) divides the cost across that set, every cent. The split is frozen into the expense: a member added later joins the next expense, not this one.
-6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and `L-expenses` will list it; the hub's balances update before any network call. When this device has an assumed member, `L-addExpense` also queues an `expense_added` activity (flush order puts it after the expense).
+6. The expense is written into the store at version 1, split and all, and queued — `L-expenseNew` returns to the hub and `L-expenses` will list it; the hub's balances update before any network call. When this device has an assumed member, `L-addExpense` also queues an `expense_added` activity (flush order puts it after the expense). **View all expenses** shows **Pending** on that row until the server accepts it (`L-expenseIsPending`).
 7. `L-flushQueue` pushes both items, so the split can never arrive half-applied. `L-sortByFlushOrder` puts the expense after members and the activity after expenses, so the payer and expense exist on the server before the activity that names them.
 8. `L-balances` refolds and the hub's balances move — the payer up by what they paid, each selected member down by their share. `L-settle` refolds the transfer list from those nets. After this first live expense, `L-hub` shows balances, **View all expenses** at the bottom, and the + to add a member.
 
@@ -119,7 +119,8 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 1. `L-expenses` or a `L-member` bucket line opens `L-expenseNew` on `/expense/{id}` with the stored expense loaded — live members who were not in the original split stay out. Cents-only (pre-mixed) rows open as 1 share each.
 2. Save calls `L-updateExpense`. `L-patchExpense` rebuilds allocations via `L-allocateMixed`, or returns null when nothing changed — then nothing is written and Save stays off.
 3. A successful write updates the store and queues the expense; `L-flushQueue` pushes it as one item, same as add.
-4. `L-balances` and `L-memberBuckets` refold from the new version. The list still shows one row for that id.
+4. While that version is still queued, `L-expenses` shows **Pending** on the row (`L-expenseIsPending`).
+5. `L-balances` and `L-memberBuckets` refold from the new version. The list still shows one row for that id.
 
 ## F-delete-expense — Delete an expense
 

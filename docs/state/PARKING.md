@@ -39,7 +39,6 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 - **Last opened group on launch** — delivered in [slice 0037](slices/0037-last-opened-group.md).
 - **Store listings** — Play / App Store buttons on the landing when a listing exists. Do not link the v1 listing. — area: distribution — raised: slice 0039
-- **Pending badge** — an expense (or row) that has not been acknowledged by the server is visibly pending. — area: sync — raised: steering after 0029
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
 - **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — `/j/{token}` shipped (D-080); the short origin is still parked — area: invites — raised: bootstrap · *partially delivered in 0028*
@@ -77,3 +76,5 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Legal** — delivered in [slice 0042](slices/0042-legal.md). Privacy and terms from the landing footer; deletion-on-request without a join-code wipe.
 
 - **Expo Go push skip** — delivered in [slice 0043](slices/0043-expo-go-push-skip.md). Expo Go never imports `expo-notifications`.
+
+- **Pending expense badge** — delivered in [slice 0044](slices/0044-pending-expense-badge.md). All expenses shows Pending while queued.
