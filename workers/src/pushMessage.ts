@@ -34,5 +34,8 @@ function pushTitleForKind(kind: ActivityKind): string {
   if (kind === 'expense_deleted') return 'Expense deleted';
   if (kind === 'member_kicked') return 'Member removed';
   if (kind === 'member_renamed') return 'Member renamed';
+  if (kind === 'member_joined') return 'Member joined';
+  if (kind === 'member_left') return 'Member left';
+  if (kind === 'group_renamed') return 'Group renamed';
   return 'New expense';
 }

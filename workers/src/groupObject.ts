@@ -297,6 +297,21 @@ export class GroupObject extends DurableObject {
     return { id: row.id, deleted_at: row.deleted_at };
   }
 
+  async getMemberIdForDevice(
+    groupId: string,
+    deviceUserId: string,
+  ): Promise<string | null> {
+    this.ensureSchema();
+    const row = this.sql
+      .exec<BindRecord>(
+        'SELECT * FROM binds WHERE group_id = ? AND device_user_id = ? AND deleted_at IS NULL',
+        groupId,
+        deviceUserId,
+      )
+      .toArray()[0];
+    return row?.member_id ?? null;
+  }
+
   async getGroup(groupId: string): Promise<Record<string, unknown> | null> {
     this.ensureSchema();
     const row = this.sql.exec<GroupRecord>('SELECT * FROM groups WHERE id = ?', groupId).toArray()[0];

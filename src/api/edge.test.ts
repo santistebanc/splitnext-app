@@ -295,6 +295,16 @@ describe('local Worker HTTP contract', () => {
       version: 1,
       deleted_at: null,
     });
+
+    const rosterAfterJoin = await listRoster({
+      group_id: group.groupId,
+      device_user_id: group.deviceUserId,
+      access_token: group.created.access_token,
+    });
+    const joinActivity = rosterAfterJoin.activities?.find(
+      (a) => a.kind === 'member_joined' && a.member_id === member.id,
+    );
+    expect(joinActivity).toBeDefined();
   });
 });
 

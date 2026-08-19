@@ -70,7 +70,10 @@ export type ActivityEntity = {
     | 'expense_edited'
     | 'expense_deleted'
     | 'member_kicked'
-    | 'member_renamed';
+    | 'member_renamed'
+    | 'member_joined'
+    | 'member_left'
+    | 'group_renamed';
   actor_member_id: string;
   expense_id: string;
   member_id: string;

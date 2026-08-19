@@ -244,4 +244,58 @@ describe('mergeOne', () => {
     });
     expect(result.reason).toBe('expense_not_in_group');
   });
+
+  it('accepts member_joined when the member exists', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    const result = mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a5',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'member_joined',
+        actor_member_id: 'm1',
+        expense_id: '',
+        member_id: 'm1',
+      },
+    });
+    expect(result.status).toBe('accepted');
+  });
+
+  it('accepts member_left when the member exists', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    const result = mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a6',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'member_left',
+        actor_member_id: 'm1',
+        expense_id: '',
+        member_id: 'm1',
+      },
+    });
+    expect(result.status).toBe('accepted');
+  });
+
+  it('accepts group_renamed without a member_id', () => {
+    const store = memoryStore();
+    store.upsert('members', { id: 'm1' });
+    const result = mergeOne(store, 'g1', {
+      entity_type: 'activities',
+      id: 'a7',
+      version: 1,
+      payload: {
+        group_id: 'g1',
+        kind: 'group_renamed',
+        actor_member_id: 'm1',
+        expense_id: '',
+        member_id: '',
+      },
+    });
+    expect(result.status).toBe('accepted');
+  });
 });
