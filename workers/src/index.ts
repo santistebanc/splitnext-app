@@ -8,6 +8,7 @@ import {
   hasLiveTokenForDevice,
   insertAccessToken,
   insertInvite,
+  listInvitesForMember,
   lookupAccess,
   lookupInvite,
   resolveAccessToken,
@@ -33,6 +34,7 @@ const ROUTES = [
   'fetch-entity',
   'list-roster',
   'mint-invite',
+  'list-member-invites',
   'join-group',
   'leave-group',
   'register-push-token',
@@ -72,6 +74,9 @@ export default {
       if (route === 'fetch-entity') return await handleFetch(request, env);
       if (route === 'list-roster') return await handleRoster(request, env);
       if (route === 'mint-invite') return await handleMintInvite(request, env);
+      if (route === 'list-member-invites') {
+        return await handleListMemberInvites(request, env);
+      }
       if (route === 'leave-group') return await handleLeave(request, env);
       if (route === 'register-push-token') {
         return await handleRegisterPushToken(request, env);
@@ -284,6 +289,31 @@ async function handleMintInvite(request: Request, env: Env): Promise<Response> {
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
   await insertInvite(env.INDEX, token, groupId, memberId, expiresAt);
   return jsonResponse({ token, expires_at: expiresAt, member_id: memberId });
+}
+
+async function handleListMemberInvites(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const body = (await request.json()) as { group_id?: string; member_id?: string };
+  const groupId = body.group_id;
+  const memberId = body.member_id;
+  if (!groupId || !memberId) {
+    return jsonResponse({ error: 'invalid_body' }, 400);
+  }
+  const denied = await requireAccess(request, env, groupId);
+  if (denied) return denied;
+
+  const member = await groupStub(env, groupId).getMember(groupId, memberId);
+  if (!member || member.deleted_at != null) {
+    return jsonResponse({ error: 'member_missing' }, 404);
+  }
+
+  const invites = await listInvitesForMember(env.INDEX, groupId, memberId);
+  return jsonResponse({
+    invites,
+    member_deleted_at: member.deleted_at,
+  });
 }
 
 async function handleJoin(request: Request, env: Env): Promise<Response> {

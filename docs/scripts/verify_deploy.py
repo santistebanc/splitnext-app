@@ -35,6 +35,7 @@ FUNCTIONS = [
     "fetch-entity",
     "list-roster",
     "mint-invite",
+    "list-member-invites",
     "join-group",
     "leave-group",
     "register-push-token",

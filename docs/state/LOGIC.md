@@ -115,7 +115,9 @@ Everything else running on the device: domain rules, sync, local state, secrets.
 | L-relativeTime | `relativeTimeLabel` | Pure | `src/domain/relativeTime.ts` | Formats an activity timestamp as a relative label (`just now`, `5m ago`, …). |
 | L-bindMe | `bindMe` | Job | `src/sync/groupSync.ts` | Claims a member as this device's own person the first time. Same member again is a no-op; any other member records `binding_locked`. A missing member records `member_missing`. Create and join are the callers that succeed. |
 | L-leaveGroup | `leaveGroup` | Job | `src/sync/leave.ts` | Leaves a group: tombstones this device's bind and flushes it while the token still works, revokes push registration, revokes the token, drops it locally, and takes the group off the lobby. |
-| L-mintInvite | `mintInvite` | Job | `src/sync/invite.ts` | Asks the server for a one-use invite bound to one member and returns the plaintext secret to copy. |
+| L-mintInvite | `mintInvite` | Job | `src/sync/invite.ts` | Asks the server for a one-use invite bound to one member, caches the plaintext on this device, and returns it for copy. |
+| L-loadMemberInvites | `loadMemberInvites` | Job | `src/sync/invite.ts` | Loads per-member invite metadata from the server and reconciles any cached plaintext token. |
+| L-inviteListStatus | `inviteListStatus` | Pure | `src/domain/invite.ts` | Derives active, expired, used, or none from server invite rows at a given time. |
 | L-inviteShare | `inviteShareText` | Pure | `src/sync/inviteShareText.ts` | Turns that secret into what you copy: the raw token on native, a public `/j/{token}` URL on web (Pages prefix, not `/app`). |
 | L-joinGroup | `joinGroup` | Job | `src/sync/invite.ts` | Redeems an invite: stores the new access token, writes the returned bind locally, and adds the group to the lobby. The hub then opens and subscribes — join itself is a spinner that unmounts. |
 | L-runExclusive | `runExclusive` | Job | `src/sync/exclusive.ts` | Queues async work per group so a push and a pull can never overlap on the same group. |
@@ -158,6 +160,7 @@ The client side of the wire — HTTP calls out of the device.
 | L-edgeFetch | `fetchEntity` | Network | `src/api/edge.ts` | Asks for one entity by type and id — the call a wake triggers. |
 | L-edgeRoster | `listRoster` | Network | `src/api/edge.ts` | Asks for a group's whole roster — members, binds and expenses — in one request. |
 | L-edgeMintInvite | `mintInviteRemote` | Network | `src/api/edge.ts` | Asks the server to mint a one-use invite for one member of a group this device already belongs to. |
+| L-edgeListMemberInvites | `listMemberInvitesRemote` | Network | `src/api/edge.ts` | Fetches invite metadata (expiry and redemption) for one member without returning secrets. |
 | L-edgeJoin | `joinGroupRemote` | Network | `src/api/edge.ts` | Redeems an invite secret for a new access token and the bind that names who this device is. |
 | L-edgeLeave | `leaveGroupRemote` | Network | `src/api/edge.ts` | Asks the server to revoke this device's access token for a group. |
 
@@ -169,6 +172,7 @@ The Cloudflare Worker and the group Durable Object.
 | --- | --- | --- | --- | --- |
 | L-efCreate | `handleCreateGroup` | Endpoint | `workers/src/index.ts` | Creates the group row in that group's Durable Object and issues an access token, storing only its hash in D1. |
 | L-efMintInvite | `handleMintInvite` | Endpoint | `workers/src/index.ts` | Issues a 7-day one-use invite for one member (11-char secret, hashed in D1) after a capability check. |
+| L-efListMemberInvites | `handleListMemberInvites` | Endpoint | `workers/src/index.ts` | Returns invite metadata rows for one member after a capability check; no plaintext secrets. |
 | L-efJoin | `handleJoin` | Endpoint | `workers/src/index.ts` | Redeems a live invite into a new access token and a v1 bind for the named member, then wakes the group. |
 | L-efLeave | `handleLeave` | Endpoint | `workers/src/index.ts` | Revokes this device's access token after matching group and device (`accessIdentifies`), including when the token is already revoked — that is still success. The member and expenses are not touched. |
 | L-efMerge | `mergeOne` | Endpoint | `workers/src/merge.ts` | The write path: applies each pushed item if its version wins, reports accepted or rejected per item; the Durable Object then wakes the group's other devices. |

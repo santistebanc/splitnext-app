@@ -17,7 +17,8 @@ import {
   suggestSettlements,
 } from '@/src/domain/settle';
 import { getGroupStore } from '@/src/store/groupStore';
-import { mintInvite } from '@/src/sync/invite';
+import type { InviteListStatus } from '@/src/domain/invite';
+import { loadMemberInvites, mintInvite } from '@/src/sync/invite';
 import { inviteShareText } from '@/src/sync/inviteShareText';
 import { openGroup, updateMember, deleteMember } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
@@ -82,6 +83,7 @@ export function MemberDetail({
   const lastError = coerceSyncError(lastErrorRaw);
   const [deviceUserId, setDeviceUserId] = useState<string | null>(null);
   const [joinLink, setJoinLink] = useState<string | null>(null);
+  const [inviteStatus, setInviteStatus] = useState<InviteListStatus>('none');
   const [inviteBusy, setInviteBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -151,20 +153,35 @@ export function MemberDetail({
   useEffect(() => {
     if (!showInvite || !groupId || !targetId) {
       setJoinLink(null);
+      setInviteStatus('none');
       setInviteBusy(false);
       return;
     }
     let cancelled = false;
     setInviteBusy(true);
-    void mintInvite(groupId, targetId).then((token) => {
+    void loadMemberInvites(groupId, targetId).then(({ status, cachedToken }) => {
       if (cancelled) return;
-      setJoinLink(token ? inviteShareText(token) : null);
+      setInviteStatus(status);
+      setJoinLink(cachedToken ? inviteShareText(cachedToken) : null);
       setInviteBusy(false);
     });
     return () => {
       cancelled = true;
     };
   }, [showInvite, groupId, targetId]);
+
+  const resendInvite = async () => {
+    if (!groupId || !targetId || inviteBusy) return;
+    setInviteBusy(true);
+    const token = await mintInvite(groupId, targetId);
+    if (token) {
+      setJoinLink(inviteShareText(token));
+      setInviteStatus('active');
+    } else {
+      setJoinLink(null);
+    }
+    setInviteBusy(false);
+  };
 
   const openEdit = () => {
     if (member == null || member.deleted_at != null) return;
@@ -257,7 +274,18 @@ export function MemberDetail({
     <ScrollView contentContainerStyle={styles.container}>
       {showInvite ? (
         <View style={styles.invite}>
-          <Text style={styles.sec}>invite link</Text>
+          <View style={styles.inviteHead}>
+            <Text style={styles.sec}>invite link</Text>
+            <Text testID="invite-status" style={styles.inviteStatus}>
+              {inviteStatus === 'none'
+                ? 'No invite yet'
+                : inviteStatus === 'active'
+                  ? 'Active'
+                  : inviteStatus === 'expired'
+                    ? 'Expired'
+                    : 'Used'}
+            </Text>
+          </View>
           <View style={styles.inviteRow}>
             <TextInput
               testID="invite-link"
@@ -265,7 +293,7 @@ export function MemberDetail({
               value={joinLink ?? ''}
               editable={false}
               selectTextOnFocus
-              placeholder="Invite link"
+              placeholder={inviteStatus === 'active' ? 'Resend to show link' : 'Resend to create link'}
               placeholderTextColor={colors.muted}
               accessibilityLabel="Join link"
             />
@@ -310,6 +338,18 @@ export function MemberDetail({
             />
             </Pressable>
           </View>
+          <Pressable
+            testID="invite-resend"
+            style={[styles.resendBtn, inviteBusy ? styles.disabled : null]}
+            onPress={() => void resendInvite()}
+            accessibilityRole="button"
+            accessibilityLabel="Resend invite"
+            disabled={inviteBusy}
+          >
+            <Text style={styles.resendText}>
+              {inviteBusy ? 'Working…' : 'Resend invite'}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -546,6 +586,19 @@ const styles = StyleSheet.create({
   invite: {
     marginBottom: 16,
   },
+  inviteHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 6,
+  },
+  inviteStatus: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.muted,
+    textTransform: 'capitalize',
+  },
   inviteRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -568,6 +621,18 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  resendBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  resendText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.accent,
   },
   disabled: {
     opacity: 0.5,
