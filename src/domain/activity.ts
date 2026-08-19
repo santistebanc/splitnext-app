@@ -7,7 +7,10 @@ export type ActivityKind =
   | 'expense_edited'
   | 'expense_deleted'
   | 'member_kicked'
-  | 'member_renamed';
+  | 'member_renamed'
+  | 'member_joined'
+  | 'member_left'
+  | 'group_renamed';
 
 export type ExpenseActivityInput = {
   id: string;
@@ -115,6 +118,43 @@ export function activityForMemberRenamed(
   return memberActivity('member_renamed', input);
 }
 
+export function activityForMemberJoined(
+  input: MemberActivityInput,
+): ActivityEntity | null {
+  return memberActivity('member_joined', input);
+}
+
+export function activityForMemberLeft(
+  input: MemberActivityInput,
+): ActivityEntity | null {
+  return memberActivity('member_left', input);
+}
+
+export type GroupActivityInput = {
+  id: string;
+  groupId: string;
+  actorMemberId: string;
+  at: string;
+};
+
+export function activityForGroupRenamed(
+  input: GroupActivityInput,
+): ActivityEntity | null {
+  const { id, groupId, actorMemberId, at } = input;
+  if (!id || !groupId || !actorMemberId) return null;
+  return {
+    id,
+    group_id: groupId,
+    kind: 'group_renamed',
+    actor_member_id: actorMemberId,
+    expense_id: '',
+    member_id: '',
+    version: 1,
+    updated_at: at,
+    deleted_at: null,
+  };
+}
+
 function actorLabel(
   members: Record<string, MemberEntity>,
   actorId: string,
@@ -190,6 +230,33 @@ export function formatActivityLine(
     };
   }
 
+  if (activity.kind === 'member_joined' || activity.kind === 'member_left') {
+    const member = members[activity.member_id];
+    if (!member) return null;
+    return {
+      id: activity.id,
+      kind: activity.kind,
+      who,
+      description: memberLabel(
+        member.display_name,
+        activity.member_id === assumedMemberId,
+      ),
+      at: activity.updated_at,
+      canUndo: false,
+    };
+  }
+
+  if (activity.kind === 'group_renamed') {
+    return {
+      id: activity.id,
+      kind: activity.kind,
+      who,
+      description: '',
+      at: activity.updated_at,
+      canUndo: false,
+    };
+  }
+
   return null;
 }
 
@@ -206,6 +273,15 @@ export function formatActivityLinePlain(line: ActivityLine): string {
   }
   if (line.kind === 'member_renamed') {
     return `${line.who} renamed ${line.description}`;
+  }
+  if (line.kind === 'member_joined') {
+    return `${line.who} joined as ${line.description}`;
+  }
+  if (line.kind === 'member_left') {
+    return `${line.who} left the group`;
+  }
+  if (line.kind === 'group_renamed') {
+    return `${line.who} renamed the group`;
   }
   return `${line.who} added ${line.description}${line.amount ? ` ${line.amount}` : ''}`;
 }

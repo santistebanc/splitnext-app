@@ -385,6 +385,26 @@ async function handleJoin(request: Request, env: Env): Promise<Response> {
     version: bind.version,
   });
 
+  const activityId = crypto.randomUUID();
+  await stub.merge(invite.group_id, [
+    {
+      entity_type: 'activities',
+      id: activityId,
+      version: 1,
+      payload: {
+        id: activityId,
+        group_id: invite.group_id,
+        kind: 'member_joined',
+        actor_member_id: invite.member_id,
+        expense_id: '',
+        member_id: invite.member_id,
+        version: 1,
+        updated_at: now,
+        deleted_at: null,
+      },
+    },
+  ]);
+
   return jsonResponse({ access_token: accessToken, group, bind });
 }
 
@@ -408,6 +428,31 @@ async function handleLeave(request: Request, env: Env): Promise<Response> {
     await revokeAccessToken(env.INDEX, accessToken, new Date().toISOString());
   }
   await revokePushForDevice(env.INDEX, groupId, deviceUserId);
+
+  const memberId = await groupStub(env, groupId).getMemberIdForDevice(groupId, deviceUserId);
+  if (memberId) {
+    const now = new Date().toISOString();
+    const activityId = crypto.randomUUID();
+    await groupStub(env, groupId).merge(groupId, [
+      {
+        entity_type: 'activities',
+        id: activityId,
+        version: 1,
+        payload: {
+          id: activityId,
+          group_id: groupId,
+          kind: 'member_left',
+          actor_member_id: memberId,
+          expense_id: '',
+          member_id: memberId,
+          version: 1,
+          updated_at: now,
+          deleted_at: null,
+        },
+      },
+    ]);
+  }
+
   return jsonResponse({ ok: true });
 }
 

@@ -1,40 +1,44 @@
-# Slice 0052 — invite status / resend
+# Slice 0053 — activity join/leave/group-rename events
 
-**Tier** — core-value
+**Tier** — foundation-risk (completes the activity spine; server-emitted events are new)
 
 ## Goal
 
-On an unclaimed member, the person sees whether the last invite is **Active**, **Expired**, or **Used**, and can **Resend** to mint a fresh link instead of silently minting on every open.
+The activity feed shows when someone joined via invite, when someone left, and when the group was renamed — not just expense and member-kick events.
 
 ## Before → After
 
 | | Now | After |
 | --- | --- | --- |
-| Member invite row | Auto-mints on open; link or empty, no status | Lists server metadata; shows status; link when this device has a cached token or after Resend |
-| Server | `mint-invite` only | `list-member-invites` returns per-member invite metadata (no secrets) |
-| Device | Plaintext secret not stored | Cached in secure storage while the invite is still live |
+| Activity kinds | `expense_added/edited/deleted`, `member_kicked/renamed` | + `member_joined`, `member_left`, `group_renamed` |
+| Join endpoint | Mints token + bind; no activity | Also inserts a `member_joined` activity via merge |
+| Leave endpoint | Revokes token + tombstones bind; no activity | Also inserts a `member_left` activity via merge |
+| Client `updateGroup` | Queues group entity | Also queues a `group_renamed` activity |
+| Feed / push | Only five kinds | All eight kinds formatted and pushed |
 
 ## Plan
 
-1. **`L-efListMemberInvites`** — D1 query by `group_id` + `member_id`; capability check; return `expires_at` / `redeemed_at` ordered newest-first plus `member_deleted_at`.
-2. **`L-edgeListMemberInvites` / `L-listMemberInvites`** — client fetch job; clear cached token when nothing live.
-3. **`L-inviteStatus`** — pure helper on `InviteView` rows (active / expired / used / none).
-4. **`L-memberDetail`** — load status on open; show label; **Resend invite** calls `L-mintInvite` and caches token; copy/share when link present.
-5. Tests at `L-inviteStatus` and HTTP contract; update `LOGIC.md` / `FLOWS.md`.
+1. Add `'member_joined' | 'member_left' | 'group_renamed'` to `ActivityKind` (types + domain).
+2. Server: `handleJoin` inserts a `member_joined` activity after successful join; `handleLeave` inserts a `member_left` activity after successful leave. Both go through the DO's merge path so version/wake work.
+3. Server merge validation: add kinds to the allowed sets (`MEMBER_ACTIVITY_KINDS` for join/left, new `GROUP_ACTIVITY_KINDS` for `group_renamed`).
+4. Client: `updateGroup` queues a `group_renamed` activity (like `updateMember` queues `member_renamed`).
+5. Format: `ActivityLineText` + `formatActivityLinePlain` + `pushTitleForKind` handle the three new kinds.
+6. Tests at domain + merge + contract levels.
 
 ## Seams under test
 
 | Seam | Behavior |
 | --- | --- |
-| `L-inviteStatus` | Latest row: live → active; redeemed → used; past `expires_at` → expired; empty → none |
-| `L-efListMemberInvites` | Auth required; returns minted rows after `mint-invite`; empty for member with none |
-| `L-mintInvite` | Resend stores token in secure storage; list refresh clears cache when invite spent |
+| `L-formatActivityLine` | New kinds produce correct `who` + `description` lines |
+| `mergeOne` (server) | Accepts `member_joined`, `member_left`, `group_renamed`; rejects invalid |
+| HTTP contract | Join creates a `member_joined` activity visible in roster; Leave creates `member_left` |
 
 ## Acceptance
 
-- Run `npm run check`.
-- Open an unclaimed member on the hub: status shows **Active** after Resend; copy works; after join on another profile, status is **Used** and Resend mints a new link.
-- Contract test covers `list-member-invites` beside existing mint/join test.
+- `npm run check` passes.
+- Join an invite → roster includes a `member_joined` activity for that member.
+- Leave a group → roster includes a `member_left` activity.
+- Rename a group → activity feed shows "You renamed Trip".
 
 ## Edge paths
 
@@ -44,11 +48,10 @@ On an unclaimed member, the person sees whether the last invite is **Active**, *
 
 ## Out of scope
 
-- Invite copy/share sheet polish — parked
-- Hub names-row Invite shortcut — parked
-- Auto-mint on first open without Resend tap — deliberate; person chooses Resend
+- Undo of join/leave/rename (not meaningful)
+- Hub recent section redesign
+- Activity toast for these kinds (already works via `activitiesFromOthers`)
 
 ## Parked this session
 
-- Activity join/leave events — breadth
-- Per-group push mute — polish
+- Undo of edit/rename — breadth

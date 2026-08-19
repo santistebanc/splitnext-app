@@ -5,6 +5,7 @@ import {
   activityForExpenseAdded,
   activityForExpenseDeleted,
   activityForExpenseEdited,
+  activityForGroupRenamed,
   activityForMemberKicked,
   activityForMemberRenamed,
 } from '@/src/domain/activity';
@@ -155,15 +156,30 @@ export async function updateGroup(
   const current = store$.group.get();
   const next = patchGroup(current, patch, new Date().toISOString());
   store$.group.set(next);
-  store$.queue.set([
-    ...(store$.queue.get() ?? []),
+  const queueItems: OutboundItem[] = [
     {
       entity_type: 'groups',
       id: groupId,
       version: next.version,
       payload: next,
     },
-  ]);
+  ];
+  if (patch.name != null && patch.name !== current.name) {
+    queueItems.push(
+      ...(await queueActivityForActor(
+        store$,
+        (actorMemberId, at) =>
+          activityForGroupRenamed({
+            id: Crypto.randomUUID(),
+            groupId,
+            actorMemberId,
+            at,
+          }),
+        next.updated_at,
+      )),
+    );
+  }
+  store$.queue.set([...(store$.queue.get() ?? []), ...queueItems]);
   await flushQueue(groupId);
 }
 

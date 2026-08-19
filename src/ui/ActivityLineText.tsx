@@ -48,6 +48,30 @@ export function ActivityLineText({ line, style, descriptionStyle, testID }: Prop
     );
   }
 
+  if (line.kind === 'member_joined') {
+    return (
+      <Text style={style} testID={testID}>
+        {line.who} joined as <Text style={emphasis}>{line.description}</Text>
+      </Text>
+    );
+  }
+
+  if (line.kind === 'member_left') {
+    return (
+      <Text style={style} testID={testID}>
+        {line.who} left the group
+      </Text>
+    );
+  }
+
+  if (line.kind === 'group_renamed') {
+    return (
+      <Text style={style} testID={testID}>
+        {line.who} renamed the group
+      </Text>
+    );
+  }
+
   return (
     <Text style={style} testID={testID}>
       {line.who} added{' '}
