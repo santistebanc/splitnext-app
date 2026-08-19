@@ -19,6 +19,7 @@ import { ActivityRow } from '@/src/ui/ActivityRow';
 import { ActivityToast } from '@/src/ui/ActivityToast';
 import { HubCornerChrome } from '@/src/ui/HubCornerChrome';
 import { MemberDetail } from '@/src/ui/MemberDetail';
+import { SettingsPanel } from '@/src/ui/SettingsPanel';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
@@ -102,6 +103,7 @@ export default function GroupHubScreen() {
   const [toastLine, setToastLine] = useState<ActivityLine | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
   const [memberOpenId, setMemberOpenId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const recede = useRef(new Animated.Value(1)).current;
   const knownActivityIdsRef = useRef<Set<string>>(new Set());
 
@@ -109,15 +111,25 @@ export default function GroupHubScreen() {
   const openActivity = useCallback(() => {
     dismissToast();
     setMemberOpenId(null);
+    setSettingsOpen(false);
     setActivityOpen(true);
   }, [dismissToast]);
   const closeActivity = useCallback(() => setActivityOpen(false), []);
   const openMember = useCallback((memberId: string) => {
     dismissToast();
     setActivityOpen(false);
+    setSettingsOpen(false);
     setMemberOpenId(memberId);
   }, [dismissToast]);
   const closeMember = useCallback(() => setMemberOpenId(null), []);
+  const openSettings = useCallback(() => {
+    dismissToast();
+    setActivityOpen(false);
+    setMemberOpenId(null);
+    setSettingsOpen(true);
+  }, [dismissToast]);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const paneOpen = activityOpen || !!memberOpenId || settingsOpen;
 
   useEffect(() => {
     if (!groupId) return;
@@ -125,6 +137,7 @@ export default function GroupHubScreen() {
     setToastLine(null);
     setActivityOpen(false);
     setMemberOpenId(null);
+    setSettingsOpen(false);
     knownActivityIdsRef.current = new Set();
     void getOrCreateDeviceUserId().then(setDeviceUserId);
     void (async () => {
@@ -249,9 +262,7 @@ export default function GroupHubScreen() {
       <HubCornerChrome
         topInset={insets.top}
         onHome={() => router.navigate('/')}
-        onSettings={() =>
-          router.push(`/group/${groupId}/settings` as Href)
-        }
+        onSettings={() => (settingsOpen ? closeSettings() : openSettings())}
       />
 
       <View
@@ -259,7 +270,7 @@ export default function GroupHubScreen() {
           styles.body,
           {
             paddingTop: insets.top + 44,
-            paddingBottom: activityOpen || memberOpenId ? 16 : 80,
+            paddingBottom: paneOpen ? 16 : 80,
           },
         ]}
         testID="balances"
@@ -270,7 +281,9 @@ export default function GroupHubScreen() {
           </Text>
         ) : null}
 
-        {memberOpenId ? (
+        {settingsOpen ? (
+          <SettingsPanel groupId={groupId} onClose={closeSettings} />
+        ) : memberOpenId ? (
           <MemberDetail
             groupId={groupId}
             memberId={memberOpenId}
@@ -471,7 +484,7 @@ export default function GroupHubScreen() {
         )}
       </View>
 
-      {!activityOpen && !memberOpenId && assumedMemberId ? (
+      {!paneOpen && assumedMemberId ? (
         <View style={[styles.fabBar, !namesOnly ? styles.fabBarRaised : null]}>
           <Pressable
             style={styles.fab}
@@ -484,7 +497,7 @@ export default function GroupHubScreen() {
         </View>
       ) : null}
 
-      {!activityOpen && !memberOpenId && !namesOnly ? (
+      {!paneOpen && !namesOnly ? (
         <Pressable
           style={styles.expensesBar}
           onPress={() => router.push(`/group/${groupId}/expenses` as Href)}

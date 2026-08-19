@@ -209,8 +209,8 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On the hub, the person taps the settings icon, changes the group name, and taps **Done**.  
 **Outcome** — The new name shows at once here and reaches the other devices without them asking.
 
-1. `L-hub` opens `L-settings`.
-2. `L-settings` calls `L-updateGroup` with the typed name (and currency, if that changed too) and `L-settingsDone` lets **Done** through because the group is named and this device is bound.
+1. `L-hub` expands `L-settingsPanel`.
+2. `L-settingsPanel` calls `L-updateGroup` with the typed name (and currency, if that changed too) and `L-settingsDone` lets **Done** through because the group is named and this device is bound. **Done** closes the panel back to `L-hub`.
 3. `L-patchGroup` builds the next version; the name changes in the store and is queued, so the UI never waits on the network.
 4. `L-flushQueue` pushes it; the server accepts the higher version and `L-efWake` announces the change.
 5. On the other device, `L-wakeSub` hears that announcement and `L-applyRemoteFetch` fetches just that group.
@@ -220,11 +220,11 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On Settings, the person taps **Leave group**, reads the confirm, and taps **Leave group** again.  
 **Outcome** — This device is unbound and its access token is revoked. The member slot and expenses stay. The group is gone from this device’s lobby.
 
-1. `L-hub` opens `L-settings`. **Leave group** is at the bottom. Cancel or backdrop closes the confirm drawer and writes nothing.
+1. `L-hub` expands `L-settingsPanel`. **Leave group** is at the bottom. Cancel or backdrop closes the confirm drawer and writes nothing.
 2. Confirm calls `L-leaveGroup`. `L-tombstoneBind` soft-deletes this device’s live bind at the next version; `L-flushQueue` pushes it while the token still works.
 3. `L-edgeLeave` posts to `L-efLeave`, which checks the token belongs to this group and this device, then sets `revoked_at`. A second leave is still success.
-4. `L-leaveGroup` drops the token through `L-accessToken` / `L-secureStorage`, takes the group off `L-lobbyIds`, and `L-wakeSub` closes the socket so it does not retry. `L-settings` returns to `L-lobby`.
-5. If flush leftover or revoke fails, the lobby is not dropped and `L-settings` shows `leave_failed`. The slot stays; nobody else is bound to it until they redeem a new invite.
+4. `L-leaveGroup` drops the token through `L-accessToken` / `L-secureStorage`, takes the group off `L-lobbyIds`, and `L-wakeSub` closes the socket so it does not retry. `L-settingsPanel` returns to `L-lobby`.
+5. If flush leftover or revoke fails, the lobby is not dropped and `L-settingsPanel` shows `leave_failed`. The slot stays; nobody else is bound to it until they redeem a new invite.
 
 ## F-wake — Peer change arrives live
 
