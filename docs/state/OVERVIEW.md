@@ -1,6 +1,6 @@
 # Overview
 
-Last updated: slice 0051
+Last updated: slice 0055
 
 ## Direction
 
@@ -74,7 +74,7 @@ Last updated: slice 0051
 - Group store — SQLite Durable Object per `group_id` — `groups`, `members`, `binds`, `expenses` (allocations as JSON text), `activities`; one-threaded merge, no race
 - Token index — D1 `splitnext-index` — `access_tokens`, `invites` only (`token_hash → group_id`)
 - Server API — Worker routes `create-group`, `merge`, `fetch-entity`, `list-roster`, `mint-invite`, `join-group`, `leave-group` — capability hash-check then the named Durable Object; each answers `GET ?health=1` with the deploy sha (L-efHealth). `npm test` boots the same Worker locally and drives those routes through `src/api/edge.ts` (D-070), plus the wake WebSocket wire (D-071)
-- Wake channel — hibernating WebSocket on the group Durable Object at `/wake/:groupId`; payload is tip only; a drop is retried with backoff, then `OPEN` after `ERROR` / `CLOSED` runs the same catch-up as open (D-054, D-066); joiners subscribe on the hub, not the join spinner. Auth + tip shape are contract-tested against a local Worker.
+- Wake channel — hibernating WebSocket on the group Durable Object at `/wake/:groupId`; payload is tip only; a drop is retried with backoff, then `OPEN` after `ERROR` / `CLOSED` runs the same catch-up as open (D-054, D-066); joiners subscribe on the hub, not the join spinner. Auth + tip shape are contract-tested against a local Worker (D-071); `startWakeSubscription` orchestration (token gate, wake-tip catch-up, reconnect catch-up, leave stop) is contract-tested in [slice 0055](slices/0055-wake-orchestrator-tests.md).
 - Hosting — Cloudflare Worker `splitnext` (`splitnext.santistebanc94.workers.dev`)
 - Server deploy — `.github/workflows/workers.yml` on push to `main` or `slice/**`: D1 migrations apply, `wrangler deploy` with `DEPLOY_SHA`, verify each health endpoint; last green run wins; never by hand, never a wipe — D-052, D-058
 - Repo — `github.com/santistebanc/splitnext-app`, public; a slice is branch → PR (CI: `check` + `capture`) → squash merge → tag `slice-NNNN` on `main` — D-028, D-072
@@ -170,4 +170,5 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/j/{to
 - `inviteShareText` — `src/sync/inviteShareText.ts` / `src/sync/inviteShareText.web.ts` — raw token on native, public `/j/{token}` URL on web
 - `shouldCatchUpOnStatus` / `shouldReplaceSubscription` / `nextReconnectDelayMs` — `src/sync/wakePolicy.ts` — vitest — whether a wake-socket status change means this group missed wakes, whether a dead socket should be replaced, and how long to wait before retrying
 - `wakeUrl` — `src/sync/wakeUrl.ts` — vitest — query-string token on `/wake/:groupId`; RN `WebSocket` cannot set headers
+- `startWakeSubscription` orchestrator — `src/sync/wake.test.ts` — vitest against local Worker — token gate, wake-tip catch-up, reconnect catch-up, leave stop
 - `phone_section` — `docs/scripts/pr_phone.py` — unittest via `npm run test:board` — the PR comment's Camera QR of the published `/app`
