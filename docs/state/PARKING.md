@@ -39,12 +39,11 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 - **Last opened group on launch** — delivered in [slice 0037](slices/0037-last-opened-group.md).
 - **Store listings** — Play / App Store buttons on the landing when a listing exists. Do not link the v1 listing. — area: distribution — raised: slice 0039
-- **Legal** — public privacy + terms that match actual behaviour (no accounts, capability tokens, what is stored). Deletion-on-request without a join code is part of this, not v1's join-code verified wipe. — area: legal — raised: steering after 0029
 - **Pending badge** — an expense (or row) that has not been acknowledged by the server is visibly pending. — area: sync — raised: steering after 0029
 - **Preview deploys per PR** — Pages publishes only `main`, so a PR cannot be looked at before it merges; a per-PR Worker + staging D1 would give an isolated URL (slice branches still share the one production Worker) — area: deploy — raised: slice 0008
 - **EU Durable Object jurisdiction** — group data lives where Cloudflare places the DO today; pin to EU if residency matters — area: deploy — raised: slice 0014
 - **Invite URL path** — "Exact HTTPS invite URL path shape on splitnext.online" — `/j/{token}` shipped (D-080); the short origin is still parked — area: invites — raised: bootstrap · *partially delivered in 0028*
-- **Retention / deletion policy** — rides Legal; no join-code wipe. — area: data — raised: bootstrap · restated: steering after 0029
+- **Retention / deletion policy** — privacy copy in [slice 0042](slices/0042-legal.md) (GitHub issue, no join-code wipe). A self-serve wipe is still out. — area: data — raised: bootstrap · restated: steering after 0029 · *partially delivered in 0042*
 - **Expense note required vs optional** — area: ux — raised: bootstrap
 - **Close / reopen group UI** — capability rules exist; screens deferred — area: groups — raised: bootstrap
 - **Deep link hosting** — `.well-known` + fallback on splitnext.online; needs dev/prod build (not Expo Go). Pairs with invite landing. — area: invites — raised: bootstrap · restated: steering after 0029
@@ -72,10 +71,8 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Public landing + framed web** — delivered in [slice 0039](slices/0039-landing-page.md).
-
 - **Activity undo** — delivered in [slice 0040](slices/0040-activity-undo.md).
 
 - **Invite landing** — delivered in [slice 0041](slices/0041-invite-landing.md). `/j/{token}` on the public site is landing chrome; desktop continues to redeem.
 
-- **Activity undo** — delivered in [slice 0040](slices/0040-activity-undo.md).
+- **Legal** — delivered in [slice 0042](slices/0042-legal.md). Privacy and terms from the landing footer; deletion-on-request without a join-code wipe.

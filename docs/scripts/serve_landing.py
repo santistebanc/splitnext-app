@@ -37,7 +37,33 @@ _LANDING_PATHS = {
     "/try/",
     "/try/index.html",
     "/404.html",
+    "/privacy",
+    "/privacy/",
+    "/privacy/index.html",
+    "/terms",
+    "/terms/",
+    "/terms/index.html",
 }
+
+_STATIC_PAGES = {
+    "/try": "try/index.html",
+    "/try/": "try/index.html",
+    "/try/index.html": "try/index.html",
+    "/privacy": "privacy/index.html",
+    "/privacy/": "privacy/index.html",
+    "/privacy/index.html": "privacy/index.html",
+    "/terms": "terms/index.html",
+    "/terms/": "terms/index.html",
+    "/terms/index.html": "terms/index.html",
+}
+
+
+def static_page_for(url_path: str) -> Path | None:
+    path = url_path.split("?", 1)[0]
+    rel = _STATIC_PAGES.get(path)
+    if rel is None:
+        return None
+    return LANDING / rel
 
 
 def metro_path_for(url_path: str) -> str | None:
@@ -46,6 +72,10 @@ def metro_path_for(url_path: str) -> str | None:
     if path in _LANDING_PATHS:
         return None
     if is_invite_landing_path(path):
+        return None
+    if path == "/privacy" or path.startswith("/privacy/"):
+        return None
+    if path == "/terms" or path.startswith("/terms/"):
         return None
     if path == "/app" or path.startswith("/app/"):
         rest = path[4:] or "/"
@@ -116,9 +146,9 @@ def handler_for(metro_origin: str):
 
         def _handle(self, command: str) -> None:
             parsed = urlparse(self.path)
-            if parsed.path in ("/try", "/try/", "/try/index.html"):
-                html = (LANDING / "try" / "index.html").read_text(encoding="utf-8")
-                body = html.encode("utf-8")
+            page = static_page_for(parsed.path)
+            if page is not None:
+                body = page.read_bytes()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
@@ -198,6 +228,8 @@ def main() -> None:
     print(f"Landing     → http://127.0.0.1:{port}/", flush=True)
     print(f"Use on web  → http://127.0.0.1:{port}/try/", flush=True)
     print(f"Invite page → http://127.0.0.1:{port}/j/<token>", flush=True)
+    print(f"Privacy     → http://127.0.0.1:{port}/privacy/", flush=True)
+    print(f"Terms       → http://127.0.0.1:{port}/terms/", flush=True)
     print(f"Frame loads → http://127.0.0.1:{port}/app/  (proxied {metro_origin})", flush=True)
     if lan:
         print("Bound to 0.0.0.0 — anything on this network can reach it.", flush=True)

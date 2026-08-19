@@ -207,10 +207,55 @@ a {
 
 .site-footer {
   margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 18px;
   padding: 24px;
   color: var(--muted);
   font-size: 13px;
   text-align: center;
+}
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+}
+
+.footer-links a {
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--ink);
+}
+
+.legal-main {
+  align-items: flex-start;
+}
+
+.legal {
+  max-width: 640px;
+}
+
+.legal h2 {
+  margin: 28px 0 10px;
+  font-size: 18px;
+}
+
+.legal p,
+.legal ul {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.legal a {
+  color: var(--accent);
 }
 
 .page-main {

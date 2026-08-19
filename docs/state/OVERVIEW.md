@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0041
+Last updated: slice 0042
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Public GitHub Pages is a landing plus framed **Use on web**; `/j/{token}` is an invite page; the slicer board is local-only. Product still to land: legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Public GitHub Pages is a landing plus framed **Use on web**; `/j/{token}` is an invite page; privacy and terms sit on the same host. The slicer board is local-only. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -25,7 +25,7 @@ Last updated: slice 0041
 ## Capabilities
 
 - Create a group from a form (group name, your name, currency), mint a per-device access token, persist locally with the creator already bound, sync the group to the server, and land on the hub of names — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0027](slices/0027-first-run.md)
-- Open the public landing and try the live app in a desktop phone frame (**Use on web**); locally that is `npm run landing`. `/app` itself is full-bleed — [slice 0039](slices/0039-landing-page.md)
+- Open the public landing and try the live app in a desktop phone frame (**Use on web**); locally that is `npm run landing`. `/app` itself is full-bleed. Footer links open privacy and terms — [slice 0039](slices/0039-landing-page.md) / [slice 0042](slices/0042-legal.md)
 - Open a group hub: group name as large centered type above the list (header is home + settings); names until the first expense, then balances (You highlighted, tap opens member detail); add member + directly under the list; **Recent activity** (last three, with relative times) pinned above the expense CTAs once anything is recorded; a top toast when someone else mutates the group while this hub is open; **View all events** opens the activity page; **View all expenses** at the bottom once spent; FAB + Expense once bound — [slice 0001](slices/0001-walking-skeleton.md) / [slice 0023](slices/0023-member-first-hub-chrome.md) / [slice 0027](slices/0027-first-run.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md)
 - Reopen groups after app kill from SQLite + Secure Store lobby index — [slice 0001](slices/0001-walking-skeleton.md)
 - Relaunch into the last-opened group hub when that group is still on the lobby (Home still returns to the list) — [slice 0037](slices/0037-last-opened-group.md)
@@ -79,7 +79,7 @@ Last updated: slice 0041
 - Repo — `github.com/santistebanc/splitnext-app`, public; a slice is branch → PR (CI: `check` + `capture`) → squash merge → tag `slice-NNNN` on `main` — D-028, D-072
 - Board — regenerated locally by `npm run board` / `npm run board:serve`; not published on Pages (D-093). Per-PR slice pages still copy under `/pr/N/` (D-055)
 - Board tooling — Python under `docs/scripts/`; the Symbols call graph is derived from source by `callgraph.py` and gated by `npm run test:board` in CI — D-034, D-037
-- Live site — landing at https://santistebanc.github.io/splitnext-app/, invite page at `/j/{token}`, and the static web export at `/app`, same workflow — D-031, D-093, D-096
+- Live site — landing at https://santistebanc.github.io/splitnext-app/, invite page at `/j/{token}`, privacy and terms from the footer, and the static web export at `/app`, same workflow — D-031, D-093, D-096, D-097
 - Agent entry point — `AGENTS.md` + the process vendored at `.claude/skills/{slicer,tdd,code-review,prototype}`, so a clone carries the loop — D-029
 
 ## Data model
@@ -108,7 +108,7 @@ Last updated: slice 0041
 
 ## Routes / surfaces
 
-Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/j/{token}` invite landing · `/app` Expo export (full-bleed).
+Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/j/{token}` invite landing · `/privacy/` · `/terms/` · `/app` Expo export (full-bleed).
 
 | Route | What it does | Shipped in |
 | --- | --- | --- |
@@ -153,7 +153,7 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/j/{to
 - `InFrameOverlay` / `ConfirmDrawer` — `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — drawers portal into `#overlay-root`; the Expo web app is full-bleed. The phone bezel is `landing/try`. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
 - `assemble` — `docs/scripts/assemble_pages.py` — unittest via `npm run test:board` — Pages tree is landing + `/app`, never the slicer board; root `404.html` is the invite/not-found page
 - `invite_token_from_path` / `is_invite_landing_path` — `docs/scripts/invite_landing.py` — unittest via `npm run test:board` — public `/j/{token}` is an invite; `/app/j/…` is not
-- `metro_path_for` / `rewrite_root_urls` — `docs/scripts/serve_landing.py` — unittest via `npm run test:board` — local `/try` iframes same-origin `/app` (proxied Metro); `/j/{token}` serves the invite 404
+- `metro_path_for` / `rewrite_root_urls` — `docs/scripts/serve_landing.py` — unittest via `npm run test:board` — local `/try` iframes same-origin `/app` (proxied Metro); `/j/{token}` serves the invite 404; `/privacy` and `/terms` are static
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload. `--assert-only` skips writing clips. CI runs that against a local Worker (`npm run capture:ci`).
