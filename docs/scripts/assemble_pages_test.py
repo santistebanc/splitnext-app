@@ -20,6 +20,10 @@ class AssemblePages(unittest.TestCase):
             self.assertFalse((out / "state").exists())
             self.assertTrue((out / "try" / "index.html").exists())
             self.assertTrue((out / ".nojekyll").exists())
+            self.assertTrue((out / "404.html").exists())
+            not_found = (out / "404.html").read_text(encoding="utf-8")
+            self.assertIn("You've been invited", not_found)
+            self.assertIn("Page not found", not_found)
             try_html = (out / "try" / "index.html").read_text(encoding="utf-8")
             self.assertIn("../app/", try_html)
             self.assertNotIn('window.SPLITNEXT_APP="http://', try_html)
@@ -33,6 +37,7 @@ class AssemblePages(unittest.TestCase):
             assemble(out, app=dist)
             self.assertEqual((out / "app" / "index.html").read_text(encoding="utf-8"), "<html>app</html>")
             self.assertEqual((out / "app" / "404.html").read_text(encoding="utf-8"), "<html>app</html>")
+            self.assertIn("You've been invited", (out / "404.html").read_text(encoding="utf-8"))
             self.assertIn("Use on web", (out / "index.html").read_text(encoding="utf-8"))
 
 

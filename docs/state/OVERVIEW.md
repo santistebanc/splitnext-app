@@ -1,10 +1,10 @@
 # Overview
 
-Last updated: slice 0040
+Last updated: slice 0041
 
 ## Direction
 
-**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Public GitHub Pages is a landing plus framed **Use on web**; the slicer board is local-only. Product still to land: invite landing, legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
+**Destination** — A mobile app for splitting shared costs among a small group of friends: groups, members, expenses, derived balances, and settle-up suggestions. Records and suggests; never moves money. Surfaces stay this app's (lobby, hub, member, expense form) — not a chrome rewrite of the v1 app. Public GitHub Pages is a landing plus framed **Use on web**; `/j/{token}` is an invite page; the slicer board is local-only. Product still to land: legal. Not in destination: create-with-full-roster, group-wide invite, short join code, changing who I am.
 
 **Users** — People on a trip or shared activity who need a running tally of who paid and who owes whom. Members are name-slots, not login identities. Someone can be on the ledger without installing the app.
 
@@ -56,7 +56,7 @@ Last updated: slice 0040
 - Read the symbol map two ways — flat by area, or as a tree nested under what calls what, derived from the source — [slice 0009](slices/0009-symbol-tree.md)
 - Trust that what is on `main` is what is on the server — merge applies D1 migrations, redeploys the Worker, and fails unless every route answers with that merge's sha — [slice 0010](slices/0010-deploy-pipeline.md)
 - Catch up a group whose wake socket died while the hub stayed open — the client retries the socket, then runs the same flush + roster pull as open, for that group only — [slice 0011](slices/0011-missed-wake.md) / [slice 0016](slices/0016-wake-reconnect.md)
-- Invite another device onto a named member; they redeem a one-use 7-day `/j/{token}` link (11-char secret) and land already bound — [slice 0012](slices/0012-member-invites.md) / [slice 0028](slices/0028-member-rename.md)
+- Invite another device onto a named member; they redeem a one-use 7-day `/j/{token}` link (11-char secret) and land already bound. On the public site that URL is an invite page; desktop continues into the app to redeem — [slice 0012](slices/0012-member-invites.md) / [slice 0028](slices/0028-member-rename.md) / [slice 0041](slices/0041-invite-landing.md)
 - Demo an unmerged slice against the same Worker the published app uses: `slice/**` CI deploys there; last green run wins; never a wipe — [slice 0013](slices/0013-dev-remote.md)
 - Scan a Camera QR on the PR comment to open the published web app on a phone — [slice 0013](slices/0013-dev-remote.md)
 - Talk to one Cloudflare Worker: SQLite Durable Object per group, D1 for tokens and invites, hibernating WebSocket wakes — [slice 0014](slices/0014-cloudflare-do.md)
@@ -79,7 +79,7 @@ Last updated: slice 0040
 - Repo — `github.com/santistebanc/splitnext-app`, public; a slice is branch → PR (CI: `check` + `capture`) → squash merge → tag `slice-NNNN` on `main` — D-028, D-072
 - Board — regenerated locally by `npm run board` / `npm run board:serve`; not published on Pages (D-093). Per-PR slice pages still copy under `/pr/N/` (D-055)
 - Board tooling — Python under `docs/scripts/`; the Symbols call graph is derived from source by `callgraph.py` and gated by `npm run test:board` in CI — D-034, D-037
-- Live site — landing at https://santistebanc.github.io/splitnext-app/ and the static web export at `/app`, same workflow — D-031, D-093
+- Live site — landing at https://santistebanc.github.io/splitnext-app/, invite page at `/j/{token}`, and the static web export at `/app`, same workflow — D-031, D-093, D-096
 - Agent entry point — `AGENTS.md` + the process vendored at `.claude/skills/{slicer,tdd,code-review,prototype}`, so a clone carries the loop — D-029
 
 ## Data model
@@ -100,7 +100,7 @@ Last updated: slice 0040
 
 **Access token** — server: `token_hash`, `group_id`, `device_user_id`, `revoked_at`. Client holds plaintext in Secure Store. One per device per group.
 
-**Invite** — server only, not a merge entity: `token_hash`, `group_id`, `member_id`, `expires_at`, `redeemed_at`. One-use, 7-day. Secret is 11-char base64url. Redeeming mints an access token and a v1 bind for that member. Plaintext is shown once at mint as a `/j/{token}` URL (web) or the raw token (native).
+**Invite** — server only, not a merge entity: `token_hash`, `group_id`, `member_id`, `expires_at`, `redeemed_at`. One-use, 7-day. Secret is 11-char base64url. Redeeming mints an access token and a v1 bind for that member. Plaintext is shown once at mint as a `/j/{token}` URL (web) or the raw token (native). On the public host, `/j/{token}` is the static invite landing; redeem happens at `/app/j/{token}`.
 
 **Activity** — `id`, `group_id`, `kind`, `actor_member_id`, `expense_id`, `version`, `updated_at`, `deleted_at`. Merge entity; client-authored; flushed after expenses. This slice records `expense_added` only when this device adds a cost and has an assumed member.
 
@@ -108,13 +108,13 @@ Last updated: slice 0040
 
 ## Routes / surfaces
 
-Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/app` Expo export (full-bleed).
+Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/j/{token}` invite landing · `/app` Expo export (full-bleed).
 
 | Route | What it does | Shipped in |
 | --- | --- | --- |
 | `/` | Lobby (no header, content vertically centered): groups by name with a one-line member summary (hidden when empty), quiet Join with link, Create group under that; on first visit each session auto-opens the last hub when still known; root AppState sync | slice 0001 / 0002 / 0012 / 0027 / 0037 |
 | `/create` | Create form: group name, your name, currency; submit opens the hub named and bound | slice 0027 |
-| `/j/[token]` | Redeem an invite token from the URL; opens the hub already bound | slice 0012 / 0028 |
+| `/j/[token]` | Expo: redeem an invite token from `/app/j/{token}`; opens the hub already bound. Public Pages `/j/{token}` is the invite landing, which continues here | slice 0012 / 0028 / 0041 |
 | `/join` | Same redeem as `/j/[token]`, via `?token=` (legacy) | slice 0012 |
 | `/group/[id]` | Hub: group name as large centered type above the list (header is home + settings); names until the first expense (rows open member detail; no expense list link), then balances (You highlighted; tap opens member detail); add member + directly under the list; **Recent activity** (last three, relative times) above the expense CTAs once anything is recorded; top toast when sync brings someone else's activity; **View all expenses** at the bottom once spent; FAB + Expense once bound; typed sync error; open → syncGroup | slice 0001–0007 / 0012 / 0017 / 0018 / 0019 / 0023 / 0027 / 0028 / 0034 / 0035 / 0036 |
 | `/group/[id]/activity` | Full activity list with relative timestamps, newest first; **Undo** on this device's add/delete/kick lines; opened from **View all events** on the hub | slice 0034 / 0035 / 0036 / 0040 |
@@ -151,8 +151,9 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/app` 
 - `planUndo` / `activityCanUndo` — `src/domain/undo.ts` — vitest — restore a delete/kick or tombstone an add from `undo_snapshot`; refuse foreign, stale, or missing snapshot
 - `activityRow` / `parseUndoSnapshot` — `workers/src/entities.ts` — vitest — persist `undo_snapshot` as JSON on the activity row
 - `InFrameOverlay` / `ConfirmDrawer` — `src/ui/inFrameOverlay.tsx` / `src/ui/ConfirmDrawer.tsx` / `app/+html.tsx` — drawers portal into `#overlay-root`; the Expo web app is full-bleed. The phone bezel is `landing/try`. `ConfirmDrawer` is the shared destructive-confirm sheet (Leave, Delete).
-- `assemble` — `docs/scripts/assemble_pages.py` — unittest via `npm run test:board` — Pages tree is landing + `/app`, never the slicer board
-- `metro_path_for` / `rewrite_root_urls` — `docs/scripts/serve_landing.py` — unittest via `npm run test:board` — local `/try` iframes same-origin `/app` (proxied Metro)
+- `assemble` — `docs/scripts/assemble_pages.py` — unittest via `npm run test:board` — Pages tree is landing + `/app`, never the slicer board; root `404.html` is the invite/not-found page
+- `invite_token_from_path` / `is_invite_landing_path` — `docs/scripts/invite_landing.py` — unittest via `npm run test:board` — public `/j/{token}` is an invite; `/app/j/…` is not
+- `metro_path_for` / `rewrite_root_urls` — `docs/scripts/serve_landing.py` — unittest via `npm run test:board` — local `/try` iframes same-origin `/app` (proxied Metro); `/j/{token}` serves the invite 404
 - `expensePrefillFromSearchParams` / `settlementHref` — `src/domain/expensePrefill.ts` — vitest
 - `normalizePersistedTimestamps` — `src/store/timestamps.ts` — vitest — the one place persisted shape is repaired on open
 - `npm run capture` — `docs/scripts/capture-flows.mjs` — drives the web target through every flow in `FLOWS.md`, asserting a clean console and balances that survive a reload. `--assert-only` skips writing clips. CI runs that against a local Worker (`npm run capture:ci`).
@@ -163,8 +164,8 @@ Public Pages (not Expo routes): `/` landing · `/try/` framed web app · `/app` 
 - `isHealthRequest` / `healthPayload` — `workers/src/health.ts` — vitest — the deploy provenance probe
 - `evaluate` — `docs/scripts/verify_deploy.py` — unittest via `npm run test:board` — pass/fail for "is the server this commit?"
 - `target_for` / `github_output` — `docs/scripts/deploy_target.py` — unittest via `npm run test:board` — which GitHub event may deploy to Worker `splitnext`, and that it may never wipe
-- `inviteIsLive` / `parseInviteToken` / `joinPathForToken` — `src/domain/invite.ts` — vitest (`tests/domain/invite.test.ts`)
-- `inviteShareText` — `src/sync/inviteShareText.ts` / `src/sync/inviteShareText.web.ts` — raw token on native, `/j/{token}` URL on web
+- `inviteIsLive` / `parseInviteToken` / `joinPathForToken` — `src/domain/invite.ts` — vitest (`src/domain/invite.test.ts`)
+- `inviteShareText` — `src/sync/inviteShareText.ts` / `src/sync/inviteShareText.web.ts` — raw token on native, public `/j/{token}` URL on web
 - `shouldCatchUpOnStatus` / `shouldReplaceSubscription` / `nextReconnectDelayMs` — `src/sync/wakePolicy.ts` — vitest — whether a wake-socket status change means this group missed wakes, whether a dead socket should be replaced, and how long to wait before retrying
 - `wakeUrl` — `src/sync/wakeUrl.ts` — vitest — query-string token on `/wake/:groupId`; RN `WebSocket` cannot set headers
 - `phone_section` — `docs/scripts/pr_phone.py` — unittest via `npm run test:board` — the PR comment's Camera QR of the published `/app`

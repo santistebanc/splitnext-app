@@ -20,6 +20,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+from invite_landing import is_invite_landing_path
+
 ROOT = Path(__file__).resolve().parents[2]
 LANDING = ROOT / "landing"
 DEFAULT_PORT = 8788
@@ -34,6 +36,7 @@ _LANDING_PATHS = {
     "/try",
     "/try/",
     "/try/index.html",
+    "/404.html",
 }
 
 
@@ -41,6 +44,8 @@ def metro_path_for(url_path: str) -> str | None:
     """Metro path to fetch, or None to serve a landing file."""
     path = url_path.split("?", 1)[0]
     if path in _LANDING_PATHS:
+        return None
+    if is_invite_landing_path(path):
         return None
     if path == "/app" or path.startswith("/app/"):
         rest = path[4:] or "/"
@@ -122,6 +127,16 @@ def handler_for(metro_origin: str):
                 if command != "HEAD":
                     self.wfile.write(body)
                 return
+            if is_invite_landing_path(parsed.path):
+                body = (LANDING / "404.html").read_bytes()
+                self.send_response(404)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                if command != "HEAD":
+                    self.wfile.write(body)
+                return
             metro_path = metro_path_for(parsed.path)
             if metro_path is None:
                 if command == "HEAD":
@@ -182,6 +197,7 @@ def main() -> None:
     server = ThreadingHTTPServer((host, port), handler_for(metro_origin))
     print(f"Landing     → http://127.0.0.1:{port}/", flush=True)
     print(f"Use on web  → http://127.0.0.1:{port}/try/", flush=True)
+    print(f"Invite page → http://127.0.0.1:{port}/j/<token>", flush=True)
     print(f"Frame loads → http://127.0.0.1:{port}/app/  (proxied {metro_origin})", flush=True)
     if lan:
         print("Bound to 0.0.0.0 — anything on this network can reach it.", flush=True)

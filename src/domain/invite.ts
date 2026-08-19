@@ -33,12 +33,13 @@ export function parseInviteToken(input: string): string | null {
 }
 
 /**
- * Path (no origin) for a join link. The published app lives under
- * `/splitnext-app/app`; locally it does not. Callers prepend origin.
+ * Path (no origin) for a join link. The published site lives under
+ * `/splitnext-app`; locally it does not. Copied links open the invite
+ * landing (`/j/{token}`), not Expo `/app/j/…`. Callers prepend origin.
  */
 export function joinPathForToken(token: string, pathname: string): string {
-  const prefix = pathname.startsWith('/splitnext-app/app')
-    ? '/splitnext-app/app'
+  const prefix = pathname.startsWith('/splitnext-app')
+    ? '/splitnext-app'
     : '';
   return `${prefix}/j/${encodeURIComponent(token)}`;
 }
