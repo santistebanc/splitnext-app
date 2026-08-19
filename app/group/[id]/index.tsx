@@ -12,17 +12,26 @@ import {
 import { computeBalances } from '@/src/domain/balances';
 import { lobbyGroupTitle } from '@/src/domain/lobby';
 import { getGroupStore } from '@/src/store/groupStore';
-import { addMember, openGroup } from '@/src/sync/groupSync';
+import { addMember, openGroup, undoActivity } from '@/src/sync/groupSync';
 import { coerceSyncError } from '@/src/sync/syncErrors';
+import { ActivityFeed } from '@/src/ui/ActivityFeed';
 import { ActivityRow } from '@/src/ui/ActivityRow';
 import { ActivityToast } from '@/src/ui/ActivityToast';
+import { HubCornerChrome } from '@/src/ui/HubCornerChrome';
 import { formatMoney, memberLabel } from '@/src/ui/format';
 import { colors } from '@/src/ui/theme';
 import { useValue } from '@legendapp/state/react';
-import { SymbolView } from 'expo-symbols';
-import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ActivityEntity } from '@/src/types/group';
 
@@ -71,7 +80,7 @@ export default function GroupHubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const groupId = id ?? '';
   const router = useRouter();
-  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const store$ = getGroupStore(groupId);
   const group = useValue(store$.group);
   const members = useValue(store$.members);
@@ -90,14 +99,22 @@ export default function GroupHubScreen() {
   const [titleH, setTitleH] = useState(TITLE_FALLBACK_H);
   const [syncReady, setSyncReady] = useState(false);
   const [toastLine, setToastLine] = useState<ActivityLine | null>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const recede = useRef(new Animated.Value(1)).current;
   const knownActivityIdsRef = useRef<Set<string>>(new Set());
 
   const dismissToast = useCallback(() => setToastLine(null), []);
+  const openActivity = useCallback(() => {
+    dismissToast();
+    setActivityOpen(true);
+  }, [dismissToast]);
+  const closeActivity = useCallback(() => setActivityOpen(false), []);
 
   useEffect(() => {
     if (!groupId) return;
     setSyncReady(false);
     setToastLine(null);
+    setActivityOpen(false);
     knownActivityIdsRef.current = new Set();
     void getOrCreateDeviceUserId().then(setDeviceUserId);
     void (async () => {
@@ -112,38 +129,15 @@ export default function GroupHubScreen() {
     })();
   }, [groupId, store$]);
 
-  const title = lobbyGroupTitle(group.name);
   useEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      title: '',
-      headerTitle: () => null,
-      headerLeft: () => (
-        <Pressable
-          onPress={() => router.navigate('/')}
-          accessibilityRole="button"
-          accessibilityLabel="Home"
-          style={styles.headerHome}
-        >
-          <SymbolView
-            name={{ ios: 'house', android: 'home', web: 'home' }}
-            size={22}
-            tintColor={colors.ink}
-          />
-        </Pressable>
-      ),
-      headerRight: () => (
-        <Pressable
-          onPress={() => router.push(`/group/${groupId}/settings` as Href)}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-          style={styles.headerSettings}
-        >
-          <Text style={styles.headerSettingsText}>⚙</Text>
-        </Pressable>
-      ),
-    });
-  }, [navigation, router, groupId]);
+    Animated.timing(recede, {
+      toValue: activityOpen ? 0 : 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [activityOpen, recede]);
+
+  const title = lobbyGroupTitle(group.name);
 
   useEffect(() => {
     if (addOpen) addRef.current?.focus();
@@ -242,15 +236,57 @@ export default function GroupHubScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.body} testID="balances">
+      <HubCornerChrome
+        topInset={insets.top}
+        onHome={() => router.navigate('/')}
+        onSettings={() =>
+          router.push(`/group/${groupId}/settings` as Href)
+        }
+      />
+
+      <View
+        style={[
+          styles.body,
+          {
+            paddingTop: insets.top + 44,
+            paddingBottom: activityOpen ? 16 : 80,
+          },
+        ]}
+        testID="balances"
+      >
         {lastError ? (
           <Text style={styles.error}>
             {lastError.code}: {lastError.message}
           </Text>
         ) : null}
 
-        <View
-          style={styles.centered}
+        {activityOpen ? (
+          <Animated.View
+            style={[styles.activityExpand, { opacity: recede.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1, 0],
+            }) }]}
+          >
+            <View style={styles.activityHead}>
+              <Text style={styles.activityHeading}>Activity</Text>
+              <Pressable
+                testID="activity-close"
+                style={styles.activityViewAll}
+                onPress={closeActivity}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+              >
+                <Text style={styles.activityViewAllText}>Close</Text>
+              </Pressable>
+            </View>
+            <ActivityFeed
+              lines={allActivityLines}
+              onUndo={(activityId) => void undoActivity(groupId, activityId)}
+            />
+          </Animated.View>
+        ) : (
+        <Animated.View
+          style={[styles.centered, { opacity: recede }]}
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
             setAreaW(width);
@@ -392,7 +428,13 @@ export default function GroupHubScreen() {
 
             {!namesOnly && recentActivityLines.length > 0 ? (
               <View testID="activity-recent" style={styles.activitySection}>
-                <Text style={styles.activityHeading}>Recent activity</Text>
+                <Pressable
+                  onPress={openActivity}
+                  accessibilityRole="button"
+                  accessibilityLabel="Recent activity"
+                >
+                  <Text style={styles.activityHeading}>Recent activity</Text>
+                </Pressable>
                 {recentActivityLines.map((line) => (
                   <ActivityRow
                     key={line.id}
@@ -404,9 +446,7 @@ export default function GroupHubScreen() {
                 <Pressable
                   testID="activity-view-all"
                   style={styles.activityViewAll}
-                  onPress={() =>
-                    router.push(`/group/${groupId}/activity` as Href)
-                  }
+                  onPress={openActivity}
                   accessibilityRole="button"
                   accessibilityLabel="View all events"
                 >
@@ -419,10 +459,11 @@ export default function GroupHubScreen() {
           {balances.length === 0 ? (
             <View style={styles.titleSpacer} pointerEvents="none" />
           ) : null}
-        </View>
+        </Animated.View>
+        )}
       </View>
 
-      {assumedMemberId ? (
+      {!activityOpen && assumedMemberId ? (
         <View style={[styles.fabBar, !namesOnly ? styles.fabBarRaised : null]}>
           <Pressable
             style={styles.fab}
@@ -435,7 +476,7 @@ export default function GroupHubScreen() {
         </View>
       ) : null}
 
-      {!namesOnly ? (
+      {!activityOpen && !namesOnly ? (
         <Pressable
           style={styles.expensesBar}
           onPress={() => router.push(`/group/${groupId}/expenses` as Href)}
@@ -449,10 +490,8 @@ export default function GroupHubScreen() {
       <ActivityToast
         line={toastLine}
         onDismiss={dismissToast}
-        onPress={() => {
-          dismissToast();
-          router.push(`/group/${groupId}/activity` as Href);
-        }}
+        onPress={openActivity}
+        offsetTop={insets.top + 44}
       />
 
     </View>
@@ -487,24 +526,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.ink,
     textAlign: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 56,
     width: '100%',
-  },
-  headerHome: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSettings: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSettingsText: {
-    fontSize: 18,
-    color: colors.muted,
   },
   error: {
     color: colors.danger,
@@ -576,6 +599,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  activityExpand: {
+    flex: 1,
+    minHeight: 0,
+    paddingHorizontal: 16,
+  },
+  activityHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   activityHeading: {
     fontSize: 12,

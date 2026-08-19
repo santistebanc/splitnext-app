@@ -3,13 +3,14 @@ import { usePushNotificationOpen } from '@/src/push/usePushNotificationOpen';
 import { colors } from '@/src/ui/theme';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function RootLayout() {
   useLobbyForegroundSync();
   usePushNotificationOpen();
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -26,6 +27,6 @@ export default function RootLayout() {
         <Stack.Screen name="join" options={{ title: 'Join group' }} />
         <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }

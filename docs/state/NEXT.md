@@ -1,5 +1,5 @@
 # No slice picked
 
-The last closed slice is 0045 (hub name descenders). Roster/balance line boxes are 1.4× font.
+The last closed slice is 0046 (headerless hub + activity expand).
 
 Pick the next slice from `PARKING.md` (risk-first: foundation-risk before core value before breadth before polish).

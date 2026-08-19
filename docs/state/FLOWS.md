@@ -108,8 +108,8 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 1. `L-addExpense` already wrote the `expense_added` activity when this device has an assumed member.
 2. `L-hub` shows up to three lines pinned above the expense CTAs via `L-activityRow` (`L-formatActivityLine`, `L-relativeTime`).
-3. **View all events** opens `L-activity` with every live event and relative timestamps.
-4. On another device, the same add wakes this hub; `L-activitiesFromOthers` surfaces it and `L-activityToast` shows a top banner until dismiss or tap (opens `L-activity`).
+3. **View all events** expands `L-activityFeed` on `L-hub` with every live event and relative timestamps. **Close** returns to the hub.
+4. On another device, the same add wakes this hub; `L-activitiesFromOthers` surfaces it and `L-activityToast` shows a banner until dismiss or tap (expands `L-activityFeed` on the hub).
 
 ## F-edit-expense — Edit an expense
 
@@ -246,10 +246,10 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 
 ## F-undo — Undo from Activity
 
-**Trigger** — After adding, deleting, or kicking from this device, the person opens **View all events** and taps **Undo** on that line.  
+**Trigger** — After adding, deleting, or kicking from this device, the person opens **View all events** and taps **Undo** on that line.
 **Outcome** — The add is gone, or the delete/kick is restored. The activity line disappears. Someone else's line has no Undo.
 
 1. `L-addExpense`, `L-deleteExpense`, or `L-deleteMember` stored the pre-job entity on `undo_snapshot` of the activity.
-2. `L-activity` shows **Undo** on that line when `L-formatActivityLine` says `canUndo` (`L-planUndo` would succeed: this device is the actor, snapshot present, add not edited since).
+2. The expanded `L-activityFeed` on `L-hub` shows **Undo** on that line when `L-formatActivityLine` says `canUndo` (`L-planUndo` would succeed: this device is the actor, snapshot present, add not edited since).
 3. Tap calls `L-undoActivity`, which applies `L-planUndo`: tombstone the added expense, or restore the deleted expense / kicked member at the current version + 1, then tombstone the activity. Entity then activity are queued; `L-flushQueue` sends them.
 4. Hub lists and balances refold without waiting for the network. A stale add (edited after) or a foreign line has no control.
