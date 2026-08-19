@@ -157,8 +157,10 @@ describe('startWakeSubscription orchestrator', () => {
     const first = await waitForOpen(group.groupId);
     expect(catchUp).not.toHaveBeenCalled();
 
-    first.close();
-    await new Promise((r) => setTimeout(r, 1_500));
+    (first as unknown as { onerror: ((event: Event) => void) | null }).onerror?.(
+      new Event('error'),
+    );
+    await new Promise((r) => setTimeout(r, 1_200));
     await waitForOpen(group.groupId, 8_000);
 
     expect(catchUp).toHaveBeenCalledTimes(1);
