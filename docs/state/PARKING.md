@@ -15,7 +15,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 - **Server-side cursor / wake log** — "a wake log or group tip the client compares on reconnect" — declined in slice 0011 in favour of reusing `syncGroup`; return if roster pull on reconnect ever hurts — area: sync — raised: slice 0011
 - **Multi-install recovery** — "Multi-install recovery when the device user id is lost — with no accounts, there is currently no recovery path" — area: recovery — raised: bootstrap
 - **Invite rate limits** — "Rate limits on invite links (7-day + one-use is product-decided; no enforcement design yet)" — area: abuse — raised: bootstrap
-- **Push notifications** — Expo push on foreign activity, device-token Worker routes — delivered in [slice 0038](slices/0038-push-notifications.md). Still parked: per-group mute. — area: awareness — raised: steering after 0029
+- **Push notifications** — Expo push on foreign activity, device-token Worker routes — delivered in [slice 0038](slices/0038-push-notifications.md). Expo Go skip of `expo-notifications` — [slice 0043](slices/0043-expo-go-push-skip.md). Still parked: per-group mute. — area: awareness — raised: steering after 0029
 
 ## Core value
 
@@ -52,6 +52,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 ## Polish
 
 - **Delta matches symbol names as plain English words** — `merge / mergeOne` was explained by a Before → After row about merging to `main`, because the row contains the word "merge". An `L-` id citation should outrank a bare word match — area: board — raised: slice 0010
+- **Hub name descenders clip** — `numberOfLines={1}` at lineHeight 1.25 crops `g`/`y` on the hub title. — area: ui — raised: 2026-08-19
 - **Reconnecting indicator on the hub** — silent today, same as foreground; a chrome that says the socket dropped — area: ui — raised: slice 0011
 - **Transaction tolerance on settle-up** — "ignore leftovers under $1" — Settle Up's extra; this slice ships exact cents — area: ledger — raised: slice 0017
 
@@ -71,8 +72,8 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Activity undo** — delivered in [slice 0040](slices/0040-activity-undo.md).
-
 - **Invite landing** — delivered in [slice 0041](slices/0041-invite-landing.md). `/j/{token}` on the public site is landing chrome; desktop continues to redeem.
 
 - **Legal** — delivered in [slice 0042](slices/0042-legal.md). Privacy and terms from the landing footer; deletion-on-request without a join-code wipe.
+
+- **Expo Go push skip** — delivered in [slice 0043](slices/0043-expo-go-push-skip.md). Expo Go never imports `expo-notifications`.
