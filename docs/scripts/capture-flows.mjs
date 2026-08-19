@@ -272,36 +272,34 @@ const FLOWS = [
   },
   {
     id: 'F-undo',
-    from: 'bound',
+    from: 'spent',
     async run(d, page) {
       await d.tapNewExpense();
       await d.typeAmount('5.00');
       await d.type('What for', 'Lunch');
       await d.tap('Add expense');
       await d.beat(2400);
-      await d.press(page.getByTestId('activity-view-all'));
-      await d.beat(800);
-      const listed = await page.getByTestId('activity-page').innerText();
+      const recent = page.getByTestId('activity-recent');
+      const listed = await recent.innerText();
       if (!/Lunch/.test(listed)) {
         problems.push(
-          `[F-undo] activity list did not show Lunch (got ${JSON.stringify(listed.slice(0, 200))})`,
+          `[F-undo] hub recent did not show Lunch (got ${JSON.stringify(listed.slice(0, 200))})`,
         );
       }
-      const undo = page.getByTestId('activity-undo');
+      const undo = recent.getByTestId('activity-undo');
       if ((await undo.count()) === 0) {
-        problems.push('[F-undo] no Undo control on the add');
+        problems.push('[F-undo] no Undo control on hub recent add');
         return;
       }
       await d.press(undo.first());
       await d.beat(1200);
-      const after = await page.getByTestId('activity-page').innerText();
+      const after = await recent.innerText();
       if (/Lunch/.test(after)) {
         problems.push(
-          `[F-undo] Lunch still on Activity after Undo (got ${JSON.stringify(after.slice(0, 200))})`,
+          `[F-undo] Lunch still on hub recent after Undo (got ${JSON.stringify(after.slice(0, 200))})`,
         );
       }
-      await d.press(page.getByTestId('activity-close'));
-      await d.beat(800);
+      await d.beat(400);
       const hub = await page.innerText('body');
       if (/Lunch/.test(hub)) {
         problems.push('[F-undo] hub still mentions Lunch after Undo');
