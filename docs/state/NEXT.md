@@ -4,7 +4,7 @@ No active slice right now.
 
 ## Status
 
-- Slice 0050 is closed and ready to merge.
+- Slice 0051 is closed and ready to merge.
 - Next slice will be selected from `docs/state/PARKING.md` using the slicer loop.
 
 ## Notes
