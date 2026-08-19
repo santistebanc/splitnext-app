@@ -37,7 +37,7 @@ const NAME_RESERVE = 88;
 /** `+999999.00` — six-digit whole with cents; type is sized so this never clips. */
 const AMOUNT_FIT_CENTS = 99_999_900;
 const AMT_EM = 0.6;
-const TYPE_LINE = 1.25;
+const TYPE_LINE = 1.4;
 
 /** Few people → larger type, many → smaller, no scroll. Width-capped by the
  *  6-digit amount staying fully visible; names ellipsize if they must. */

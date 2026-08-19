@@ -51,7 +51,6 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 ## Polish
 
 - **Delta matches symbol names as plain English words** — `merge / mergeOne` was explained by a Before → After row about merging to `main`, because the row contains the word "merge". An `L-` id citation should outrank a bare word match — area: board — raised: slice 0010
-- **Hub name descenders clip** — `numberOfLines={1}` at lineHeight 1.25 crops `g`/`y` on the hub title. — area: ui — raised: 2026-08-19
 - **Reconnecting indicator on the hub** — silent today, same as foreground; a chrome that says the socket dropped — area: ui — raised: slice 0011
 - **Transaction tolerance on settle-up** — "ignore leftovers under $1" — Settle Up's extra; this slice ships exact cents — area: ledger — raised: slice 0017
 
@@ -71,10 +70,8 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Invite landing** — delivered in [slice 0041](slices/0041-invite-landing.md). `/j/{token}` on the public site is landing chrome; desktop continues to redeem.
-
-- **Legal** — delivered in [slice 0042](slices/0042-legal.md). Privacy and terms from the landing footer; deletion-on-request without a join-code wipe.
-
 - **Expo Go push skip** — delivered in [slice 0043](slices/0043-expo-go-push-skip.md). Expo Go never imports `expo-notifications`.
 
 - **Pending expense badge** — delivered in [slice 0044](slices/0044-pending-expense-badge.md). All expenses shows Pending while queued.
+
+- **Hub name descenders** — delivered in [slice 0045](slices/0045-hub-name-descenders.md). Roster/balance line boxes are 1.4× font.
