@@ -1,12 +1,15 @@
 import { registerPushTokenRemote } from '@/src/api/edge';
 import { getOrCreateDeviceUserId } from '@/src/device/deviceUser';
+import { notificationsAvailable } from '@/src/push/notificationsAvailable';
 import { getAccessToken } from '@/src/secrets/tokens';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 
 export async function registerPushTokenForGroup(groupId: string): Promise<void> {
+  if (!notificationsAvailable(Constants.appOwnership)) return;
   if (!Device.isDevice) return;
 
+  const Notifications = await import('expo-notifications');
   const { status: existing } = await Notifications.getPermissionsAsync();
   let granted = existing;
   if (existing !== 'granted') {
