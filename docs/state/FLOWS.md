@@ -116,10 +116,10 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On All expenses, or on a member's paid-for / owe-for line, the person opens an expense, changes amount, payer, who shares, or what-for, and taps **Save**.  
 **Outcome** — That expense is the same id at the next version, split from the editor (equal 1-share unless they changed units or a fixed amount). Hub nets and buckets refold. A second expense is not created.
 
-1. `L-expenses` or a `L-member` bucket line opens `L-expenseNew` on `/expense/{id}` with the stored expense loaded — live members who were not in the original split stay out. Cents-only (pre-mixed) rows open as 1 share each.
+1. `L-hub` expands `L-expensesPanel`, or a `L-member` bucket line opens `L-expenseNew` on `/expense/{id}` with the stored expense loaded — live members who were not in the original split stay out. Cents-only (pre-mixed) rows open as 1 share each.
 2. Save calls `L-updateExpense`. `L-patchExpense` rebuilds allocations via `L-allocateMixed`, or returns null when nothing changed — then nothing is written and Save stays off.
 3. A successful write updates the store and queues the expense; `L-flushQueue` pushes it as one item, same as add.
-4. While that version is still queued, `L-expenses` shows **Pending** on the row (`L-expenseIsPending`).
+4. While that version is still queued, `L-expensesPanel` shows **Pending** on the row (`L-expenseIsPending`).
 5. `L-balances` and `L-memberBuckets` refold from the new version. The list still shows one row for that id.
 
 ## F-delete-expense — Delete an expense
@@ -127,7 +127,7 @@ Write **Trigger** and **Outcome** as sentences a newcomer can read — what the 
 **Trigger** — On the edit form, the person taps **Delete**, confirms, and the expense is tombstoned.  
 **Outcome** — That id drops out of All expenses, member buckets, and balance folds. The same expense is not hard-deleted.
 
-1. `L-expenses` or a bucket line opens edit; **Delete** is in the header.
+1. `L-hub` expands `L-expensesPanel`, or a bucket line opens edit; **Delete** is in the header.
 2. Confirm drawer (same shape as Leave in Settings) then `L-deleteExpense` calls `L-tombstoneExpense`, queues the expense, and flushes.
 3. `L-expenseNew` returns to the previous screen; lists and `L-balances` no longer include that expense.
 
