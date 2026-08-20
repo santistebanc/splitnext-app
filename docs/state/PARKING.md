@@ -4,7 +4,7 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 
 ## Foundation-risk
 
-- **Activity spine** — `expense_added` through rename/kick/edit/delete plus join/leave/group-rename, hub recent section, Activity page, relative timestamps, hub toast — delivered through [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md) / [slice 0053](slices/0053-activity-join-leave-rename.md). Undo of add/delete/kick — [slice 0040](slices/0040-activity-undo.md). Still parked: undo of edit/rename, Undo on the hub recent list. — area: activity — raised: bootstrap · restated: steering after 0029
+- **Activity spine** — `expense_added` through rename/kick/edit/delete plus join/leave/group-rename, hub recent section, Activity page, relative timestamps, hub toast — delivered through [slice 0034](slices/0034-activity-spine.md) / [slice 0035](slices/0035-activity-toast.md) / [slice 0036](slices/0036-activity-event-kinds.md) / [slice 0053](slices/0053-activity-join-leave-rename.md). Undo of add/delete/kick — [slice 0040](slices/0040-activity-undo.md) / hub recent — [slice 0056](slices/0056-hub-recent-undo.md). Still parked: undo of edit/rename; undo on activity toast. — area: activity — raised: bootstrap · restated: steering after 0029
 - **Mixed / uneven splits** — delivered in [slice 0030](slices/0030-mixed-splits.md).
 
 - **Soft-delete an expense** — delivered in [slice 0031](slices/0031-expense-delete.md).
@@ -69,20 +69,6 @@ Steering after 0029 (v1 feature pass): take the old app's remaining product, kee
 <!-- kept until it is two slices old, then pruned: the point is that the user
      sees their input landed, not a second changelog. -->
 
-- **Pending expense badge** — delivered in [slice 0044](slices/0044-pending-expense-badge.md). All expenses shows Pending while queued.
-
-- **Hub name descenders** — delivered in [slice 0045](slices/0045-hub-name-descenders.md). Roster/balance line boxes are 1.4× font.
-
-- **Headerless hub + activity expand** — delivered in [slice 0046](slices/0046-hub-shell-activity.md). First hub-as-shell slice.
-
-- **Member accordion on hub** — delivered in [slice 0047](slices/0047-member-accordion.md). Balance/roster tap expands member detail; Close returns.
-
-- **Settings overlay on hub** — delivered in [slice 0048](slices/0048-settings-overlay.md). Settings gear expands in place; Close/Done return.
-
-- **All-expenses overlay on hub** — delivered in [slice 0049](slices/0049-all-expenses-overlay.md). **View all expenses** expands in place; Close returns.
-- **Expense form overlay on hub** — delivered in [slice 0050](slices/0050-expense-form-overlay.md).
-- **Lobby-as-switcher on hub** — delivered in [slice 0051](slices/0051-lobby-switcher.md). Home expands the group list; Close returns.
-
 - **Wake orchestrator tests** — delivered in [slice 0055](slices/0055-wake-orchestrator-tests.md). `startWakeSubscription` proven against local Worker.
 
-- **Expense form overlay on hub** — delivered in [slice 0050](slices/0050-expense-form-overlay.md). FAB, rows, buckets, and settle expand `L-expenseForm`; save/delete/**Close** return.
+- **Hub recent Undo** — delivered in [slice 0056](slices/0056-hub-recent-undo.md). Same Undo as the Activity feed on hub recent rows.

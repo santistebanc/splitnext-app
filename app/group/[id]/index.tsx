@@ -567,6 +567,7 @@ export default function GroupHubScreen() {
                     line={line}
                     lineStyle={styles.activityLine}
                     testID="activity-recent-row"
+                    onUndo={() => void undoActivity(groupId, line.id)}
                   />
                 ))}
                 <Pressable
