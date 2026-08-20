@@ -354,15 +354,23 @@ const FLOWS = [
       await d.beat(400);
       await d.press(page.getByTestId('expense-delete-confirm-ok'));
       await d.beat(2000);
-      await reopenExpensesList(d, page);
-      const after = await page.getByTestId('expense-row').count();
-      if (after >= before) {
+      // Delete closes the form onto the hub. The spent seed has one expense;
+      // removing it hides **View all expenses** (names-only hub), so do not
+      // call reopenExpensesList — assert the row is gone and Taxi left the hub.
+      if ((await page.getByTestId('expenses-close').count()) > 0) {
+        const after = await page.getByTestId('expense-row').count();
+        if (after >= before) {
+          problems.push(
+            `[F-delete-expense] expense still listed (${before} → ${after})`,
+          );
+        }
+        await d.press(page.getByTestId('expenses-close'));
+        await d.beat(1200);
+      } else if ((await page.getByTestId('expense-row').count()) >= before) {
         problems.push(
-          `[F-delete-expense] expense still listed (${before} → ${after})`,
+          `[F-delete-expense] expense still listed after delete (${before} left)`,
         );
       }
-      await d.press(page.getByTestId('expenses-close'));
-      await d.beat(1200);
       const hub = await page.innerText('body');
       if (/Taxi/.test(hub)) {
         problems.push('[F-delete-expense] hub still mentions deleted expense');
